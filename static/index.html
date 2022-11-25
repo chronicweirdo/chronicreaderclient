@@ -6,5 +6,10 @@
 </head>
 <body>
     <h1>Chronic Reader Client</h1>
+    <form action="upload" enctype="multipart/form-data" method="post">
+        <label for="myFile">Upload Your File</label>
+        <input id="myFile" accept="image/jpeg,image/gif,image/png,application/pdf,image/x-eps" name="filename" type="file" />
+        <button name="submit" type="submit">Upload File</button>
+    </form>
 </body>
 </html>
