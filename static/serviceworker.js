@@ -6,6 +6,15 @@ const DATABASE_NAME = "chronicreaderclient"
 const DATABASE_VERSION = "2"
 const FILE_TABLE = 'files'
 
+class File {
+    constructor(name, contentType, date, content) {
+        this.name = name
+        this.contentType = contentType
+        this.date = date
+        this.content = content
+    }
+}
+
 //var db
 
 function getDb() {
@@ -47,6 +56,8 @@ self.addEventListener('fetch', e => {
     if (url.pathname.startsWith("/upload")) {
         e.respondWith(handleUpload(e.request))
         //e.respondWith(Response.redirect("/", 302))
+    } else if (url.pathname.startsWith("/books")) {
+        e.respondWith(loadAllBooks())
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -110,6 +121,8 @@ self.addEventListener('fetch', e => {
 
 }*/
 
+
+
 function get200Response() {
     return new Response("", { "status" : 200 })
 }
@@ -120,6 +133,16 @@ function get401Response() {
 
 function get404Response() {
     return new Response("", { "status" : 404 })
+}
+
+function getJsonResponse(json) {
+    const hdrs = new Headers()
+    hdrs.append('Content-Type', 'application/json')
+    const jsonString = JSON.stringify(json)
+    return new Response(jsonString, {
+        status: 200,
+        headers: hdrs
+    })
 }
 
 async function handleUpload(request) {
@@ -141,6 +164,17 @@ async function handleUpload(request) {
     console.log("saved file")
 
     return Response.redirect("/", 302)
+}
+
+async function loadAllBooks() {
+    let databaseBooks = await databaseLoadDistinct(FILE_TABLE, "name")
+    //let responseBooks = [] //databaseBooks.map((book) => book.name)
+    //for (let i = 0; i < databaseBooks.length; i++) {
+    //    responseBooks.push(databaseBooks[i].name)
+    //}
+    //console.log(responseBooks)
+    console.log(databaseBooks)
+    return getJsonResponse(Array.from(databaseBooks))
 }
 
 function databaseSave(table, value) {
@@ -175,6 +209,27 @@ function databaseLoad(table, key) {
             dbRequest.onsuccess = function(event) {
                 resolve(event.target.result)
             }
+        })
+    })
+}
+
+function databaseLoadDistinct(table, column) {
+    return new Promise((resolve, reject) => {
+        getDb().then(db => {
+            let transaction = db.transaction([table])
+            let objectStore = transaction.objectStore(table)
+            let cursorRequest = objectStore.openCursor()
+            let distinctValues = new Set()
+            cursorRequest.onsuccess = event => {
+                let cursor = event.target.result
+                if (cursor) {
+                    distinctValues.add(cursor.value[column])
+                    cursor.continue()
+                } else {
+                    resolve(distinctValues)
+                }
+            }
+            cursorRequest.onerror = event => reject()
         })
     })
 }
