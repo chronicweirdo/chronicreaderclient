@@ -10,6 +10,8 @@ function getLoadingElement() {
 function imageLoadedPromise(image) {
     return new Promise((resolve, reject) => {
         let imageResolveFunction = function() {
+            console.log("image is loaded")
+            console.log(image.naturalWidth)
             resolve()
         }
         image.onload = imageResolveFunction

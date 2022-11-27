@@ -12,16 +12,32 @@
             console.log(urlParams)
             let bookId = urlParams.get("book")
             let startPosition = urlParams.get("position")
+            if (startPosition == undefined) {
+                startPosition = 0
+            }
             console.log(bookId)
             console.log(startPosition)
 
-            let reader = new ChronicReader(
+            document.reader = new ChronicReader(
                 "/book/" + bookId,
                 document.getElementById("page"),
                 { "position": startPosition}
             )
         }
     </script>
+    <style>
+        body, * {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            overflow: hidden;
+        }
+        #page {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+        }
+    </style>
 </head>
 <body>
     <div id="page">book page</div>

@@ -15,7 +15,10 @@
                 booklist.innerHTML = ""
                 for (let i = 0; i < books.length; i++) {
                     let item = document.createElement("li")
-                    item.innerHTML = books[i]
+                    let itemLink = document.createElement("a")
+                    itemLink.href = "/read.html?book=" + books[i]
+                    itemLink.innerHTML = books[i]
+                    item.appendChild(itemLink)
                     booklist.appendChild(item)
                 }
             })
