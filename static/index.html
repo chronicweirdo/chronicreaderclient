@@ -10,12 +10,21 @@
                 console.log(response)
                 return response.json()
             })
-            .then(console.log)
+            .then((books) => {
+                let booklist = document.getElementById("booklist")
+                booklist.innerHTML = ""
+                for (let i = 0; i < books.length; i++) {
+                    let item = document.createElement("li")
+                    item.innerHTML = books[i]
+                    booklist.appendChild(item)
+                }
+            })
         }
     </script>
 </head>
 <body>
     <h1>Chronic Reader Client</h1>
+    <ul id="booklist"></ul>
     <form action="upload" enctype="multipart/form-data" method="post">
         <label for="myFile">Upload Your File</label>
         <input id="myFile" accept=".epub,.cbz" name="filename" type="file" />
