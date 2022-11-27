@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chronic Reader Client</title>
+    <script src="/jszip.js"></script>
+    <script src="/reader.js"></script>
+    <script>
+        window.onload = function() {
+            let queryString = window.location.search
+            console.log(queryString)
+            let urlParams = new URLSearchParams(queryString)
+            console.log(urlParams)
+            let bookId = urlParams.get("book")
+            let startPosition = urlParams.get("position")
+            console.log(bookId)
+            console.log(startPosition)
+
+            let reader = new ChronicReader(
+                "/book/" + bookId,
+                document.getElementById("page"),
+                { "position": startPosition}
+            )
+        }
+    </script>
+</head>
+<body>
+    <div id="page">book page</div>
+</body>
+</html>

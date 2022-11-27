@@ -36,8 +36,13 @@ function getFileMimeType(filename) {
 var staticServe = function(req, res) {
     var resolvedBase = path.resolve(staticBasePath)
     var safeSuffix = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '')
+    let queryStringStart = safeSuffix.indexOf('?')
+    if (queryStringStart >= 0) {
+        safeSuffix = safeSuffix.substring(0, queryStringStart)
+    }
     if (safeSuffix == "/") safeSuffix = "/index.html"
     var fileLoc = path.join(resolvedBase, safeSuffix)
+    console.log(fileLoc)
 
     fs.readFile(fileLoc, function(err, data) {
         if (err) {
