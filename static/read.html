@@ -5,6 +5,15 @@
     <script src="/jszip.js"></script>
     <script src="/reader.js"></script>
     <script>
+        function updateUrl(display) {
+            let newPosition = display.position
+            let queryString = window.location.search
+            let urlParams = new URLSearchParams(queryString)
+            urlParams.delete("position")
+            urlParams.append("position", newPosition)
+            let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString()
+            window.history.replaceState('', '', newUrl)
+        }
         window.onload = function() {
             let queryString = window.location.search
             console.log(queryString)
@@ -21,7 +30,10 @@
             document.reader = new ChronicReader(
                 "/book/" + bookId,
                 document.getElementById("page"),
-                { "position": startPosition}
+                {
+                    "position": startPosition,
+                    "displayPageForCallback": updateUrl
+                }
             )
         }
     </script>
