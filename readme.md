@@ -16,3 +16,10 @@
 - implement new api-only backend
 - implement extraction library for rar
 - optional: implement extraction library for zip
+
+## Setup
+
+```
+npm install -g bower
+bower install crypto-js
+```

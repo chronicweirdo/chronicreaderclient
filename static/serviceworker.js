@@ -1,3 +1,5 @@
+importScripts('/crypto-js.js')
+
 const DATABASE_NAME = "chronicreaderclient"
 const DATABASE_VERSION = "2"
 const FILE_TABLE = 'files'
@@ -63,6 +65,18 @@ function getJsonResponse(json) {
     })
 }
 
+function buf2hex(buffer) { // buffer is an ArrayBuffer
+return [...new Uint8Array(buffer)]
+    .map(x => x.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function getArrayBufferSHA256(bytes) {
+    var wordArray = CryptoJS.lib.WordArray.create(bytes)
+    let hash = CryptoJS.SHA256(wordArray).toString()
+    return hash
+}
+
 async function handleUpload(request) {
     let form = await request.formData()
     let file = form.get("filename")
@@ -71,6 +85,10 @@ async function handleUpload(request) {
     let contentType = file.type
     let bytes = await file.arrayBuffer()
     console.log(bytes)
+    // https://stackoverflow.com/questions/67549348/how-to-create-sha256-hash-from-byte-array-in-javascript
+    // compute bytes hash for id
+    let hash = getArrayBufferSHA256(bytes)
+    console.log("hash: " + hash)
     let dbFile = {
         "name": name,
         "contentType": contentType,
