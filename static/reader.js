@@ -1,5 +1,6 @@
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
 
+var NOT_IMPLEMENTED_EXCEPTION = "not implemented"
 var chronicReaderInstance = null
 
 var delayExecutionTriggerTimestamp = null
@@ -9,7 +10,6 @@ function executeWithDelay(func, ms) {
     let getExecuteWithDelayFunction = function(triggerTimestamp) {
         return () => {
             if (triggerTimestamp == delayExecutionTriggerTimestamp) {
-                //console.log("execute with delay for " + triggerTimestamp + " " + delayExecutionTriggerTimestamp)
                 func()
             }
         }
@@ -28,6 +28,38 @@ function imageLoadedPromise(image) {
         }
         image.onload = imageResolveFunction
         image.onerror = imageResolveFunction
+    })
+}
+
+function treeTransform(node, selectFunction, transformFunction, childrenSelectFunction) {
+    if (selectFunction(node)) {
+        let result = transformFunction(node)
+        let children = childrenSelectFunction(node)
+        let resultChildren = []
+        for (let i = 0; i < children.length; i++) {
+            let childResult = treeTransform(children[i], selectFunction, transformFunction, childrenSelectFunction)
+            if (childResult != null) {
+                resultChildren.push(childResult)
+            }
+        }
+        if (resultChildren.length > 0) {
+            result.children = resultChildren
+        }
+        return result
+    } else {
+        return null
+    }
+}
+
+function waitForImagesToLoad(images) {
+    return new Promise((resolve, reject) => {
+        let imagePromises = []
+        for (var i = 0; i < images.length; i++) {
+            imagePromises.push(imageLoadedPromise(images[i]))
+        }
+        Promise.all(imagePromises).then(() => {
+            resolve()
+        })
     })
 }
 function getFileExtension(filename) {
@@ -99,15 +131,8 @@ function createDivElement(parent, left, top, width, height, color) {
     return element
 }
 
-/*
-zip wrapper:
-- get list of files
-- get file contents as text or as bytes
-*/
-
 class EbookNode {
-    static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak", "!--"]
-    static LEAF_ELEMENTS = ["img", "tr", "image"]
+    static LEAF_ELEMENTS = ["img", "tr", "image", "svg"]
 
     constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
         this.name = name
@@ -116,15 +141,118 @@ class EbookNode {
         this.children = children
         this.start = start
         this.end = end
-        this.#parseId()
+        if (this.name != null) {
+            try {
+                this.attributes = EbookNode.#parseAttributes(this.content)
+            } catch (error) {
+                console.log(error)
+            }
+        }
     }
 
-    static #isVoidElement(tagName) {
-        return EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
+    static #parseAttributes(content) {
+        let attributes = {}
+        let accumulator = ""
+        let lookingForAttributeName = false
+        let readingAttributeName = false
+        let lookingForAttributeValue = false
+        let readingAttributeValue = false
+        let attributeValueQuotes = null
+        let attributeName = null
+        let attributeValue = null
+        for (var i = 0; i < content.length; i++) {
+            let c = content.charAt(i)
+            accumulator += c
+            if (c == ' ' || c == '\t') {
+                if (lookingForAttributeName) {
+                    // discard and continue looking
+                    accumulator = ""
+                } else if (readingAttributeName) {
+                    // finished reading attribute name
+                    readingAttributeName = false
+                    lookingForAttributeValue = true
+                    attributeName = accumulator.substring(0, accumulator.length - 1)
+                    accumulator = ""
+                } else if (lookingForAttributeValue) {
+                    // continue looking, space is not a value
+                } else if (readingAttributeValue) {
+                    // continue reading
+                } else {
+                    // discard
+                    accumulator = ""
+                    lookingForAttributeName = true
+                }
+            } else if (c == '=') {
+                if (readingAttributeName) {
+                    // finished reading attribute name
+                    readingAttributeName = false
+                    lookingForAttributeValue = true
+                    attributeName = accumulator.substring(0, accumulator.length - 1)
+                    accumulator = ""
+                } else if (lookingForAttributeValue) {
+                    // we are on the right track, but we keep looking
+                } else if (readingAttributeValue) {
+                    // all fine, continue reading
+                } else {
+                    // error
+                    throw "wild = discovered at position " + i + " in: " + content
+                }
+            } else if (c == attributeValueQuotes) {
+                if (readingAttributeValue) {
+                    // may be end of attribute value read unless escaped
+                    if (accumulator.charAt(accumulator.length - 2) != '\\') {
+                        // finish reading attribute value and save attribute
+                        readingAttributeValue = false
+                        lookingForAttributeValue = false
+                        readingAttributeName = false
+                        lookingForAttributeName = true
+                        attributeValue = accumulator.substring(0, accumulator.length - 1)
+                        accumulator = ""
+                        attributes[attributeName] = attributeValue
+                        attributeName = null
+                        attributeValue = null
+                        attributeValueQuotes = null
+                    }
+                } else {
+                    throw "wild ending " + attributeValueQuotes + " discovered at position " + i + " in: " + content
+                }
+            } else if (c == '"' || c == "'") {
+                if (lookingForAttributeValue) {
+                    // start reading attribute value
+                    lookingForAttributeValue = false
+                    readingAttributeValue = true
+                    attributeValueQuotes = c
+                    accumulator = ""
+                } if (readingAttributeValue) {
+                    // continue
+                } else {
+                    throw "wild " + c + " discovered at position " + i + " in: " + content
+                }
+            } else {
+                if (lookingForAttributeName) {
+                    lookingForAttributeName = false
+                    readingAttributeName = true
+                } else if (lookingForAttributeValue) {
+                    // not going to find a value, starting with a new name
+                    readingAttributeValue = false
+                    lookingForAttributeValue = false
+                    readingAttributeName = false
+                    lookingForAttributeName = true
+                    attributeValue = null
+                    accumulator = ""
+                    attributes[attributeName] = attributeValue
+                    attributeName = null
+                    attributeValue = null
+                    attributeValueQuotes = null
+                }
+                // continue
+            }
+        }
+        return attributes
     }
-      
+
     static #shouldBeLeafElement(tagName) {
-        return EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
+        return tagName != null && EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
     }
 
     static #isTag(str) {
@@ -135,8 +263,10 @@ class EbookNode {
         return /^<\/[^>]+>$/.exec(str) != null
     }
         
-    static #isBothTag(str) {
-        return /^<[^>\/]+\/>$/.exec(str) != null
+    static isBothTag(str) {
+        return str.startsWith("<!--") 
+            || (str.startsWith("<") && str.endsWith("/>"))
+            || (str.startsWith("<?xml") && str.endsWith("?>"))
     }
       
     static #getTagName(str) {
@@ -156,6 +286,10 @@ class EbookNode {
         return null
     }
 
+    static parseXmlToEbookNode(xml) {
+        return EbookNode.#parseBody(xml, null, null, null)
+    }
+
     static #getHtmlBody(html) {
         var bodyStartPattern = /<body[^>]*>/
         var bodyStartMatch = bodyStartPattern.exec(html)
@@ -169,14 +303,6 @@ class EbookNode {
           return html.substring(from, to)
         } else {
           return null
-        }
-    }
-
-    #parseId() {
-        let idMatch = this.content.match(/id="([^"]+)"/)
-
-        if (idMatch && idMatch[1] && idMatch[1].length > 0) {
-            this.id = idMatch[1]
         }
     }
 
@@ -197,7 +323,7 @@ class EbookNode {
                 } else {
                     // can only be a text node or nothing
                     if (content.length > 0) {
-                        current.#addChild(new EbookNode("text", content))
+                        current.#addChild(new EbookNode(null, content))
                         content = ""
                     }
                 }
@@ -212,24 +338,12 @@ class EbookNode {
                     var name = EbookNode.#getTagName(content)
                     // can only be a tag
                     if (EbookNode.#isEndTag(content)) {
-                        // we check that this tag closes the current node correctly
-                        if (EbookNode.#isVoidElement(name)) {
-                            // the last child should have the correct name
-                            var lastChild = current.children[current.children.length - 1]
-                            if (name != lastChild.name) {
-                                throw "incompatible end " + name + " for void tag " + lastChild.name
-                            } else {
-                                lastChild.content += content
-                            }
-                        } else {
-                            // the current node should have the correct name, and it is getting closed
-                            if (name != current.name) {
-                                throw "incompatible end tag " + name + " for " + current.name
-                            }
-                            // move current node up
-                            current = current.parent
+                        if (name != current.name) {
+                            throw "incompatible end tag " + name + " for " + current.name
                         }
-                    } else if (EbookNode.#isBothTag(content) || EbookNode.#isVoidElement(name)) {
+                        // move current node up
+                        current = current.parent
+                    } else if (EbookNode.isBothTag(content)) {
                         // just add this tag without content
                         current.#addChild(new EbookNode(name, content))
                     } else {
@@ -253,36 +367,16 @@ class EbookNode {
             } else {
                 // can only be a text node or nothing
                 if (content.length > 0) {
-                    current.#addChild(new EbookNode("text", content))
+                    current.#addChild(new EbookNode(null, content))
                 }
             }
         }
 
-        bodyNode.#collapseLeaves()
-        bodyNode.#updatePositions(entrancePosition)
-        await bodyNode.#updateImages(filename, ebook)
-        return bodyNode
-    }
-
-    static #isImage(tagName) {
-        return tagName.toLowerCase() == "img"
-    }
-    // go through structure and replace src of images with base64 from archive
-    async #updateImages(filename, ebook) {
-        if (EbookNode.#isImage(this.name)) {
-            let parser = new DOMParser()
-            let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
-            let imageElement = imageDocument.getElementsByTagName(this.name)[0]
-            let imagePath = imageElement.getAttribute("src")
-            let base64 = await ebook.getImageBase64(filename, imagePath)
-            imageElement.setAttribute("src", base64)
-            this.content = imageElement.outerHTML
-        } else if (this.children.length > 0) {
-            for (var i = 0; i < this.children.length; i++) {
-                var child = this.children[i]
-                child.#updateImages(filename, ebook)
-            }
+        if (entrancePosition != null) {
+            bodyNode.#collapseLeaves()
+            bodyNode.#updatePositions(entrancePosition)
         }
+        return bodyNode
     }
 
     static #isLink(tagName) {
@@ -294,7 +388,7 @@ class EbookNode {
 
     // find position of the id, if it exists
     getIdPosition(id) {
-        if (this.id && this.id != null && this.id == id) {
+        if (this.attributes && this.attributes.id && this.attributes.id != null && this.attributes.id == id) {
             return this.start
         }
         if (this.children.length > 0) {
@@ -333,7 +427,7 @@ class EbookNode {
     #updatePositions(entrancePosition = 0) {
         var position = entrancePosition
         this.start = position
-        if (this.name == "text") {
+        if (this.name == null) {
             this.end = this.start + this.content.length - 1
         } else if (EbookNode.#shouldBeLeafElement(this.name)) {
             // occupies a single position
@@ -365,7 +459,7 @@ class EbookNode {
     }
 
     getContent() {
-        if (this.name == "text") {
+        if (this.name == null) {
             return this.content
         } else if (this.name == "body") {
             var result = ""
@@ -382,6 +476,17 @@ class EbookNode {
             }
             result += "</" + this.name + ">"
             return result
+        }
+    }
+
+    setContent(newContent) {
+        this.content = newContent
+        if (this.name != null) {
+            try {
+                this.attributes = EbookNode.#parseAttributes(this.content)
+            } catch (error) {
+                console.log(error)
+            }
         }
     }
 
@@ -409,10 +514,10 @@ class EbookNode {
         }
     }
     
-    #nextNodeOfName(name) {
+    #nextNodeOfName(nodeNameRegex) {
         let current = this.#nextNode()
         while (current != null) {
-            if (current.name == name) return current
+            if (current.name && current.name.match(nodeNameRegex)) return current
             current = current.#nextNode()
         }
         return null
@@ -497,6 +602,17 @@ class EbookNode {
         }
     }
 
+    findChapterEnd(position) {
+        var leaf = this.#leafAtPosition(position)
+        if (leaf) {
+            let nextHeader = leaf.#nextNodeOfName(/h[1-2]/)
+            if (nextHeader) {
+                return nextHeader.start
+            }
+        }
+        return this.getDocumentEnd()
+    }
+
     findSpaceAfter(position) {
         var spacePattern = /\s/
         // first get leaf at position
@@ -507,7 +623,7 @@ class EbookNode {
             // we need to look in the next node
             leaf = leaf.#nextLeaf()
         }
-        if (leaf != null && leaf.name == "text") {
+        if (leaf != null && leaf.name == null) {
             var searchStartPosition = (position - leaf.start + 1 > 0) ? position - leaf.start + 1 : 0
             var m = spacePattern.exec(leaf.content.substring(searchStartPosition))
             if (m != null) {
@@ -521,7 +637,7 @@ class EbookNode {
     findSpaceBefore(position) {
         var spacePattern = /\s[^\s]*$/
         var leaf = this.#leafAtPosition(position)
-        if (leaf != null && leaf.name == "text") {
+        if (leaf != null && leaf.name == null) {
             var searchText = leaf.content.substring(0, position - leaf.start)
             var m = spacePattern.exec(searchText)
             if (m != null) {
@@ -536,10 +652,10 @@ class EbookNode {
     }
 
     copy(from, to) {
-        if (this.name == "text") {
+        if (this.name == null) {
             if (from <= this.start && this.end <= to) {
                 // this node is copied whole
-                return new EbookNode("text", this.content, null, [], this.start, this.end)
+                return new EbookNode(null, this.content, null, [], this.start, this.end)
             } else if (from <= this.start && this.start <= to && to<= this.end) {
                 // copy ends at this node
                 return new EbookNode(this.name, this.content.substring(0, to - this.start + 1), null, [], this.start, to)
@@ -636,15 +752,43 @@ class EbookNode {
             return []
         }
     }
+
+    findChildrenWithTag(tagName, deep = false) {
+        let result = []
+        for (let i = 0; i < this.children.length; i++) {
+            if (this.children[i].name == tagName) {
+                result.push(this.children[i])
+            }
+            if (deep) {
+                result = result.concat(this.children[i].findChildrenWithTag(tagName, deep))
+            }
+        }
+        return result
+    }
 }
 
-class ZipWrapper {
+class ArchiveWrapper {
     constructor(url, bytes) {
         this.url = url
         this.data = bytes
     }
     getUrl() {
         return this.url
+    }
+    async getFiles() {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getBase64FileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getTextFileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+}
+
+class ZipWrapper extends ArchiveWrapper {
+    constructor(url, bytes) {
+        super(url, bytes)
     }
     async #getZip() {
         if (this.zip == undefined) {
@@ -676,16 +820,83 @@ class ZipWrapper {
     }
 }
 
-/*
-comic wrapper
-- contains a zip or a rar wrapper
-- get size
-- get title
-- get cover
-- get contents for position(s)
-*/
+class RarWrapper extends ArchiveWrapper {
+    constructor(url, bytes) {
+        super(url, bytes)
+    }
+    getUrl() {
+        return this.url
+    }
+    async #getRar() {
+        if (this.rar == undefined) {
+            var content = await this.data.arrayBuffer()
+            console.log(this.url)
+            var rar = readRARContent([{
+                "name": "name.cbr",
+                "content": new Uint8Array(content)
+            }], null, null)
+            this.rar = rar
+        }
+        return this.rar
+    }
+    async getFiles() {
+        var rar = await this.#getRar()
+        let files = Object.keys(rar.ls)
+        return files.sort()
+    }
 
-class ComicWrapper {
+    #toBase64(dataArr){
+        var encoder = new TextEncoder("ascii");
+        var decoder = new TextDecoder("ascii");
+        var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
+    
+        var padding = dataArr.byteLength % 3;
+        var len = dataArr.byteLength - padding;
+        padding = padding > 0 ? (3 - padding) : 0;
+        var outputLen = ((len/3) * 4) + (padding > 0 ? 4 : 0);
+        var output = new Uint8Array(outputLen);
+        var outputCtr = 0;
+        for(var i=0; i<len; i+=3){              
+            var buffer = ((dataArr[i] & 0xFF) << 16) | ((dataArr[i+1] & 0xFF) << 8) | (dataArr[i+2] & 0xFF);
+            output[outputCtr++] = base64Table[buffer >> 18];
+            output[outputCtr++] = base64Table[(buffer >> 12) & 0x3F];
+            output[outputCtr++] = base64Table[(buffer >> 6) & 0x3F];
+            output[outputCtr++] = base64Table[buffer & 0x3F];
+        }
+        if (padding == 1) {
+            var buffer = ((dataArr[len] & 0xFF) << 8) | (dataArr[len+1] & 0xFF);
+            output[outputCtr++] = base64Table[buffer >> 10];
+            output[outputCtr++] = base64Table[(buffer >> 4) & 0x3F];
+            output[outputCtr++] = base64Table[(buffer << 2) & 0x3F];
+            output[outputCtr++] = base64Table[64];
+        } else if (padding == 2) {
+            var buffer = dataArr[len] & 0xFF;
+            output[outputCtr++] = base64Table[buffer >> 2];
+            output[outputCtr++] = base64Table[(buffer << 4) & 0x3F];
+            output[outputCtr++] = base64Table[64];
+            output[outputCtr++] = base64Table[64];
+        }
+        
+        var ret = decoder.decode(output);
+        output = null;
+        dataArr = null;
+        return ret;
+    }
+
+    async getBase64FileContents(filename) {
+        let rar = await this.#getRar()
+        let file = rar.ls[filename]
+        let fileContent = file.fileContent
+        var b64encoded = this.#toBase64(fileContent)
+        return b64encoded
+    }
+
+    async getTextFileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+}
+
+class BookWrapper {
     constructor(archive) {
         this.archive = archive
     }
@@ -695,17 +906,82 @@ class ComicWrapper {
     }
 
     async getSize() {
+        return 0
+    }
+
+    async getCover() {
+        return null
+    }
+
+    async getContentsAt(position) {
+        return null
+    }
+
+    async getToc() {
+        return []
+    }
+}
+
+/*
+comic wrapper
+- contains a zip or a rar wrapper
+- get size
+- get title
+- get cover
+- get contents for position(s)
+*/
+
+class ComicWrapper extends BookWrapper {
+    constructor(archive) {
+        super(archive)
+    }
+
+    async getSize() {
         let files = await this.archive.getFiles()
         return files.length
     }
 
     async getCover() {
-        if (await this.getSize() > 0) {
-            let files = await this.archive.getFiles()
-            return await this.archive.getBase64FileContents(files[0])
-        } else {
-            return null
+        if (this.cover == undefined) {
+            if (await this.getSize() > 0) {
+                this.cover = await this.getContentsAt(0)
+            } else {
+                this.cover = null
+            }
         }
+        return this.cover
+    }
+
+    async getToc() {
+        let size = await this.getSize()
+        let magnitude = size.toString().length
+
+        let toc = []
+        if (magnitude >= 2) {
+            let miniToc = []
+            for (let i = 0; i < size; i++) {
+                miniToc.push({
+                    "name": "Page " + (i + 1),
+                    "position": i
+                })
+                if (i % 10 == 9 || i == size - 1) {
+                    toc.push({
+                        "name": "Pages " + (miniToc[0].position + 1) + " to " + (miniToc[miniToc.length - 1].position + 1),
+                        "position": miniToc[0].position,
+                        "children": miniToc
+                    })
+                    miniToc = []
+                }
+            }
+        } else {
+            for (let i = 0; i < size; i++) {
+                toc.push({
+                    "name": "Page " + (i + 1),
+                    "position": i
+                })
+            }
+        }
+        return toc
     }
 
     async getContentsAt(position) {
@@ -927,44 +1203,453 @@ class Gestures {
     }
 }
 
-class ComicDisplay {
-    constructor(element, comic, settings) {
-        this.element = element
-        this.comic = comic
-        this.#configure(settings)
-        this.zoomValue = 1
-        if (settings.position) {
-            this.position = settings.position
+class ColorMap {
+    constructor() {
+        this.map = new Map()
+    }
+    #col(r, g, b) {
+        return r + ',' + g + ',' + b
+    }
+    #components(str) {
+        let c = str.split(",")
+        return [Number(c[0]), Number(c[1]), Number(c[2])]
+    }
+    add(imageData) {
+        let colorArray = imageData.data
+        let color = this.#col(colorArray[0], colorArray[1], colorArray[2])
+        if (this.map.has(color)) {
+            let currentExpression = this.map.get(color)
+            this.map.set(color, currentExpression + 1)
         } else {
-            this.position = 0
-        }
-        this.#buildUI()
-        this.displayPageFor(this.position).then(() => this.#fitPageToScreen())
-    }
-
-    #configure(settings) {
-        if (settings.displayPageForCallback) {
-            this.displayPageForCallback = settings.displayPageForCallback
+            this.map.set(color, 1)
         }
     }
+    getMostExpressed() {
+        let orderedColors = Array.from(this.map).sort((a, b) => b[1] - a[1])
+        let mostRepresented = orderedColors[0]
+        let selectedColors = orderedColors.filter(v => v[1] / mostRepresented[1] > .1)
+        let r = 0
+        let g = 0
+        let b = 0
+        for (let i = 0; i < selectedColors.length; i++) {
+            let c = this.#components(selectedColors[i][0])
+            r = r + c[0]
+            g = g + c[1]
+            b = b + c[2]
+        }
+        r = r / selectedColors.length
+        g = g / selectedColors.length
+        b = b / selectedColors.length
+        return [r, g, b]
+    }
+}
 
-    #buildUI() {
-        const leftMarginPercent = 10
-        const topMarginPercent = 5
-        const toolsButtonPercent = 10
+class Display {
+    LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
+    SVG_NAMESPACE = "http://www.w3.org/2000/svg"
+    TOC_HIGHLIGHT_CLASS = "highlighted"
+    constructor(element, settings) {
+        this.element = element
+        this.settings = settings
+        this.configure()
+        this.buildUi()
+        this.showLoading()
+    }
+
+    setBook(book) {
+        this.book = book
+        if (this.settings.showTools) {
+            this.buildToolsUi()
+        }
+    }
+
+    setDefault(settingName, defaultValue) {
+        if (this.settings[settingName] == undefined) {
+            this.settings[settingName] = defaultValue
+        }
+    }
+
+    configure() {
+        this.setDefault("position", 0)
+        this.setDefault("leftMarginPercent", 10)
+        this.setDefault("topMarginPercent", 5)
+        this.setDefault("toolsButtonPercent", 10)
+        this.setDefault("displayControls", true)
+        this.setDefault("controlsColor", "#000000")
+        //this.setDefault("displayPageForCallback", )
+        this.setDefault("showTools", true)
+        this.setDefault("swipeLength", 0.06)
+        this.setDefault("swipeAngleThreshold", 30)
+        this.setDefault("enableKeyboard", false)
+    }
+
+    getPosition() {
+        return this.settings.position
+    }
+
+    setPosition(position) {
+        return this.settings.position = position
+    }
+
+    createSvg(topX, topY, bottomX, bottomY, left, top, width, height) {
+        let svg = document.createElementNS(this.SVG_NAMESPACE, "svg")
+        svg.setAttribute("viewBox", topX + " " + topY + " " + bottomX + " " + bottomY)
+        svg.style.position = "absolute"
+        svg.style.width = width
+        svg.style.height = height
+        svg.style.top = top
+        svg.style.left = left
+        return svg
+    }
+
+    createPath(d, strokeWidth) {
+        let path = document.createElementNS(this.SVG_NAMESPACE, "path")
+        path.setAttribute("d", d)
+        path.setAttribute("stroke-width", strokeWidth)
+        path.setAttribute("stroke-linecap", "round")
+        path.setAttribute("fill", "none")
+        return path
+    }
+    
+    getNextSvg() {
+        let svg = this.createSvg(0, 0, 10, 40, "30%", "40%", "40%", "auto")
+        let path = this.createPath("M 2 2 L 8 20 L 2 38", 3)
+        svg.appendChild(path)
+        return svg
+    }
+
+    getPreviousSvg() {
+        let svg = this.createSvg(0, 0, 10, 40, "30%", "40%", "40%", "auto")
+        let path = this.createPath("M 8 2 L 2 20 L 8 38", 3)
+        svg.appendChild(path)
+        return svg
+    }
+
+    getToolsSvg() {
+        let svg = this.createSvg(0, 0, 12, 12, "30%", "30%", "40%", "auto")
+        svg.appendChild(this.createPath("M 2 2 L 10 2", 3))
+        svg.appendChild(this.createPath("M 2 6 L 10 6", 3))
+        svg.appendChild(this.createPath("M 2 10 L 10 10", 3))
+        return svg
+    }
+
+    getLoadingSvg() {
+        let svg = this.createSvg(-5, -5, 110, 110, "45%", "45%", "10%", "10%")
+        let path = this.createPath("M 50 50 m -50, 0 a 50,50 0 1,0 100,0 a 50,50 0 1,0 -100,0", 10)
+        path.style.strokeDasharray = 320
+        path.style.strokeDashoffset = 0
+        path.style.animation = "loadinganimation 2s linear infinite"
+        svg.appendChild(path)
+        
+        if (!document.getElementById(this.LOADING_ANIMATION_STYLE_ID)) {
+            var animationStyle = document.createElement('style')
+            animationStyle.id = this.LOADING_ANIMATION_STYLE_ID
+            animationStyle.innerHTML = "\
+                @keyframes loadinganimation {\
+                    from {\
+                        stroke-dashoffset: 640;\
+                    }\
+                    to {\
+                        stroke-dashoffset: 0;\
+                    }\
+                }\
+            "
+            document.body.appendChild(animationStyle)
+        }
+        
+        return svg
+    }
+
+    async goToNextView() {
+
+    }
+
+    async goToPreviousView() {
+
+    }
+
+    // or decrease text size
+    async zoomOut() {
+
+    }
+
+    // or increase text size
+    async zoomIn() {
+
+    }
+
+    hideTools() {
+        if (this.settings.showTools) {
+            this.tools.style.display = "none"
+            this.toolsMinimizeLeft.style.display = "none"
+            this.toolsMinimizeRight.style.display = "none"
+        }
+    }
+
+    #addControlHoverActions(element, svg) {
+        svg.style.opacity = .2
+        element.appendChild(svg)
+        element.onmouseover = () => svg.style.opacity = 1
+        element.onmouseout = () => svg.style.opacity = .2
+    }
+
+    buildUi() {
+        if (this.settings.showTools == false) {
+            this.settings.toolsButtonPercent = 0
+        }
        
-        //this.element.style.position = "fixed"
         this.element.innerHTML = ""
         this.page = document.createElement("img")
         this.page.style.position = "absolute"
         this.element.appendChild(this.page)
-        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000055")
-        this.previous.onclick = () => { this.#goToPreviousView() }
-        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0055")
-        this.next.onclick = () => { this.#goToNextView() }
-        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff55")
-        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff55")
-        this.gestureControls = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
+        this.previous = createDivElement(this.element, 0, 0, (this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", "#ff000000")
+        if (this.settings.displayControls) {
+            this.#addControlHoverActions(this.previous, this.getPreviousSvg())
+        }
+        this.previous.onclick = () => { this.goToPreviousView() }
+        this.next = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, (this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", "#00ff0000")
+        if (this.settings.displayControls) {
+            this.#addControlHoverActions(this.next, this.getNextSvg())
+        }
+        this.next.onclick = () => { this.goToNextView() }
+        let displayToolsFunction = null
+        if (this.settings.showTools) {
+            this.toolsLeft = createDivElement(this.element, 0, (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#ff00ff00")
+            if (this.settings.displayControls) {
+                this.#addControlHoverActions(this.toolsLeft, this.getToolsSvg())
+            }
+            this.toolsRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#00ffff00")
+            if (this.settings.displayControls) {
+                this.#addControlHoverActions(this.toolsRight, this.getToolsSvg())
+            }
+        
+            this.toolsBackgroundColor = "#ffffffee"
+            this.tools = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100-this.settings.leftMarginPercent*2) + "%", "100%", this.toolsBackgroundColor)
+            this.tools.style.display = "none"
+            this.tools.style.overflow = "scroll"
+            this.tools.style.zIndex = 1000
+
+            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeLeft.style.display = "none"
+            this.toolsMinimizeLeft.style.zIndex = 1000
+            
+            this.toolsMinimizeRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeRight.style.display = "none"
+            this.toolsMinimizeRight.style.zIndex = 1000
+
+            displayToolsFunction = (alignedRight) => {
+                this.tools.style.display = "block"
+                this.toolsMinimizeLeft.style.display = "block"
+                this.toolsMinimizeRight.style.display = "block"
+                if (alignedRight) {
+                    this.tools.style.textAlign = "right"
+                    this.tools.style.direction = "rtl"
+                } else {
+                    this.tools.style.textAlign = "left"
+                    this.tools.style.direction = "ltr"
+                }
+            }
+            this.toolsLeft.onclick = () => displayToolsFunction(false)
+            this.toolsRight.onclick = () => displayToolsFunction(true)
+            this.toolsMinimizeLeft.onclick = () => this.hideTools()
+            this.toolsMinimizeRight.onclick = () => this.hideTools()
+        }
+        this.loading = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100 - 2 * this.settings.leftMarginPercent) + "%", "100%", "#ffffff00")
+        this.loading.appendChild(this.getLoadingSvg())
+        if (this.settings.displayControls) {
+            this.setControlsColor(this.settings.controlsColor)
+        }
+
+        if (this.settings.enableKeyboard) {
+            this.#enableKeyboardGestures({
+                "leftAction": () => this.goToPreviousView(),
+                "rightAction": () => this.goToNextView(),
+                "escapeAction": () => displayToolsFunction(false)
+            })
+        }
+    }
+
+    #enableKeyboardGestures(actions) {
+        document.onkeydown = function(e) {
+            if (e.keyCode == '38' || e.keyCode == '87') {
+                // up arrow or w
+                if (actions.upAction) actions.upAction()
+            }
+            else if (e.keyCode == '40' || e.keyCode == '83') {
+                // down arrow or s
+                if (actions.downAction) actions.downAction()
+            }
+            else if (e.keyCode == '37' || e.keyCode == '65') {
+                // left arrow or a
+                if (actions.leftAction) actions.leftAction()
+            }
+            else if (e.keyCode == '39' || e.keyCode == '68') {
+                // right arrow or d
+                if (actions.rightAction) actions.rightAction()
+            }
+            else if (e.keyCode == '27') {
+                // escape
+                if (actions.escapeAction) actions.escapeAction()
+            }
+        }
+    }
+
+    async buildToolsUi() {
+        let toolsContents = document.createElement("div")
+        toolsContents.classList.add("ebookPage")
+        toolsContents.style.position = "absolute"
+        toolsContents.style.top = 0
+        toolsContents.style.left = 0
+        toolsContents.style.width = "100%"
+
+        // add cover
+        let coverBase64 = await this.book.getCover()
+        if (coverBase64) {
+            let coverElement = document.createElement("img")
+            coverElement.src = coverBase64
+            toolsContents.appendChild(coverElement)
+        }
+        
+        // add toc
+        let buildTocListFunction = (node) => {
+            let item = document.createElement("li")
+            let link = document.createElement("a")
+            link.innerHTML = node.name
+            link.setAttribute("position", node.position)
+            link.onclick = () => {
+                this.displayPageFor(node.position)
+                this.hideTools()
+            }
+            item.appendChild(link)
+            if (node.children && node.children.length > 0) {
+                let sublist = document.createElement("ul")
+                sublist.style.listStyleType = "none"
+                for (let i = 0; i < node.children.length; i++) {
+                    let sublistItem = buildTocListFunction(node.children[i])
+                    sublist.appendChild(sublistItem)
+                }
+                sublist.style.display = "none"
+                let button = document.createElement("span")
+                button.innerHTML = "+"
+                button.style.display = "inline-block"
+                button.style.padding = "5px"
+                button.style.cursor = "pointer"
+                button.onclick = () => {
+                    if (sublist.style.display == "none") {
+                        sublist.style.display = "block"
+                        button.innerHTML = "-"
+                    } else {
+                        sublist.style.display = "none"
+                        button.innerHTML = "+"
+                    }
+                }
+                item.prepend(button)
+                item.appendChild(sublist)
+            } else {
+                let button = document.createElement("span")
+                button.innerHTML = "-"
+                button.style.display = "inline-block"
+                button.style.padding = "5px"
+                item.prepend(button)
+            }
+            return item
+        }
+        let toc = await this.book.getToc()
+        if (toc.length > 0) {
+            let tocList = document.createElement("ul")
+            tocList.style.listStyleType = "none"
+            tocList.style.padding = "0"
+            for (let i = 0; i < toc.length; i++) {
+                let item = buildTocListFunction(toc[i])
+                tocList.appendChild(item)
+            }
+            toolsContents.appendChild(tocList)
+            this.tocElement = tocList
+        }
+        let decreaseTextSizeButton = document.createElement("a")
+        decreaseTextSizeButton.innerHTML = "zoom out"
+        decreaseTextSizeButton.onclick = () => this.zoomOut()
+        toolsContents.appendChild(decreaseTextSizeButton)
+        let increaseTextSizeButton = document.createElement("a")
+        increaseTextSizeButton.innerHTML = "zoomIn"
+        increaseTextSizeButton.onclick = () => this.zoomIn()
+        toolsContents.appendChild(increaseTextSizeButton)
+
+        this.progressDisplay = document.createElement("p")
+        this.progressDisplay.style.direction = "ltr"
+        this.progressDisplay.innerHTML = "remaining"
+        toolsContents.appendChild(this.progressDisplay)
+        
+        this.tools.innerHTML = ""
+        this.tools.appendChild(toolsContents)        
+    }
+
+    tocFindParentLink(currentLink) {
+        if (currentLink.parentElement.tagName == "LI"
+            && currentLink.parentElement.parentElement.tagName == "UL"
+            && currentLink.parentElement.parentElement.parentElement.tagName == "LI") {
+            let links = currentLink.parentElement.parentElement.parentElement.getElementsByTagName("a")
+            if (links.length > 1) {
+                return links[0]
+            }
+        }
+        return null
+    }
+
+    highlightTocPosition(position) {
+        if (this.tocElement) {
+            let highlighted = Array.from(this.tocElement.getElementsByClassName(this.TOC_HIGHLIGHT_CLASS))
+            for (let i = 0; i < highlighted.length; i++) {
+                highlighted[i].classList.remove(this.TOC_HIGHLIGHT_CLASS)
+            }
+            let links = this.tocElement.getElementsByTagName("a")
+            for (let i = links.length - 1; i >= 0; i--) {
+                let linkPosition = Number.parseInt(links[i].getAttribute("position"))
+                if (linkPosition == position || linkPosition < position) {
+                    links[i].classList.add(this.TOC_HIGHLIGHT_CLASS)
+                    let parent = this.tocFindParentLink(links[i])
+                    while (parent != null) {
+                        parent.classList.add(this.TOC_HIGHLIGHT_CLASS)
+                        parent = this.tocFindParentLink(parent)
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+    showLoading() {
+        this.loading.style.display = "block"
+    }
+
+    hideLoading() {
+        this.loading.style.display = "none"
+    }
+}
+
+class ComicDisplay extends Display {
+    constructor(element, settings) {
+        super(element, settings)
+        this.zoomValue = 1
+    }
+
+    setBook(book) {
+        super.setBook(book)
+        this.displayPageFor(this.getPosition()).then(() => this.#fitPageToScreen())
+    }
+
+    setControlsColor(color) {
+        this.previous.style.stroke = color
+        this.next.style.stroke = color
+        if (this.toolsLeft) this.toolsLeft.style.stroke = color
+        if (this.toolsRight) this.toolsRight.style.stroke = color
+        this.loading.style.stroke = color
+    }
+
+    buildUi() {
+        super.buildUi()
+
+        this.gestureControls = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100 - 2 * this.settings.leftMarginPercent) + "%", "100%", "#ffffff00")
 
         let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
             var zoomDelta = 1 + scrollValue * this.#getScrollSpeed() * (this.#getInvertScroll() ? 1 : -1)
@@ -990,21 +1675,10 @@ class ComicDisplay {
             (x, y) => this.#zoomJump(x, y), 
             mouseGestureScroll
         )
-        this.loading = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffffff")
-        this.loading.innerHTML = "Loading..."
-        this.loading.style.display = "none"
 
         window.onresize = () => {
             executeWithDelay(() => { this.#update() }, 500)
         }
-    }
-
-    #showLoading() {
-        this.loading.style.display = "block"
-    }
-
-    #hideLoading() {
-        this.loading.style.display = "none"
     }
 
     #getScrollSpeed() {
@@ -1052,7 +1726,7 @@ class ComicDisplay {
     #getVerticalJump() {
         return 0.5
     }
-    #goToNextView() {
+    async goToNextView() {
         if (this.#isEndOfRow()) {
             if (this.#isEndOfColumn()) {
                 this.nextPage()
@@ -1106,7 +1780,7 @@ class ComicDisplay {
         this.#setLeft(lastLeft)
         this.#setTop(lastTop)
     }
-    #goToPreviousView() {
+    async goToPreviousView() {
         if (this.#isBeginningOfRow()) {
             if (this.#isBeginningOfColumn()) {
                 this.previousPage()
@@ -1151,14 +1825,6 @@ class ComicDisplay {
         }
     }
 
-    #getSwipeLength() {
-        return 0.06
-    }
-
-    #getSwipeAngleThreshold() {
-        return 30
-    }
-
     #getSwipeEnabled() {
         return true
     }
@@ -1166,20 +1832,20 @@ class ComicDisplay {
     /* returns true if pan should be disabled / when moving to a different page */
     #pan(x, y, totalDeltaX, totalDeltaY, pinching) {
         if (this.#getSwipeEnabled && (this.swipeNextPossible || this.swipePreviousPossible) && (!pinching)) {
-            let horizontalThreshold = this.#getViewportWidth() * this.#getSwipeLength()
+            let horizontalThreshold = this.#getViewportWidth() * this.settings.swipeLength
             let swipeParameters = computeSwipeParameters(totalDeltaX, totalDeltaY)
-            let verticalMoveValid = swipeParameters.angle < this.#getSwipeAngleThreshold()
+            let verticalMoveValid = swipeParameters.angle < this.settings.swipeAngleThreshold
             if (this.swipeNextPossible && x > 0 ) this.swipeNextPossible = false
             if (this.swipePreviousPossible && x < 0 ) this.swipePreviousPossible = false
             if (verticalMoveValid && totalDeltaX < -horizontalThreshold && this.swipeNextPossible) {
                 this.swipeNextPossible = false
                 this.swipePreviousPossible = false
-                this.#goToNextView()
+                this.goToNextView()
                 return true
             } else if (verticalMoveValid && totalDeltaX > horizontalThreshold && this.swipePreviousPossible) {
                 this.swipeNextPossible = false
                 this.swipePreviousPossible = false
-                this.#goToPreviousView()
+                this.goToPreviousView()
                 return true
             } else {
                 this.#addLeft(x)
@@ -1226,27 +1892,59 @@ class ComicDisplay {
         this.updateMinimumZoom()
     }
 
+    #computeImageDominantColor() {
+        const canvas = document.createElement('canvas')
+        canvas.width = this.page.naturalWidth
+        canvas.height = this.page.naturalHeight
+        const context = canvas.getContext('2d')
+        context.drawImage(this.page, 0, 0, this.page.naturalWidth, this.page.naturalHeight);
+        let cm = new ColorMap()
+        for (let y = 0; y < this.page.naturalHeight; y++) {
+            cm.add(context.getImageData(0, y, 1, 1))
+            cm.add(context.getImageData(this.page.naturalWidth-1, y, 1, 1))
+        }
+        for (let x = 0; x < this.page.naturalWidth; x++) {
+            cm.add(context.getImageData(x, 0, 1, 1))
+            cm.add(context.getImageData(x, this.page.naturalHeight-1, 1, 1))
+        }
+        let dominantColor = cm.getMostExpressed()
+        return dominantColor
+    }
+
     async displayPageFor(position) {
-        this.#showLoading()
+        this.showLoading()
         let pageContent = await this.#getPageFor(position)
+        this.setPosition(position)
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
-        this.#hideLoading()
-        if (this.displayPageForCallback) {
-            this.displayPageForCallback(this)
+        this.highlightTocPosition(position)
+        this.hideLoading()
+        if (this.progressDisplay) {
+            let size = await this.book.getSize()
+            let message = "position " + this.getPosition() + " of " + size
+            this.progressDisplay.innerHTML = message
+        }
+        if (this.settings.displayPageForCallback) {
+            this.settings.displayPageForCallback(this.#buildCallbackControls())
+        }
+    }
+
+    #buildCallbackControls() {
+        return {
+            "dominantColor": this.#computeImageDominantColor(),
+            "setControlsColor": (color) => this.setControlsColor(color)
         }
     }
 
     async #getPageFor(position) {
-        let page = await this.comic.getContentsAt(position)
+        let page = await this.book.getContentsAt(position)
         return page
     }
 
     async nextPage() {
-        let size = await this.comic.getSize()
-        if (this.position < size - 1) {
-            this.position = this.position + 1
-            this.displayPageFor(this.position).then(() => {
+        let size = await this.book.getSize()
+        if (this.getPosition() < size - 1) {
+            this.displayPageFor(this.getPosition() + 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -1257,9 +1955,8 @@ class ComicDisplay {
     }
 
     async previousPage() {
-        if (this.position > 0) {
-            this.position = this.position - 1
-            this.displayPageFor(this.position).then(() => {
+        if (this.getPosition() > 0) {
+            this.displayPageFor(this.getPosition() - 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -1397,13 +2094,9 @@ ebook wrapper
 - get contents for resource path as text or bytes
 */
 
-class EbookWrapper {
+class EbookWrapper extends BookWrapper {
     constructor(archive) {
-        this.archive = archive
-    }
-
-    getUrl() {
-        return this.archive.getUrl()
+        super(archive)
     }
 
     async getNodes() {
@@ -1451,6 +2144,33 @@ class EbookWrapper {
         }
     }
 
+    async getCover() {
+        if (this.cover == undefined) {
+            try {
+                let opf = await this.#getOpf()
+                let opfFile = opf.name
+                let opfContents = opf.contents
+                let documentNode = await EbookNode.parseXmlToEbookNode(opfContents)
+                if (! documentNode) throw "failed to parse opf xml"
+                let metadataNode = documentNode.findChildrenWithTag("metadata", true).pop()
+                if (! metadataNode) throw "failed to find metadata node"
+                let metaNodes = metadataNode.findChildrenWithTag("meta", true)
+                let coverMeta = metaNodes.find((node) => node.attributes && node.attributes["name"] == "cover")
+                if (! coverMeta) throw "failed to find cover meta entry"
+                let manifestNode = documentNode.findChildrenWithTag("manifest", true).pop()
+                if (! manifestNode) throw "failed to find manifest node"
+                let coverItem = manifestNode.findChildrenWithTag("item", true).find(item => item.attributes["id"] == coverMeta.attributes["content"])
+                let href = coverItem.attributes["href"]
+                let coverBase64 = await this.getImageBase64(opfFile, href)
+                this.cover = coverBase64
+            } catch (error) {
+                console.log(error)
+                this.cover = null
+            }
+        }
+        return this.cover
+    }
+
     getContextFolder(contextFile) {
         let elems = contextFile.split("/")
         if (elems.length > 1) {
@@ -1462,7 +2182,18 @@ class EbookWrapper {
 
     computeAbsolutePath(contextFolder, filename) {
         if (contextFolder != null && contextFolder.length > 0) {
-            return contextFolder + "/" + filename
+            let contextFolderPathComponents = contextFolder.split("/")
+            let filenamePathComponents = filename.split("/")
+            let completePathComponents = contextFolderPathComponents.concat(filenamePathComponents)
+            let resultPath = []
+            for (let i = 0; i < completePathComponents.length; i++) {
+                if (completePathComponents[i] == "..") {
+                    resultPath.pop()
+                } else {
+                    resultPath.push(completePathComponents[i])
+                }
+            }
+            return resultPath.join("/")
         } else {
             return filename
         }
@@ -1486,24 +2217,45 @@ class EbookWrapper {
     async parseNcx() {
         let ncx = await this.#getNcx()
         let ncxXmlText = ncx.contents
-        let parser = new DOMParser()
-        let xmlDoc = parser.parseFromString(ncxXmlText, "text/xml")
+        let xmlNode = await EbookNode.parseXmlToEbookNode(ncxXmlText)
 
-        let navPoints = Array.from(xmlDoc.getElementsByTagName("navPoint"))
-        let toc = []
-        for (let i = 0; i < navPoints.length; i++) {
-            let element = navPoints[i]
-            let playOrder = element.getAttribute("playOrder")
-            let name = element.getElementsByTagName("navLabel")[0].getElementsByTagName("text")[0].innerHTML
-            let content = element.getElementsByTagName("content")[0]
-            let contentSrc = content.getAttribute("src")
-            let position = await this.getPositionForLink(ncx.name, contentSrc)
-            toc.push({
-                'name': name,
-                'order': playOrder,
-                'position': position
-            })
+        let navMapNode = xmlNode.findChildrenWithTag("navMap", true).pop()
+
+        let transformNavNodeFunction = async (node) => {
+            if (node.name == "navPoint") {
+                let name = node.findChildrenWithTag("navLabel").pop().findChildrenWithTag("text").pop().findChildrenWithTag(null).pop().getContent()
+                let link = node.findChildrenWithTag("content").pop().attributes["src"]
+                let position = await this.getPositionForLink(ncx.name, link)
+                let result = {
+                    "name": name,
+                    "position": position
+                }
+                let resultChildren = []
+                let nodeChildren = node.findChildrenWithTag("navPoint")
+                for (let i = 0; i < nodeChildren.length; i++) {
+                    let childResult = await transformNavNodeFunction(nodeChildren[i])
+                    if (childResult != null) {
+                        resultChildren.push(childResult)
+                    }
+                }
+                if (resultChildren.length > 0) {
+                    result.children = resultChildren
+                }
+                return result
+            } else {
+                return null
+            }
         }
+
+        let rootNavPoints = navMapNode.findChildrenWithTag("navPoint")
+        let toc = []
+        for (let i = 0; i < rootNavPoints.length; i++) {
+            let rootTocEntry = await transformNavNodeFunction(rootNavPoints[i])
+            if (rootTocEntry != null) {
+                toc.push(rootTocEntry)
+            }
+        }
+
         this.toc = toc
         return toc
     }
@@ -1528,26 +2280,51 @@ class EbookWrapper {
         return bookNode
     }
 
-    
-
     async getImageBase64(contextFile, fileName) {
-        return "data:" + getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)))
+        let absolutePath = this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)
+        return "data:" + getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(absolutePath))
     }
 
     async getPositionForLink(contextFile, link) {
         if (link == undefined || link == null) return null
-        let linkSplit = link.split("#")
-        let file = linkSplit.length == 2 ? linkSplit[0] : contextFile
-        let id = linkSplit.length == 2 ? linkSplit[1] : linkSplit[0]
 
-        let contextFolder = this.getContextFolder(contextFile)
-        let absoluteLink = this.computeAbsolutePath(contextFolder, file)
+        let file = null
+        let id = null
+        if (link.startsWith("http") || link.startsWith("www")) {
+            // an absolute link that we do not change
+            return null
+        } else if (link.startsWith('#')) {
+            // we have a reliative link, with the file equal to the context file
+            file = contextFile
+            id = link.substring(1)
+        } else if (link.indexOf('#') > 1) {
+            // we have both file and id
+            let linkSplit = link.split("#")
+            if (linkSplit.length != 2) return null
+            let contextFolder = this.getContextFolder(contextFile)
+            let absoluteLink = this.computeAbsolutePath(contextFolder, linkSplit[0])
+            file = absoluteLink
+            id = linkSplit[1]
+        } else {
+            // just a link to a file
+            let contextFolder = this.getContextFolder(contextFile)
+            let absoluteLink = this.computeAbsolutePath(contextFolder, link)
+            file = absoluteLink
+        }
+        
         let nodes = await this.getNodes()
         if (nodes) {
-            let node = nodes[absoluteLink]
-            let position = node.getIdPosition(id)
-            return position
+            let node = nodes[file]
+            if (node) {
+                if (id) {
+                    let position = node.getIdPosition(id)
+                    return position
+                } else {
+                    return node.start
+                }
+            }
         }
+
         return null
     }
 
@@ -1571,10 +2348,62 @@ class EbookWrapper {
             let node = nodeResult.node
             if (node.start <= start && start <= node.end) {
                 let actualEnd = (end > node.end) ? node.end : end
-                return node.copy(start, actualEnd).getContent()
+                let resultNode = node.copy(start, actualEnd)
+                await this.#fixImages(resultNode, nodeResult.key)
+                return resultNode.getContent()
             }
         }
         return null
+    }
+
+    async #fixImages(node, contextFilename) {
+        const srcRegex = /src=\"([^\"]+)\"/
+
+        let images = node.findChildrenWithTag("img", true)
+        for (let i = 0; i < images.length; i++) {
+            let image = images[i]
+            let imageContent = image.getContent()
+            let regexResult = srcRegex.exec(imageContent)
+            if (regexResult) {
+                let matchStart = regexResult.index
+                let matchEnd = regexResult.index + regexResult[0].length
+                let imgSrc = regexResult[1]
+                if (imgSrc != null && imgSrc.length > 0) {
+                    let newSrc = await this.getImageBase64(contextFilename, imgSrc)
+                    let newContent = imageContent.substring(0, matchStart) + 'src="' + newSrc + '"' + imageContent.substring(matchEnd)
+                    image.setContent(newContent)
+                }
+            }
+        }
+
+        const svgHrefRegex = /xlink:href=\"([^\"]+)\"/g
+        let svgs = node.findChildrenWithTag("svg")
+        for (let i = 0; i < svgs.length; i++) {
+            let svg = svgs[i]
+            let svgContent = svg.getContent()
+
+            let regexResults = [...svgContent.matchAll(svgHrefRegex)]
+            if (regexResults) {
+                let newContent = ""
+                let oldContentPosition = 0
+                for (let j = 0; j < regexResults.length; j++) {
+                    let regexResult = regexResults[j]
+                    let matchStart = regexResult.index
+                    let matchEnd = regexResult.index + regexResult[0].length
+                    let xlinkHref = regexResult[1]
+                    if (xlinkHref != null && xlinkHref.length > 0) {
+                        let newXlinkHref = await this.getImageBase64(contextFilename, xlinkHref)
+                        newContent += svgContent.substring(oldContentPosition, matchStart) + 'xlink:href="' + newXlinkHref + '"'
+                        oldContentPosition = matchEnd
+                    } else {
+                        newContent += svgContent.substring(oldContentPosition, matchEnd)
+                        oldContentPosition = matchEnd
+                    }
+                }
+                newContent += svgContent.substring(oldContentPosition)
+                svg.setContent(newContent)
+            }
+        }
     }
 
     async findSpaceAfter(position) {
@@ -1591,45 +2420,27 @@ class EbookWrapper {
     }
 }
 
-class EbookDisplay {
-    constructor(element, ebook, settings = {}) {
-        this.element = element
-        this.ebook = ebook
-        this.#configure(settings)
-        this.#buildUI()
-        let startPosition = 0
-        if (settings.position) {
-            startPosition = settings.position
-        }
-        this.displayPageFor(startPosition).then(() => {
+class EbookDisplay extends Display {
+    EBOOK_PAGE_STYLE_ID = "ebookPageStyle"
+
+    constructor(element, settings = {}) {
+        super(element, settings)
+    }
+
+    setBook(book) {
+        super.setBook(book)
+        this.displayPageFor(this.getPosition()).then(() => {
             this.triggerComputationForAllPages()
         })
     }
 
-    #configure(settings) {
-        if (settings.initialTextSize) {
-            this.textSize = settings.initialTextSize
-        } else {
-            this.textSize = 1
-        }
-        if (settings.maximumTextSize) {
-            this.maximumTextSize = settings.maximumTextSize
-        } else {
-            this.maximumTextSize = 2
-        }
-        if (settings.minimumTextSize) {
-            this.minimumTextSize = settings.minimumTextSize
-        } else {
-            this.minimumTextSize = 0.5
-        }
-        if (settings.textSizeStep) {
-            this.textSizeStep = settings.textSizeStep
-        } else {
-            this.textSizeStep = 0.1
-        }
-        if (settings.displayPageForCallback) {
-            this.displayPageForCallback = settings.displayPageForCallback
-        }
+    configure() {
+        super.configure()
+
+        this.setDefault("initialTextSize", 1)
+        this.setDefault("maximumTextSize", 2)
+        this.setDefault("minimumTextSize", 0.5)
+        this.setDefault("textSizeStep", 0.1)
     }
 
     async #delayedRefresh(timestamp) {
@@ -1651,12 +2462,13 @@ class EbookDisplay {
     }
 
     triggerComputationForAllPages() {
-        this.ebook.getSize()
-            .then(size => this.#getPageFor(size)
+        this.book.getSize()
+            .then(size => {
+                this.#getPageFor(size)
                 .then((page) => {
                     if (page != null) console.log("computed final page " + page.start + " - " + page.end)
                 })
-            )
+            })
     }
 
     #setTextSize(value) {
@@ -1666,108 +2478,109 @@ class EbookDisplay {
         this.displayPageFor(this.currentPage.start)
     }
 
-    #increaseTextSize() {
+    zoomIn() {
         let currentTextSize = this.textSize
-        let newTextSize = currentTextSize + this.textSizeStep
-        if (newTextSize > this.maximumTextSize) {
-            newTextSize = this.maximumTextSize
+        let newTextSize = currentTextSize + this.settings.textSizeStep
+        if (newTextSize > this.settings.maximumTextSize) {
+            newTextSize = this.settings.maximumTextSize
         }
         this.#setTextSize(newTextSize)
     }
 
-    #decreaseTextSize() {
+    zoomOut() {
         let currentTextSize = this.textSize
-        let newTextSize = currentTextSize - this.textSizeStep
-        if (newTextSize < this.minimumTextSize) {
-            newTextSize = this.minimumTextSize
+        let newTextSize = currentTextSize - this.settings.textSizeStep
+        if (newTextSize < this.settings.minimumTextSize) {
+            newTextSize = this.settings.minimumTextSize
         }
         this.#setTextSize(newTextSize)
     }
 
-    #buildUI() {
-        const leftMarginPercent = 10
-        const topMarginPercent = 5
-        const toolsButtonPercent = 10
-        //this.element.style.position = "fixed"
-        this.element.innerHTML = ""
-        // function createDivElement(parent, left, top, width, height, color) {
-        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff0000")
-        this.previous.onclick = () => { this.previousPage() }
-        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff00")
-        this.next.onclick = () => { this.nextPage() }   
-        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff")
-        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff")
-        this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
+    setControlsColor(color) {
+        this.previous.style.stroke = color
+        this.next.style.stroke = color
+        if (this.toolsLeft) this.toolsLeft.style.stroke = color
+        if (this.toolsRight) this.toolsRight.style.stroke = color
+        this.loading.style.stroke = color
+    }
+
+    #getViewportWidth() {
+        return this.page.offsetWidth
+    }
+
+    buildUi() {
+        super.buildUi()
+
+        if (!document.getElementById(this.EBOOK_PAGE_STYLE_ID)) {
+            var ebookPageStyle = document.createElement('style')
+            ebookPageStyle.id = this.EBOOK_PAGE_STYLE_ID
+            ebookPageStyle.innerHTML = "\
+                .ebookPage img, .ebookPage image {\
+                    max-width: 100%;\
+                    max-height: 100%;\
+                }\
+            "
+            document.body.appendChild(ebookPageStyle)
+        }
+
+        this.page = createDivElement(this.element, this.settings.leftMarginPercent + "%", this.settings.topMarginPercent + "%", (100 - 2 * this.settings.leftMarginPercent) + "%", (100 - 2 * this.settings.topMarginPercent) + "%", "#ffffff00")
+        this.page.classList.add("ebookPage")
         this.page.style.fontSize = this.textSize + "em"
-
-        //const [sheet] = window.document.styleSheets;
-        //sheet.insertRule('h1, h2, h3, h4, h5, h6 { color: red; }', sheet.cssRules.length)
         
-        this.shadowPage = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
+        this.shadowPage = createDivElement(this.element, this.settings.leftMarginPercent + "%", this.settings.topMarginPercent + "%", (100 - 2 * this.settings.leftMarginPercent) + "%", (100 - 2 * this.settings.topMarginPercent) + "%", "#ffffff")
+        this.shadowPage.classList.add("ebookPage")
         this.shadowPage.style.fontSize = this.textSize + "em"
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
-        this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
-        this.tools.style.display = "none"
-        this.tools.style.overflow = "scroll"
-        this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
-        this.toolsRight.onclick = () => {this.tools.style.display = "block"}
-        this.tools.onclick = () => {this.tools.style.display = "none"}
-        this.#buildToolsUI(leftMarginPercent, topMarginPercent)
-        this.loading = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
-        this.loading.innerHTML = "Loading..."
-        this.loading.style.display = "none"
 
         window.onresize = () => {
             executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
         }
-    }
 
-    #showLoading() {
-        this.loading.style.display = "block"
-    }
-
-    #hideLoading() {
-        this.loading.style.display = "none"
-    }
-
-    async #buildToolsUI(leftMarginPercent, topMarginPercent) {
-        let toc = await this.ebook.getToc()
-        let toolsContents = document.createElement("div")
-        toolsContents.style.position = "absolute"
-        toolsContents.style.top = topMarginPercent + "%"
-        toolsContents.style.left = leftMarginPercent + "%"
-        toolsContents.style.width = (100 - 2 * leftMarginPercent) + "%"
-        let tocElement = document.createElement("ul")
-        for (let i = 0; i < toc.length; i++) {
-            let item = document.createElement("li")
-            let link = document.createElement("a")
-            link.innerHTML = toc[i].name
-            link.onclick = () => this.displayPageFor(toc[i].position)
-            item.appendChild(link)
-            tocElement.appendChild(item)
+        let panX = 0
+        let panY = 0
+        let swipeStart = false
+        /*let SETTING_SWIPE_LENGTH = .1
+        let SETTING_SWIPE_ANGLE_THRESHOLD = 30*/
+        let touchGestureStartPan = (event) => {
+            if (event.touches.length == 1 && window.getSelection().type != "Range") {
+                panX = event.touches[0].pageX
+                panY = event.touches[0].pageY
+                swipeStart = true
+            }
         }
-        toolsContents.appendChild(tocElement)
-        let decreaseTextSizeButton = document.createElement("a")
-        decreaseTextSizeButton.innerHTML = "decrease text size"
-        decreaseTextSizeButton.onclick = () => this.#decreaseTextSize()
-        toolsContents.appendChild(decreaseTextSizeButton)
-        let increaseTextSizeButton = document.createElement("a")
-        increaseTextSizeButton.innerHTML = "increase text size"
-        increaseTextSizeButton.onclick = () => this.#increaseTextSize()
-        toolsContents.appendChild(increaseTextSizeButton)
-        this.tools.innerHTML = ""
-        this.tools.appendChild(toolsContents)
+        let touchGesturePan = (event) => {
+            console.log(swipeStart)
+            if (event.touches.length == 1 && window.getSelection().type != "Range" && swipeStart) {
+                let newX = event.touches[0].pageX
+                let newY = event.touches[0].pageY
+                let deltaX = newX - panX
+                let deltaY = newY - panY
+                let swipeParameters = computeSwipeParameters(deltaX, deltaY)
+        
+                let horizontalThreshold = this.#getViewportWidth() * this.settings.swipeLength
+                let verticalMoveValid = swipeParameters.angle < this.settings.swipeAngleThreshold
+                if (verticalMoveValid && deltaX < -horizontalThreshold) {
+                    swipeStart = false
+                    this.goToNextView()
+                } else if (verticalMoveValid && deltaX > horizontalThreshold) {
+                    swipeStart = false
+                    this.goToPreviousView()
+                }
+            }
+        }
+        this.page.addEventListener('touchstart', touchGestureStartPan, false)
+        this.page.addEventListener('touchmove', touchGesturePan, false)
     }
 
-    async fixLinks(contextFilename) {
-        let links = this.page.getElementsByTagName("a")
+    async fixLinks(element, contextFilename) {
+        let links = element.getElementsByTagName("a")
         for (let i = 0; i < links.length; i++) {
             let linkElement = links[i]
             let linkHref = linkElement.getAttribute("href")
             if (linkHref != null && linkHref.length > 0) {
-                let position = await this.ebook.getPositionForLink(contextFilename, linkHref)
+                let position = await this.book.getPositionForLink(contextFilename, linkHref)
                 if (position != null) {
                     linkElement.onclick = () => this.displayPageFor(position)
                     linkElement.removeAttribute("href")
@@ -1777,32 +2590,41 @@ class EbookDisplay {
     }
 
     async displayPageFor(position) {
-        this.#showLoading() // todo: show loading delayed, so it's not triggerred when no computation time
+        this.showLoading() // todo: show loading delayed, so it's not triggerred when no computation time
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
-            this.position = this.currentPage.start
-            this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
-            this.#hideLoading()
-            let node = await this.ebook.getNodeAt(page.start)
-            this.fixLinks(node.key)
+            this.setPosition(this.currentPage.start)
+            let node = await this.book.getNodeAt(page.start)
+            this.page.innerHTML = await this.book.getContentsAt(page.start, page.end)
+            // links need to be fixed on the actual final element
+            // because an onclick event is configured on them
+            await this.fixLinks(this.page, node.key)
+            this.highlightTocPosition(position)
+            this.hideLoading()
+            if (this.progressDisplay) {
+                let pagesLeft = await this.#getPagesLeftInChapter()
+                let size = await this.book.getSize()
+                let message = " " + (pagesLeft) + " pages remaining in chapter, position " + this.getPosition() + " of " + this.book.size
+                    this.progressDisplay.innerHTML = message
+            }
             await this.#timeout(10)
-            if (this.displayPageForCallback) {
-                this.displayPageForCallback(this)
+            if (this.settings.displayPageForCallback) {
+                this.settings.displayPageForCallback({})
             }
         }
         
         return page
     }
 
-    async nextPage() {
-        let size = await this.ebook.getSize()
+    async goToNextView() {
+        let size = await this.book.getSize()
         if (this.currentPage && this.currentPage.end < size) {
             this.displayPageFor(this.currentPage.end + 1)
         }
     }
 
-    async previousPage() {
+    async goToPreviousView() {
         if (this.currentPage && this.currentPage.start > 0) {
             this.displayPageFor(this.currentPage.start - 1)
         }
@@ -1817,7 +2639,7 @@ class EbookDisplay {
     }
 
     #getPageSizeKey() {
-        let url = this.ebook.getUrl()
+        let url = this.book.getUrl()
         let el = this.page
         let fontSize = window.getComputedStyle(el, null).getPropertyValue('font-size')
         return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
@@ -1841,32 +2663,57 @@ class EbookDisplay {
         return this.pages[pageCacheKey]
     }
 
-    async #getPageFor(position) {
+    async #getPagesLeftInChapter() {
+        let currentPosition = this.getPosition()
+        let currentPage = await this.#getPageFor(currentPosition, true)
+        let node = await this.book.getNodeAt(currentPosition)
+        let nextChapterPosition = node.node.findChapterEnd(currentPosition)
+        let chapterEndPage = await this.#getPageFor(nextChapterPosition, true)
+        return chapterEndPage.index - currentPage.index
+    }
+
+    async #getPageFor(position, withIndex = false) {
         let pageCache = this.#getPagesCache()
-        let page = pageCache.getPageFor(position)      
+        let page = pageCache.getPageFor(position, withIndex)
         if (page == null) {
             let computedPage = await this.#computePageFor(position)
-            return computedPage
+            if (withIndex) {
+                let pageFromCache = pageCache.getPageFor(position, withIndex)
+                return pageFromCache
+            } else {
+                return computedPage
+            }
         } else {
             return page
         }
     }
     
-    async #overflowTriggerred() {
+    #overflowTriggerred() {
         let el = this.shadowElement
-        if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) return true
-        else return false
+        return new Promise((resolve, reject) => {
+            var images = el.getElementsByTagName('img')
+            if (images.length > 0) {
+                waitForImagesToLoad(images).then(() => {
+                    if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) resolve(true)
+                    else resolve(false)
+                })
+            } else {
+                if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) resolve(true)
+                else resolve(false)
+            }
+        })
     }
 
     async #computeMaximalPage(start) {
         let previousEnd = null
-        let end = await this.ebook.findSpaceAfter(start)
+        let end = await this.book.findSpaceAfter(start)
         this.shadowElement.innerHTML = ""
         while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
             previousEnd = end
-            end = await this.ebook.findSpaceAfter(previousEnd)
-            this.shadowElement.innerHTML = await this.ebook.getContentsAt(start, end)
+            end = await this.book.findSpaceAfter(previousEnd)
+            this.shadowElement.innerHTML = await this.book.getContentsAt(start, end)
         }
+
         if (previousEnd != null) {
             return new Page(start, previousEnd)
         } else {
@@ -1884,7 +2731,7 @@ class EbookDisplay {
             let page = await this.#computeMaximalPage(start)
             originalPageCache.addPage(page)
             let lastSavedTimestamp = Date.now()
-            while (! page.contains(position) && originalPageCache == currentPageCache) {
+            while (! page.contains(position) && originalPageCache == currentPageCache && this.stopped != true) {
                 let newStart = page.end + 1
                 page = await this.#computeMaximalPage(newStart)
                 originalPageCache.addPage(page)
@@ -1895,6 +2742,7 @@ class EbookDisplay {
                 currentPageCache = this.#getPagesCache()
                 await this.#timeout(10)
             }
+            console.log("finished computing page for " + position + " (stopped " + this.stopped + ")")
             this.#serializePageCache(originalPageCache)
             if (originalPageCache != currentPageCache) {
                 this.computationInProgress = false
@@ -1915,6 +2763,7 @@ class Page {
     constructor(start, end) {
         this.start = start
         this.end = end
+        this.index = null
     }
 
     contains(position) {
@@ -1954,10 +2803,13 @@ class PageCache {
         this.value.push(page)
     }
 
-    getPageFor(position) {
+    getPageFor(position, withIndex = false) {
         if (this.value) {
             for (var i = 0; i < this.value.length; i++) {
-                if (this.value[i].contains(position)) return this.value[i]
+                if (this.value[i].contains(position)) {
+                    if (withIndex) this.value[i].index = i
+                    return this.value[i]
+                }
             }
         }
         return null
@@ -1985,13 +2837,12 @@ class ChronicReader {
         chronicReaderInstance = this
     }
 
-    /*#getInitialPosition() {
-        if (this.settings.position) {
-            return this.settings.position
-        } else {
-            return 0
+    destroy() {
+        if (this.type == "book") {
+            console.log("attempting stopping computation")
+            this.display.stopped = true
         }
-    }*/
+    }
 
     #init() {
         let extension = getFileExtension(this.url)
@@ -2003,6 +2854,15 @@ class ChronicReader {
         } else if (extension == "cbz") {
             type = "comic"
             archiveType = "zip"
+        } else if (extension == "cbr") {
+            type = "comic"
+            archiveType = "rar"
+        }
+        this.type = type
+        if (type == "book") {
+            this.display = new EbookDisplay(this.element, this.settings)
+        } else if (type == "comic") {
+            this.display = new ComicDisplay(this.element, this.settings)
         }
 
         fetch(this.url)
@@ -2010,6 +2870,8 @@ class ChronicReader {
             .then(blob => {
                 if (archiveType == "zip") {
                     return new ZipWrapper(this.url, blob)
+                } else if (archiveType == "rar") {
+                    return new RarWrapper(this.url, blob)
                 } else {
                     return null
                 }
@@ -2023,11 +2885,7 @@ class ChronicReader {
                 }
             }).then(wrapper => {
                 if (wrapper) {
-                    if (type == "book") {
-                        this.display = new EbookDisplay(this.element, wrapper, this.settings)
-                    } else if (type == "comic") {
-                        this.display = new ComicDisplay(this.element, wrapper, this.settings)
-                    }
+                    this.display.setBook(wrapper)
                 }
             })
     }
@@ -2039,8 +2897,4 @@ class ChronicReader {
     }
 }
 
-function jumpTo(position) {
-    if (chronicReaderInstance) {
-        chronicReaderInstance.displayPageFor(position)
-    }
-}
+//export { ChronicReader }
