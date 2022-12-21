@@ -422,7 +422,7 @@ var readRARContent = function(data, password, callbackFn) {
 }
 
 // export
-if (typeof process === 'object' && typeof require === 'function') { // NODE
+/*if (typeof process === 'object' && typeof require === 'function') { // NODE
   module.exports = readRARContent;
 } else if (typeof define === "function" && define.amd) { // AMD
   define('readRARContent', [], function () { return readRARContent; });
@@ -430,4 +430,4 @@ if (typeof process === 'object' && typeof require === 'function') { // NODE
   window['readRARContent'] = readRARContent;
 } else if (typeof importScripts === 'function') { // WORKER
   this['readRARContent'] = readRARContent;
-}
+}*/

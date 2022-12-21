@@ -18,13 +18,23 @@
                     let item = document.createElement("li")
                     let itemLink = document.createElement("a")
                     itemLink.href = "/read.html?book=" + books[i].id
-                    itemLink.innerHTML = books[i].name
+                    let image = document.createElement("img")
+                    image.src = books[i].cover
+                    itemLink.appendChild(image)
+                    let title = document.createElement("span")
+                    title.innerHTML = books[i].name
+                    itemLink.appendChild(title)
                     item.appendChild(itemLink)
                     booklist.appendChild(item)
                 }
             })
         }
     </script>
+    <style>
+        img {
+            max-width: 10vw;
+        }
+    </style>
 </head>
 <body>
     <h1>Chronic Reader Client</h1>

@@ -1,4 +1,7 @@
 importScripts('/crypto-js.js')
+importScripts('/jszip.js')
+//importScripts('/libunrar.js') // not importing, service worker install error, how the hell do i debug?
+importScripts('/reader.js')
 
 const DATABASE_NAME = "chronicreaderclient"
 const DATABASE_VERSION = "2"
@@ -84,7 +87,13 @@ async function handleUpload(request) {
     let name = file.name
     let contentType = file.type
     let bytes = await file.arrayBuffer()
-    console.log(bytes)
+
+    let archive = ArchiveWrapper.factory(file, bytes, contentType)
+    let book = BookWrapper.factory(archive, contentType)
+    let cover = await book.getCover()
+    console.log(cover)
+
+
     // https://stackoverflow.com/questions/67549348/how-to-create-sha256-hash-from-byte-array-in-javascript
     // compute bytes hash for id
     let hash = getArrayBufferSHA256(bytes)
@@ -93,6 +102,7 @@ async function handleUpload(request) {
         "id": hash,
         "name": name,
         "contentType": contentType,
+        "cover": cover,
         "content": bytes
     }
 
@@ -104,7 +114,7 @@ async function handleUpload(request) {
 }
 
 async function loadAllBooks() {
-    let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["name"])
+    let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["name", "cover"])
     console.log(databaseBooks)
     return getJsonResponse(Array.from(databaseBooks))
 }
