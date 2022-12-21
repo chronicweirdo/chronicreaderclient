@@ -6,7 +6,7 @@
     <script src="/libunrar.js"></script>
     <script src="/reader.js"></script>
     <script>
-        function updateUrl(display) {
+        /*function updateUrl(display) {
             let newPosition = display.position
             let queryString = window.location.search
             let urlParams = new URLSearchParams(queryString)
@@ -14,6 +14,25 @@
             urlParams.append("position", newPosition)
             let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString()
             window.history.replaceState('', '', newUrl)
+        }*/
+        function displayPageCallback(callbackControl) {
+            if (callbackControl.dominantColor) {
+                let color = "rgb(" + callbackControl.dominantColor[0] + "," + callbackControl.dominantColor[1] + "," + callbackControl.dominantColor[2] + ")" 
+                document.body.style.backgroundColor = color
+                //let neg = negative(callbackControl.dominantColor)
+                //callbackControl.setControlsColor("rgb(" + neg[0] + "," + neg[1] + "," + neg[2] + ")")
+            } else {
+                document.body.style.backgroundColor = "white"
+            }
+            if (callbackControl.position) {
+                let newPosition = callbackControl.position
+                let queryString = window.location.search
+                let urlParams = new URLSearchParams(queryString)
+                urlParams.delete("position")
+                urlParams.append("position", newPosition)
+                let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString()
+                window.history.replaceState('', '', newUrl)
+            }
         }
         window.onload = function() {
             let queryString = window.location.search
@@ -33,7 +52,7 @@
                 document.getElementById("page"),
                 {
                     "position": startPosition,
-                    "displayPageForCallback": updateUrl
+                    "displayPageForCallback": displayPageCallback
                 }
             )
         }
