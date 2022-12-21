@@ -17,6 +17,11 @@
 - implement extraction library for rar
 - optional: implement extraction library for zip
 
+- [x] compute book id and use that to retrieve the book from the database
+- [] extract book cover when uploading
+- [] display book covers on main page
+- [] save progress to database and use saved progress when loading the book
+
 ## Setup
 
 ```

@@ -18,7 +18,7 @@ function getDb() {
         request.onupgradeneeded = function(event) {
             console.log("upgrading database")
             let localDb = event.target.result
-            var imagesStore = localDb.createObjectStore(FILE_TABLE, {keyPath: 'name'})
+            var imagesStore = localDb.createObjectStore(FILE_TABLE, {keyPath: 'id'})
             resolve(localDb)
         }
     })
@@ -66,9 +66,9 @@ function getJsonResponse(json) {
 }
 
 function buf2hex(buffer) { // buffer is an ArrayBuffer
-return [...new Uint8Array(buffer)]
-    .map(x => x.toString(16).padStart(2, '0'))
-    .join('');
+    return [...new Uint8Array(buffer)]
+        .map(x => x.toString(16).padStart(2, '0'))
+        .join('');
 }
 
 function getArrayBufferSHA256(bytes) {
@@ -90,6 +90,7 @@ async function handleUpload(request) {
     let hash = getArrayBufferSHA256(bytes)
     console.log("hash: " + hash)
     let dbFile = {
+        "id": hash,
         "name": name,
         "contentType": contentType,
         "content": bytes
@@ -103,7 +104,7 @@ async function handleUpload(request) {
 }
 
 async function loadAllBooks() {
-    let databaseBooks = await databaseLoadDistinct(FILE_TABLE, "name")
+    let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["name"])
     console.log(databaseBooks)
     return getJsonResponse(Array.from(databaseBooks))
 }
@@ -160,6 +161,33 @@ function databaseLoad(table, key) {
             dbRequest.onsuccess = function(event) {
                 resolve(event.target.result)
             }
+        })
+    })
+}
+
+function databaseLoadColumns(table, key, columns) {
+    return new Promise((resolve, reject) => {
+        getDb().then(db => {
+            let transaction = db.transaction([table])
+            let objectStore = transaction.objectStore(table)
+            let cursorRequest = objectStore.openCursor()
+
+            let result = []
+            cursorRequest.onsuccess = event => {
+                let cursor = event.target.result
+                if (cursor) {
+                    let obj = {}
+                    obj[key] = cursor.value[key]
+                    for (let c = 0; c < columns.length; c++) {
+                        obj[columns[c]] = cursor.value[columns[c]]
+                    }
+                    result.push(obj)
+                    cursor.continue()
+                } else {
+                    resolve(result)
+                }
+            }
+            cursorRequest.onerror = event => reject()
         })
     })
 }

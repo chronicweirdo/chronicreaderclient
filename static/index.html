@@ -11,13 +11,14 @@
                 return response.json()
             })
             .then((books) => {
+                console.log(books)
                 let booklist = document.getElementById("booklist")
                 booklist.innerHTML = ""
                 for (let i = 0; i < books.length; i++) {
                     let item = document.createElement("li")
                     let itemLink = document.createElement("a")
-                    itemLink.href = "/read.html?book=" + books[i]
-                    itemLink.innerHTML = books[i]
+                    itemLink.href = "/read.html?book=" + books[i].id
+                    itemLink.innerHTML = books[i].name
                     item.appendChild(itemLink)
                     booklist.appendChild(item)
                 }
