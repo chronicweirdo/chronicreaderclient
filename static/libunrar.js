@@ -6426,18 +6426,16 @@ var Browser = {
         }
     },
     xhrLoad: function (url, onload, onerror) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", url, true);
-        xhr.responseType = "arraybuffer";
-        xhr.onload = function xhr_onload() {
-            if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) {
-                onload(xhr.response);
-            } else {
-                onerror();
-            }
-        };
-        xhr.onerror = onerror;
-        xhr.send(null);
+        fetch(url)
+		.then((response) => {
+			return response.arrayBuffer()
+		})
+		.then((ab) => {
+			onload(ab)
+		})
+		.catch((error) => {
+			onerror()
+		})
     },
     asyncLoad: function (url, onload, onerror, noRunDep) {
         Browser.xhrLoad(
@@ -7231,7 +7229,7 @@ Module.asmLibraryArg = {
     _stdin: _stdin,
 }; // EMSCRIPTEN_START_ASM
 var asm = (function (global, env, buffer) {
-    "use asm";
+    /*"use asm";*/
     var a = global.Int8Array;
     var b = global.Int16Array;
     var c = global.Int32Array;

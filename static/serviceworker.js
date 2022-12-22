@@ -1,6 +1,6 @@
 importScripts('/crypto-js.js')
 importScripts('/jszip.js')
-//importScripts('/libunrar.js') // not importing, service worker install error, how the hell do i debug?
+importScripts('/libunrar.js') // not importing, service worker install error, how the hell do i debug?
 importScripts('/reader.js')
 
 const DATABASE_NAME = "chronicreaderclient"
@@ -39,6 +39,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(handleUpload(e.request))
     } else if (url.pathname.startsWith("/books")) {
         e.respondWith(loadAllBooks())
+    } else if (url.pathname.startsWith("/bookmeta/")) {
+        e.respondWith(loadBookMeta(e.request))
     } else if (url.pathname.startsWith("/book/")) {
         e.respondWith(loadBook(e.request))
     } else {
@@ -84,14 +86,21 @@ async function handleUpload(request) {
     let form = await request.formData()
     let file = form.get("filename")
     console.log(file)
+    let extension = getFileExtension(file.name)
+    console.log("extension: " + extension)
     let name = file.name
     let contentType = file.type
     let bytes = await file.arrayBuffer()
 
-    let archive = ArchiveWrapper.factory(file, bytes, contentType)
-    let book = BookWrapper.factory(archive, contentType)
-    let cover = await book.getCover()
-    console.log(cover)
+    let cover = null
+    try {
+        let archive = ArchiveWrapper.factory(file, new Blob([bytes]), extension)
+        let book = BookWrapper.factory(archive, extension)
+        cover = await book.getCover()
+        console.log(cover)
+    } catch(error) {
+        console.log(error)
+    }
 
 
     // https://stackoverflow.com/questions/67549348/how-to-create-sha256-hash-from-byte-array-in-javascript
@@ -117,6 +126,20 @@ async function loadAllBooks() {
     let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["name", "cover"])
     console.log(databaseBooks)
     return getJsonResponse(Array.from(databaseBooks))
+}
+
+async function loadBookMeta(request) {
+    let url = new URL(request.url)
+    let pathParts = url.pathname.split("/")
+    let bookId = pathParts[pathParts.length - 1]
+
+    let bookObject = await databaseLoad(FILE_TABLE, bookId, ["name"])
+    if (bookObject) {
+        console.log(bookObject)
+        return getJsonResponse(bookObject)
+    } else {
+        return get404Response()
+    }
 }
 
 async function loadBook(request) {
@@ -162,14 +185,22 @@ function databaseSave(table, value) {
     })
 }
 
-function databaseLoad(table, key) {
+function databaseLoad(table, key, columns = null) {
     return new Promise((resolve, reject) => {
         getDb().then(db => {
             let transaction = db.transaction([table])
             let objectStore = transaction.objectStore(table)
             let dbRequest = objectStore.get(key)
             dbRequest.onsuccess = function(event) {
-                resolve(event.target.result)
+                if (columns != null) {
+                    let obj = {}
+                    for (let c = 0; c < columns.length; c++) {
+                        obj[columns[c]] = event.target.result[columns[c]]
+                    }
+                    resolve(obj)
+                } else {
+                    resolve(event.target.result)
+                }
             }
         })
     })

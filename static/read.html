@@ -47,14 +47,21 @@
             console.log(bookId)
             console.log(startPosition)
 
-            document.reader = new ChronicReader(
-                "/book/" + bookId,
-                document.getElementById("page"),
-                {
-                    "position": startPosition,
-                    "displayPageForCallback": displayPageCallback
-                }
-            )
+            fetch("/bookmeta/" + bookId)
+                .then(response => response.json())
+                .then(meta => {
+                    document.reader = new ChronicReader(
+                        "/book/" + bookId,
+                        document.getElementById("page"),
+                        getFileExtension(meta.name),
+                        {
+                            "position": startPosition,
+                            "displayPageForCallback": displayPageCallback
+                        }
+                    )
+                })
+
+            
         }
     </script>
     <link rel="stylesheet" type="text/css" href="fonts.css">
