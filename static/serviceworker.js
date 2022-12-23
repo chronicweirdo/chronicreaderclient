@@ -1,11 +1,12 @@
 importScripts('/crypto-js.js')
 importScripts('/jszip.js')
-importScripts('/libunrar.js') // not importing, service worker install error, how the hell do i debug?
+importScripts('/libunrar.js')
 importScripts('/reader.js')
 
 const DATABASE_NAME = "chronicreaderclient"
-const DATABASE_VERSION = "2"
+const DATABASE_VERSION = "3"
 const FILE_TABLE = 'files'
+const PROGRESS_TABLE = 'progress'
 
 function getDb() {
     return new Promise((resolve, reject) => {
@@ -19,10 +20,19 @@ function getDb() {
             resolve(event.target.result)
         }
         request.onupgradeneeded = function(event) {
-            console.log("upgrading database")
-            let localDb = event.target.result
-            var imagesStore = localDb.createObjectStore(FILE_TABLE, {keyPath: 'id'})
-            resolve(localDb)
+            try {
+                console.log("upgrading database")
+                console.log(event)
+                let localDb = event.target.result
+                let imagesStore = localDb.createObjectStore(FILE_TABLE, {keyPath: 'id'})
+                let progressStore = localDb.createObjectStore(PROGRESS_TABLE, {keyPath: 'id'})
+                console.log("upgraded")
+                resolve(localDb)
+            } catch (error) {
+                console.log("failed to upgrade database")
+                console.log(error)
+                reject(error)
+            }
         }
     })
 }
@@ -43,6 +53,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(loadBookMeta(e.request))
     } else if (url.pathname.startsWith("/book/")) {
         e.respondWith(loadBook(e.request))
+    } else if (url.pathname.startsWith("/sync/")) {
+        e.respondWith(syncProgress(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -126,6 +138,49 @@ async function loadAllBooks() {
     let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["name", "cover"])
     console.log(databaseBooks)
     return getJsonResponse(Array.from(databaseBooks))
+}
+
+async function syncProgress(request) {
+    let url = new URL(request.url)
+    let pathParts = url.pathname.split("/")
+    let bookId = pathParts[pathParts.length - 1]
+    // check if we have a progress entry
+    console.log(request.url)
+    console.log(request.url.search)
+    console.log(url.search)
+    let params = new URLSearchParams(url.search)
+    let progress = params.get("position")
+    console.log("progress: " + progress)
+
+    if (progress) {
+        console.log("saving progress " + progress)
+        // save progress
+        let now = new Date()
+        try {
+            let res = await databaseSave(PROGRESS_TABLE, {
+                "id": bookId,
+                "date": now,
+                "progress": progress
+            })
+            console.log("res")
+        } catch (error) {
+            console.log(error)
+        }
+        // todo: sync progress with backend if it exists
+        return getJsonResponse(progress)
+    } else {
+        // todo: load progress from backend, if it exists
+        // load progress from database
+        let databaseProgress = await databaseLoad(PROGRESS_TABLE, bookId)
+        console.log(databaseProgress)
+        if (databaseProgress) {
+            // todo: compare two progress, return latest, update latest in local database
+            return getJsonResponse(databaseProgress.progress)
+        } else {
+            // we have no progress info, default position is 0
+            return getJsonResponse(0)
+        }
+    }
 }
 
 async function loadBookMeta(request) {

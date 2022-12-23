@@ -18,9 +18,10 @@
 - optional: implement extraction library for zip
 
 - [x] compute book id and use that to retrieve the book from the database
-- [] extract book cover when uploading
-- [] display book covers on main page
-- [] save progress to database and use saved progress when loading the book
+- [x] extract book cover when uploading
+- [x] display book covers on main page
+- [x] save progress to database and use saved progress when loading the book
+- [] integrate with a backend
 
 ## Setup
 
