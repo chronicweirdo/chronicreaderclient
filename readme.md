@@ -29,3 +29,13 @@
 npm install -g bower
 bower install crypto-js
 ```
+
+## Backend api
+
+- log in
+- get metadata for book id
+- get contents for book id
+- get/set progress for book id for user
+- list collections
+- list books per collection
+- search

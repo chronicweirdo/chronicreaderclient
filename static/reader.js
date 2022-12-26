@@ -66,6 +66,14 @@ function getFileExtension(filename) {
     let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
     return extension
 }
+function typeCheck(value) {
+    const return_value = Object.prototype.toString.call(value)
+    const type = return_value.substring(
+             return_value.indexOf(" ") + 1, 
+             return_value.indexOf("]"))
+  
+    return type.toLowerCase()
+}
 function num(s, def) {
     var patt = /[\-]?[0-9\.]+/
     var match = patt.exec(s)
@@ -840,8 +848,10 @@ class RarWrapper extends ArchiveWrapper {
     }
     async #getRar() {
         if (this.rar == undefined) {
-            var content = await this.data.arrayBuffer()
-            console.log(this.url)
+            var content = this.data
+            if (typeCheck(this.data) == "blob") {
+                content = await this.data.arrayBuffer()
+            }
             var rar = readRARContent([{
                 "name": "name.cbr",
                 "content": new Uint8Array(content)
@@ -2237,14 +2247,30 @@ class EbookWrapper extends BookWrapper {
     async parseOpf() {
         let opf = await this.#getOpf()
         let opfXmlText = opf.contents
-        let parser = new DOMParser()
-        let xmlDoc = parser.parseFromString(opfXmlText, "text/xml")
+        let xmlDoc = await EbookNode.parseXmlToEbookNode(opfXmlText)
 
         // get spine
-        let spine = Array.from(xmlDoc.getElementsByTagName("itemref")).map(element => {
-            let item = xmlDoc.getElementById(element.getAttribute("idref"))
-            return item.getAttribute("href")
-        }).map(element => this.computeAbsolutePath(this.getContextFolder(opf.name), element))
+        let itemrefs = xmlDoc.findChildrenWithTag("itemref", true)
+        let itemIds = itemrefs.map(itemref => itemref.attributes["idref"])
+        let items = new Map(
+            xmlDoc.findChildrenWithTag("item", true)
+            .map(item => {
+                let key = item.attributes["id"]
+                let href = item.attributes["href"]
+                let absolutePath = this.computeAbsolutePath(this.getContextFolder(opf.name), href)
+                return [key, absolutePath]
+            })
+        )
+        
+        let spine = []
+        for (let i = 0; i < itemIds.length; i++) {
+            let id = itemIds[i]
+            let path = items.get(id)
+            if (path) {
+                spine.push(path)
+            }
+        }
+
         this.spine = spine
         return spine
     }

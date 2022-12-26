@@ -89,8 +89,23 @@ function buf2hex(buffer) { // buffer is an ArrayBuffer
 }
 
 function getArrayBufferSHA256(bytes) {
-    var wordArray = CryptoJS.lib.WordArray.create(bytes)
-    let hash = CryptoJS.SHA256(wordArray).toString()
+    /*if (typeCheck(bytes) == "arraybuffer") {
+        bytes = Uint8Array([bytes])
+    }*/
+    /*console.log(typeCheck(bytes))
+    console.log("file size: " + bytes.length)
+    console.log("file size: " + bytes.byteLength)*/
+    const SLICE_SIZE = 50000000
+    let algo = CryptoJS.algo.SHA256.create()
+    for (let i = 0; i < bytes.byteLength / SLICE_SIZE; i++) {
+        let start = i * SLICE_SIZE
+        let end = Math.min((i+1) * SLICE_SIZE, bytes.byteLength)
+        let bytesSlice = bytes.slice(start, end)
+        let wordArray = CryptoJS.lib.WordArray.create(bytesSlice)
+        algo.update(wordArray)
+    }
+    algo.finalize()
+    let hash = algo._hash.toString()//CryptoJS.SHA256(wordArray).toString()
     return hash
 }
 
@@ -127,9 +142,10 @@ async function handleUpload(request) {
         "content": bytes
     }
 
-    await databaseSave(FILE_TABLE, dbFile)
+    let savedValue = await databaseSave(FILE_TABLE, dbFile)
 
     console.log("saved file")
+    console.log(savedValue)
 
     return Response.redirect("/", 302)
 }
