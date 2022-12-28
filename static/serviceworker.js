@@ -55,6 +55,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(loadBook(e.request))
     } else if (url.pathname.startsWith("/sync/")) {
         e.respondWith(syncProgress(e.request))
+    } else if (url.pathname.startsWith("/search")) {
+        e.respondWith(searchServer(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -70,6 +72,10 @@ function get401Response() {
 
 function get404Response() {
     return new Response("", { "status" : 404 })
+}
+
+function get500Response() {
+    return new Response("", { "status" : 500 })
 }
 
 function getJsonResponse(json) {
@@ -154,6 +160,24 @@ async function loadAllBooks() {
     let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["name", "cover"])
     console.log(databaseBooks)
     return getJsonResponse(Array.from(databaseBooks))
+}
+
+async function searchServer(request) {
+    console.log("searching on server")
+    let url = new URL(request.url)
+    let params = new URLSearchParams(url.search)
+    let query = params.get("q")
+
+    const API_URL = "http://localhost:10002/books"
+    
+    try {
+        let response = await fetch(API_URL)
+        console.log(response)
+        return response
+    } catch (error) {
+        console.log(error)
+        return get500Response()
+    }
 }
 
 async function syncProgress(request) {

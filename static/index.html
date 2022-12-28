@@ -2,8 +2,22 @@
 <html>
 <head>
     <title>Chronic Reader Client</title>
+    <link rel="manifest" href="manifest.json">
     <script src="/serviceworkerinstall.js"></script>
     <script>
+        function getBookItem(book) {
+            let item = document.createElement("li")
+            let itemLink = document.createElement("a")
+            itemLink.href = "/read.html?book=" + book.id
+            let image = document.createElement("img")
+            image.src = book.cover
+            itemLink.appendChild(image)
+            let title = document.createElement("span")
+            title.innerHTML = book.title
+            itemLink.appendChild(title)
+            item.appendChild(itemLink)
+            return item
+        }
         window.onload = function() {
             fetch("/books")
             .then(response => {
@@ -15,17 +29,22 @@
                 let booklist = document.getElementById("booklist")
                 booklist.innerHTML = ""
                 for (let i = 0; i < books.length; i++) {
-                    let item = document.createElement("li")
-                    let itemLink = document.createElement("a")
-                    itemLink.href = "/read.html?book=" + books[i].id
-                    let image = document.createElement("img")
-                    image.src = books[i].cover
-                    itemLink.appendChild(image)
-                    let title = document.createElement("span")
-                    title.innerHTML = books[i].name
-                    itemLink.appendChild(title)
-                    item.appendChild(itemLink)
+                    let item = getBookItem(books[i])
                     booklist.appendChild(item)
+                }
+            })
+            fetch("search")
+            .then(response => {
+                console.log(response)
+                return response.json()
+            })
+            .then(searchResult => {
+                console.log(searchResult)
+                let searchList = document.getElementById("searchList")
+                searchList.innerHTML = ""
+                for (let i = 0; i < searchResult.length; i++) {
+                    let item = getBookItem(searchResult[i])
+                    searchList.appendChild(item)
                 }
             })
         }
@@ -44,5 +63,6 @@
         <input id="myFile" accept=".epub,.cbz,.cbr" name="filename" type="file" />
         <button name="submit" type="submit">Upload File</button>
     </form>
+    <ul id="searchList"></ul>
 </body>
 </html>
