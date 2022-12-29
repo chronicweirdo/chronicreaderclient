@@ -87,7 +87,7 @@
                     document.reader = new ChronicReader(
                         "/book/" + bookId,
                         document.getElementById("page"),
-                        getFileExtension(meta.name),
+                        meta.extension,
                         {
                             "position": startPosition,
                             "displayPageForCallback": displayPageCallback

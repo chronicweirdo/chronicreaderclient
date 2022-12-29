@@ -121,7 +121,7 @@ async function handleUpload(request) {
     console.log(file)
     let extension = getFileExtension(file.name)
     console.log("extension: " + extension)
-    let name = file.name
+    let title = file.name.substring(0, file.name.length - extension.length - 1)
     let contentType = file.type
     let bytes = await file.arrayBuffer()
 
@@ -142,7 +142,8 @@ async function handleUpload(request) {
     console.log("hash: " + hash)
     let dbFile = {
         "id": hash,
-        "name": name,
+        "title": title,
+        "extension": extension,
         "contentType": contentType,
         "cover": cover,
         "content": bytes
@@ -157,9 +158,21 @@ async function handleUpload(request) {
 }
 
 async function loadAllBooks() {
-    let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["name", "cover"])
+    let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["title", "cover"])
     console.log(databaseBooks)
     return getJsonResponse(Array.from(databaseBooks))
+}
+
+function getServerSearchUrl(term) {
+    return "http://localhost:10002/books"
+}
+
+function getServerContentUrl(id) {
+    return "http://localhost:10002/content/" + id
+}
+
+function getServerMetaUrl(id) {
+    return "http://localhost:10002/book/" + id
 }
 
 async function searchServer(request) {
@@ -167,11 +180,9 @@ async function searchServer(request) {
     let url = new URL(request.url)
     let params = new URLSearchParams(url.search)
     let query = params.get("q")
-
-    const API_URL = "http://localhost:10002/books"
     
     try {
-        let response = await fetch(API_URL)
+        let response = await fetch(getServerSearchUrl(query))
         console.log(response)
         return response
     } catch (error) {
@@ -224,16 +235,28 @@ async function syncProgress(request) {
 }
 
 async function loadBookMeta(request) {
+    console.log("LOADING BOOK META")
     let url = new URL(request.url)
     let pathParts = url.pathname.split("/")
     let bookId = pathParts[pathParts.length - 1]
 
-    let bookObject = await databaseLoad(FILE_TABLE, bookId, ["name"])
+    let bookObject = await databaseLoad(FILE_TABLE, bookId, ["title", "extension"])
+    console.log("book object for meta")
+    console.log(bookObject)
     if (bookObject) {
         console.log(bookObject)
         return getJsonResponse(bookObject)
     } else {
-        return get404Response()
+        console.log("no meta in local db")
+        try {
+            let response = await fetch(getServerMetaUrl(bookId))
+            console.log("server meta:")
+            console.log(response)
+            return response
+        } catch (error) {
+            console.log(error)
+            return get404Response()
+        }
     }
 }
 
@@ -242,6 +265,7 @@ async function loadBook(request) {
     let pathParts = url.pathname.split("/")
     let bookId = pathParts[pathParts.length - 1]
 
+    // check locally for book
     let bookObject = await databaseLoad(FILE_TABLE, bookId)
     if (bookObject) {
         console.log(bookObject)
@@ -253,7 +277,15 @@ async function loadBook(request) {
             headers: hdrs
         })
     } else {
-        return get404Response()
+        console.log("no book in local db")
+        // check for book on server
+        try {
+            let response = await fetch(getServerContentUrl(bookId))
+            return response
+        } catch (error) {
+            console.log(error)
+            return get404Response()
+        }
     }
 }
 
@@ -287,15 +319,22 @@ function databaseLoad(table, key, columns = null) {
             let objectStore = transaction.objectStore(table)
             let dbRequest = objectStore.get(key)
             dbRequest.onsuccess = function(event) {
-                if (columns != null) {
-                    let obj = {}
-                    for (let c = 0; c < columns.length; c++) {
-                        obj[columns[c]] = event.target.result[columns[c]]
+                if (event.target.result) {
+                    if (columns != null) {
+                        let obj = {}
+                        for (let c = 0; c < columns.length; c++) {
+                            obj[columns[c]] = event.target.result[columns[c]]
+                        }
+                        resolve(obj)
+                    } else {
+                        resolve(event.target.result)
                     }
-                    resolve(obj)
                 } else {
-                    resolve(event.target.result)
+                    resolve()
                 }
+            }
+            dbRequest.onerror = function(event) {
+                reject()
             }
         })
     })
