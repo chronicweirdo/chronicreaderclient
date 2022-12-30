@@ -70,7 +70,7 @@
                 position = await positionResponse.json()
                 console.log("loaded position: " + position)
             }
-            return position
+            return Number(position)
         }
         window.onload = function() {
             let bookId = getBookId()
