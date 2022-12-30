@@ -145,7 +145,7 @@ class Backend {
     }
     static async saveToken(server, username, token) {
         console.log("deleting old token")
-        //let deletedResult = await databaseDeleteAll(CONNECTION_TABLE)
+        let deletedResult = await databaseDeleteAll(CONNECTION_TABLE)
         console.log("saving new token")
         let savedResult = await databaseSave(CONNECTION_TABLE, {
             id: server,
@@ -546,7 +546,7 @@ function databaseLoadAll(table) {
 function databaseDeleteAll(table) {
     return new Promise((resolve, reject) => {
         getDb().then(db => {
-            let transaction = db.transaction([table])
+            let transaction = db.transaction([table], "readwrite")
             let objectStore = transaction.objectStore(table)
             let dbRequest = objectStore.clear()
             dbRequest.onsuccess = (event) => {
