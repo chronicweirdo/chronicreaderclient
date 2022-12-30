@@ -119,17 +119,115 @@ function getArrayBufferSHA256(bytes) {
     return hash
 }
 
+class Backend {
+    static async factory() {
+        let {server, token} = await Backend.loadToken()
+        return new Backend(server, token)
+    }
+    constructor(server, token) {
+        console.log("creating backend for " + server)
+        this.server = server
+        this.token = token
+    }
+    static async loadToken() {
+        let connections = await databaseLoadAll(CONNECTION_TABLE)
+        if (connections.length >= 1) {
+            let connection = connections[0]
+            return {
+                server: connection.id,
+                token: connection.token
+            }
+        }
+        return {
+            server: null,
+            token: null
+        }
+    }
+    static async saveToken(server, username, token) {
+        console.log("deleting old token")
+        //let deletedResult = await databaseDeleteAll(CONNECTION_TABLE)
+        console.log("saving new token")
+        let savedResult = await databaseSave(CONNECTION_TABLE, {
+            id: server,
+            username: username,
+            token: token
+        })
+    }
+    async login(server, username, password) {
+        try {
+            let url = server + "/login"
+            let body = JSON.stringify({username: username, password: password})
+            let loginResponse = await fetch(url, { 
+                method: 'POST', 
+                body: body,
+                headers: { 'Content-Type': 'application/json'}
+            })
+            if (loginResponse.status == 200) {
+                let responseJson = await loginResponse.json()
+                let serverUsername = responseJson.data.username
+                let token = responseJson.data.token
+                await Backend.saveToken(server, serverUsername, token)
+                this.server = server
+                this.token = token
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    getAuthHeaders() {
+        console.log(this.token)
+        return { 'Authorization': 'Bearer ' + this.token}
+    }
+
+    async search(query, page = null, pageSize = null) {
+        try {
+            let url = this.server + "/search"
+            if (query) {
+                url += "/" + query
+            }
+            console.log("search " + url)
+            let response = await fetch(url, {
+                headers: this.getAuthHeaders()
+            })
+            return response
+        } catch (error) {
+            console.log(error)
+            return get500Response()
+        }
+    }
+
+    async getContent(bookId) {
+        try {
+            let url = this.server + "/content/" + bookId
+            let response = await fetch(url, {headers: this.getAuthHeaders()})
+            return response
+        } catch (error) {
+            console.log(error)
+            return get404Response()
+        }
+    }
+
+    async getMeta(bookId) {
+        try {
+            let url = this.server + "/book/" + bookId
+            let response = await fetch(url, {headers: this.getAuthHeaders()})
+            return response
+        } catch (error) {
+            console.log(error)
+            return get404Response()
+        }
+    }
+}
+
 async function login(request) {
     let form = await request.formData()
     let server = form.get("server")
-    console.log("server: " + server)
     let username = form.get("username")
-    console.log("username: " + username)
     let password = form.get("password")
-    console.log("password: " + password)
 
     // run login with server
-    try {
+    /*try {
         let url = server + "/login"
         console.log("url: " + url)
         let body = JSON.stringify({username: username, password: password}) 
@@ -155,7 +253,9 @@ async function login(request) {
         }
     } catch (error) {
         console.log(error)
-    }
+    }*/
+    let backend = new Backend(server, null)
+    backend.login(server, username, password)
 
     return Response.redirect("/", 302)
 }
@@ -208,23 +308,23 @@ async function loadAllBooks() {
     return getJsonResponse(Array.from(databaseBooks))
 }
 
-function getServerSearchUrl(server, term) {
+/*function getServerSearchUrl(server, term) {
     if (term) {
         return server + "/search/" + term
     } else {
         return server + "/search"
     }
-}
+}*/
 
-function getServerContentUrl(server, id) {
+/*function getServerContentUrl(server, id) {
     return server + "/content/" + id
-}
+}*/
 
-function getServerMetaUrl(server, id) {
+/*function getServerMetaUrl(server, id) {
     return server + "/book/" + id
-}
+}*/
 
-async function getServerAndToken() {
+/*async function getServerAndToken() {
     let connections = await databaseLoadAll(CONNECTION_TABLE)
     //console.log("connections:")
     //console.log(connections)
@@ -236,7 +336,7 @@ async function getServerAndToken() {
         }
     }
     return null
-}
+}*/
 
 async function searchServer(request) {
     console.log("searching on server")
@@ -244,7 +344,7 @@ async function searchServer(request) {
     let params = new URLSearchParams(url.search)
     let query = params.get("q")
     
-    try {
+    /*try {
         let st = await getServerAndToken()
         //console.log("connection for search:")
         //console.log(st)
@@ -254,7 +354,7 @@ async function searchServer(request) {
         //console.log("headers")
         //console.log(headers)
         let response = await fetch(url, {
-            /*credentials: 'include',*/
+            /*credentials: 'include',
             headers : headers
         })
         //console.log(response)
@@ -262,7 +362,10 @@ async function searchServer(request) {
     } catch (error) {
         //console.log(error)
         return get500Response()
-    }
+    }*/
+
+    let backend = await Backend.factory()
+    return await backend.search(query)
 }
 
 async function syncProgress(request) {
@@ -322,7 +425,7 @@ async function loadBookMeta(request) {
         return getJsonResponse(bookObject)
     } else {
         console.log("no meta in local db")
-        try {
+        /*try {
             let st = await getServerAndToken()
             let response = await fetch(getServerMetaUrl(st.server, bookId), { headers: {"Authorization": "Bearer " + st.token}})
             //console.log("server meta:")
@@ -331,7 +434,9 @@ async function loadBookMeta(request) {
         } catch (error) {
             console.log(error)
             return get404Response()
-        }
+        }*/
+        let backend = await Backend.factory()
+        return await backend.getMeta(bookId)
     }
 }
 
@@ -354,14 +459,16 @@ async function loadBook(request) {
     } else {
         console.log("no book in local db")
         // check for book on server
-        try {
+        /*try {
             let st = await getServerAndToken()
             let response = await fetch(getServerContentUrl(st.server, bookId), {headers: {"Authorization": "Bearer " + st.token}})
             return response
         } catch (error) {
             console.log(error)
             return get404Response()
-        }
+        }*/
+        let backend = await Backend.factory()
+        return await backend.getContent(bookId)
     }
 }
 
@@ -430,6 +537,24 @@ function databaseLoadAll(table) {
                 }
             }
             dbRequest.onerror = function(event) {
+                reject()
+            }
+        })
+    })
+}
+
+function databaseDeleteAll(table) {
+    return new Promise((resolve, reject) => {
+        getDb().then(db => {
+            let transaction = db.transaction([table])
+            let objectStore = transaction.objectStore(table)
+            let dbRequest = objectStore.clear()
+            dbRequest.onsuccess = (event) => {
+                console.log(event)
+                resolve()
+            }
+            dbRequest.onerror = (event) => {
+                console.log(event)
                 reject()
             }
         })
