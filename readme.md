@@ -39,3 +39,6 @@ bower install crypto-js
 - list collections
 - list books per collection
 - search
+
+
+open /Applications/Google\ Chrome.app/ --args --disable-web-security

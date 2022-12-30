@@ -208,16 +208,34 @@ async function loadAllBooks() {
     return getJsonResponse(Array.from(databaseBooks))
 }
 
-function getServerSearchUrl(term) {
-    return "http://localhost:10002/books"
+function getServerSearchUrl(server, term) {
+    if (term) {
+        return server + "/search/" + term
+    } else {
+        return server + "/search"
+    }
 }
 
-function getServerContentUrl(id) {
-    return "http://localhost:10002/content/" + id
+function getServerContentUrl(server, id) {
+    return server + "/content/" + id
 }
 
-function getServerMetaUrl(id) {
-    return "http://localhost:10002/book/" + id
+function getServerMetaUrl(server, id) {
+    return server + "/book/" + id
+}
+
+async function getServerAndToken() {
+    let connections = await databaseLoadAll(CONNECTION_TABLE)
+    //console.log("connections:")
+    //console.log(connections)
+    if (connections.length >= 1) {
+        let connection = connections[0]
+        return {
+            server: connection.id,
+            token: connection.token
+        }
+    }
+    return null
 }
 
 async function searchServer(request) {
@@ -227,11 +245,22 @@ async function searchServer(request) {
     let query = params.get("q")
     
     try {
-        let response = await fetch(getServerSearchUrl(query))
-        console.log(response)
+        let st = await getServerAndToken()
+        //console.log("connection for search:")
+        //console.log(st)
+        let url = getServerSearchUrl(st.server, query)
+        //console.log("url: " + url)
+        let headers = { 'Authorization': 'Bearer ' + st.token}
+        //console.log("headers")
+        //console.log(headers)
+        let response = await fetch(url, {
+            /*credentials: 'include',*/
+            headers : headers
+        })
+        //console.log(response)
         return response
     } catch (error) {
-        console.log(error)
+        //console.log(error)
         return get500Response()
     }
 }
@@ -294,9 +323,10 @@ async function loadBookMeta(request) {
     } else {
         console.log("no meta in local db")
         try {
-            let response = await fetch(getServerMetaUrl(bookId))
-            console.log("server meta:")
-            console.log(response)
+            let st = await getServerAndToken()
+            let response = await fetch(getServerMetaUrl(st.server, bookId), { headers: {"Authorization": "Bearer " + st.token}})
+            //console.log("server meta:")
+            //console.log(response)
             return response
         } catch (error) {
             console.log(error)
@@ -325,7 +355,8 @@ async function loadBook(request) {
         console.log("no book in local db")
         // check for book on server
         try {
-            let response = await fetch(getServerContentUrl(bookId))
+            let st = await getServerAndToken()
+            let response = await fetch(getServerContentUrl(st.server, bookId), {headers: {"Authorization": "Bearer " + st.token}})
             return response
         } catch (error) {
             console.log(error)
@@ -374,6 +405,26 @@ function databaseLoad(table, key, columns = null) {
                     } else {
                         resolve(event.target.result)
                     }
+                } else {
+                    resolve()
+                }
+            }
+            dbRequest.onerror = function(event) {
+                reject()
+            }
+        })
+    })
+}
+
+function databaseLoadAll(table) {
+    return new Promise((resolve, reject) => {
+        getDb().then(db => {
+            let transaction = db.transaction([table])
+            let objectStore = transaction.objectStore(table)
+            let dbRequest = objectStore.getAll()
+            dbRequest.onsuccess = function(event) {
+                if (event.target.result) {
+                    resolve(event.target.result)
                 } else {
                     resolve()
                 }
