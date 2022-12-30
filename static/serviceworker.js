@@ -7,6 +7,7 @@ const DATABASE_NAME = "chronicreaderclient"
 const DATABASE_VERSION = "3"
 const FILE_TABLE = 'files'
 const PROGRESS_TABLE = 'progress'
+const CONNECTION_TABLE = 'connection'
 
 function getDb() {
     return new Promise((resolve, reject) => {
@@ -26,6 +27,7 @@ function getDb() {
                 let localDb = event.target.result
                 let imagesStore = localDb.createObjectStore(FILE_TABLE, {keyPath: 'id'})
                 let progressStore = localDb.createObjectStore(PROGRESS_TABLE, {keyPath: 'id'})
+                let connectionStore = localDb.createObjectStore(CONNECTION_TABLE, {keyPath: 'id'})
                 console.log("upgraded")
                 resolve(localDb)
             } catch (error) {
@@ -57,6 +59,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(syncProgress(e.request))
     } else if (url.pathname.startsWith("/search")) {
         e.respondWith(searchServer(e.request))
+    } else if (url.pathname.startsWith("/login")) {
+        e.respondWith(login(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -113,6 +117,47 @@ function getArrayBufferSHA256(bytes) {
     algo.finalize()
     let hash = algo._hash.toString()//CryptoJS.SHA256(wordArray).toString()
     return hash
+}
+
+async function login(request) {
+    let form = await request.formData()
+    let server = form.get("server")
+    console.log("server: " + server)
+    let username = form.get("username")
+    console.log("username: " + username)
+    let password = form.get("password")
+    console.log("password: " + password)
+
+    // run login with server
+    try {
+        let url = server + "/login"
+        console.log("url: " + url)
+        let body = JSON.stringify({username: username, password: password}) 
+        console.log(body)
+        let loginResponse = await fetch(server + '/login', { 
+            method: 'POST', 
+            body: body,
+            headers: { 'Content-Type': 'application/json'}
+        })
+        console.log(loginResponse)
+        if (loginResponse.status == 200) {
+            let responseJson = await loginResponse.json()
+            console.log(responseJson)
+            let serverUsername = responseJson.data.username
+            console.log("server username: " + serverUsername)
+            let token = responseJson.data.token
+            console.log("token: " + token)
+            await databaseSave(CONNECTION_TABLE, {
+                id: server,
+                username: serverUsername,
+                token: token
+            })
+        }
+    } catch (error) {
+        console.log(error)
+    }
+
+    return Response.redirect("/", 302)
 }
 
 async function handleUpload(request) {
