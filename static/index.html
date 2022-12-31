@@ -5,18 +5,94 @@
     <link rel="manifest" href="manifest.json">
     <script src="/serviceworkerinstall.js"></script>
     <script>
-        function getBookItem(book) {
+        function getBookItem(book, fill=true) {
             let item = document.createElement("li")
+            item.style.width = '100%'
+            item.style.overflow = 'hidden'
+
             let itemLink = document.createElement("a")
+            itemLink.style.overflow = 'hidden'
+            itemLink.style.position = 'relative'
             itemLink.href = "/read.html?book=" + book.id
+            
+            let imageEnclosure = document.createElement("span")
+            imageEnclosure.style.overflow = 'hidden'
+            imageEnclosure.style.position = "relative"
+            imageEnclosure.style.display = 'block'
+            imageEnclosure.style.height = '40vw'
+            //imageEnclosure.style.textAlign = 'center'
+            //imageEnclosure.style.border = '1px solid black'
+
             let image = document.createElement("img")
             image.src = book.cover
-            itemLink.appendChild(image)
+            image.onload = () => {
+                //console.log("loaded image sizes " + image.width + " " + image.height)
+                //console.log("container sizes " + image.parentElement.offsetWidth + " " + image.parentElement.offsetHeight)
+                /*if (fill) {
+                    if (image.width < image.parentElement.offsetWidth) {
+                        // widen the image
+                        let ratio = image.parentElement.offsetWidth / image.width
+                        console.log("ratio width: " + ratio)
+                        image.width = image.width * ratio
+                        image.height = image.height * ratio
+                    } else if (image.height < image.parentElement.offsetHeight) {
+                        // heighten the image
+                        let ratio = image.parentElement.offsetHeight / image.height
+                        console.log("ratio height: " + ratio)
+                        image.width = image.width * ratio
+                        image.height = image.height * ratio
+                    }
+                } else {
+                    if (image.width > image.parentElement.offsetWidth) {
+                        // widen the image
+                        let ratio = image.parentElement.offsetWidth / image.width
+                        console.log("ratio width: " + ratio)
+                        image.width = image.width * ratio
+                        image.height = image.height * ratio
+                    } else if (image.height > image.parentElement.offsetHeight) {
+                        // heighten the image
+                        let ratio = image.parentElement.offsetHeight / image.height
+                        console.log("ratio height: " + ratio)
+                        image.width = image.width * ratio
+                        image.height = image.height * ratio
+                    }
+                }*/
+                // center the image
+                image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
+                image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
+            }
+            image.style.width = "100%"
+            //image.style.height = '100%'
+            /*image.style.marginLeft = 'auto'
+            image.style.marginRight = 'auto'
+            image.style.marginTop = 'auto'
+            image.style.marginBottom = 'auto'*/
+            //image.style.left = '-50%'
+            image.style.position = "relative"
+            imageEnclosure.appendChild(image)
+            itemLink.appendChild(imageEnclosure)
+
             let title = document.createElement("span")
             title.innerHTML = book.title
             itemLink.appendChild(title)
             item.appendChild(itemLink)
             return item
+        }
+        function getBookList(books) {
+            let list = document.createElement('ul')
+            list.style.padding = '0'
+            list.style.listStyleType = 'none'
+            list.style.display = 'grid'
+            list.style.gridTemplateColumns = '30vw 30vw 30vw'
+            list.style.columnGap = '2.5vw'
+            list.style.rowGap = '2.5vw'
+
+            for (let i = 0; i < books.length; i++) {
+                let item = getBookItem(books[i])
+                list.appendChild(item)
+            }
+
+            return list
         }
         window.onload = function() {
             fetch("/books")
@@ -25,13 +101,9 @@
                 return response.json()
             })
             .then((books) => {
-                console.log(books)
-                let booklist = document.getElementById("booklist")
-                booklist.innerHTML = ""
-                for (let i = 0; i < books.length; i++) {
-                    let item = getBookItem(books[i])
-                    booklist.appendChild(item)
-                }
+                let bookList = document.getElementById("bookList")
+                bookList.innerHTML = ""
+                bookList.appendChild(getBookList(books))
             })
             fetch("search")
             .then(response => {
@@ -39,25 +111,18 @@
                 return response.json()
             })
             .then(searchResult => {
-                console.log(searchResult)
                 let searchList = document.getElementById("searchList")
                 searchList.innerHTML = ""
-                for (let i = 0; i < searchResult.length; i++) {
-                    let item = getBookItem(searchResult[i])
-                    searchList.appendChild(item)
-                }
+                searchList.appendChild(getBookList(searchResult))
             })
         }
     </script>
     <style>
-        img {
-            max-width: 10vw;
-        }
     </style>
 </head>
 <body>
     <h1>Chronic Reader Client</h1>
-    <ul id="booklist"></ul>
+    <div id="bookList"></div>
     <form action="upload" enctype="multipart/form-data" method="post">
         <label for="myFile">Upload Your File</label>
         <input id="myFile" accept=".epub,.cbz,.cbr" name="filename" type="file" />
@@ -69,6 +134,6 @@
         <label for="password"></label><input name="password" type="password" />
         <button name="submit" type="submit">Login</button>
     </form>
-    <ul id="searchList"></ul>
+    <div id="searchList"></div>
 </body>
 </html>
