@@ -19,12 +19,16 @@
             imageEnclosure.style.overflow = 'hidden'
             imageEnclosure.style.position = "relative"
             imageEnclosure.style.display = 'block'
-            imageEnclosure.style.height = '40vw'
+            imageEnclosure.style.height = (8/5*30) + 'vw'
             //imageEnclosure.style.textAlign = 'center'
             //imageEnclosure.style.border = '1px solid black'
 
             let image = document.createElement("img")
-            image.src = book.cover
+            if (book.cover == null) {
+                image.src = createBookCover(book.title, 500, 800)
+            } else {
+                image.src = book.cover
+            }
             image.onload = () => {
                 //console.log("loaded image sizes " + image.width + " " + image.height)
                 //console.log("container sizes " + image.parentElement.offsetWidth + " " + image.parentElement.offsetHeight)
@@ -61,8 +65,8 @@
                 image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
                 image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
             }
-            image.style.width = "100%"
-            //image.style.height = '100%'
+            //image.style.width = "100%"
+            image.style.height = '100%'
             /*image.style.marginLeft = 'auto'
             image.style.marginRight = 'auto'
             image.style.marginTop = 'auto'
@@ -94,6 +98,77 @@
 
             return list
         }
+        function createBookCover(title, width, height, element) {
+            let margin = width / 10
+            let words = title.split(/\s/g)
+            console.log(words)
+            let rows = []
+            let row = ""
+            let words_on_row = 3
+            let longestRow = 0
+            for (let i = 0; i < words.length; i++) {
+                if (i % words_on_row == 0) {
+                    if (row.length > 0) {
+                        rows.push(row)
+                        if (row.length > rows[longestRow].length) longestRow = rows.length - 1
+                    }
+                    row = words[i]
+                } else {
+                    row += " " + words[i]
+                }
+            }
+            if (rows.length > 0) {
+                rows.push(row)
+                if (row.length > rows[longestRow].length) longestRow = rows.length - 1
+            }
+            console.log(rows)
+            console.log(longestRow)
+            
+
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            const context = canvas.getContext('2d')
+            context.fillStyle = "#FF0000"
+            context.fillRect(0, 0, width, height)
+            context.fillStyle = "#FFFFFF"
+            context.textAlign = "center"
+
+            // find correct font size
+            let fontSize = width/rows[longestRow].length * 3
+            context.font = fontSize + "px serif"
+            while (context.measureText(rows[longestRow]).width > width - margin) {
+                fontSize -= 1
+                context.font = fontSize + "px serif"
+            }
+
+            let rowHeight = 0
+            //let totalHeight = 0
+            for (let i = 0; i < rows.length; i++) {
+                let tm = context.measureText(rows[i])
+                console.log(tm)
+                let height = tm.actualBoundingBoxAscent + tm.actualBoundingBoxDescent
+                //totalHeight += height
+                if (height > rowHeight) rowHeight = height
+            }
+            console.log(rowHeight)
+            let totalHeight = rowHeight * rows.length
+
+            for (let i = 0; i < rows.length; i++) {
+                let h = (height/2) - (totalHeight/2) + i * rowHeight + rowHeight / 2
+                context.fillText(rows[i], width/2, h)
+            }
+            
+            let base64 = canvas.toDataURL() 
+            
+            if (element) {
+                let img = document.createElement('img')
+                img.src = base64
+                element.appendChild(img)
+            }
+
+            return base64
+        }
         window.onload = function() {
             fetch("/books")
             .then(response => {
@@ -115,6 +190,7 @@
                 searchList.innerHTML = ""
                 searchList.appendChild(getBookList(searchResult))
             })
+            //createBookCover("A book about political science and all other stupid shit that has a ridiculously long title", 300, 500, document.getElementById("testCover"))
         }
     </script>
     <style>
@@ -122,6 +198,7 @@
 </head>
 <body>
     <h1>Chronic Reader Client</h1>
+    <div id="testCover"></div>
     <div id="bookList"></div>
     <form action="upload" enctype="multipart/form-data" method="post">
         <label for="myFile">Upload Your File</label>
