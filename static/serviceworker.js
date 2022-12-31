@@ -403,6 +403,31 @@ async function searchServer(request) {
     return await backend.search(query)
 }
 
+async function getProgressForBook(bookId) {
+    // load progress from backend, if it exists
+    let backend = await Backend.factory()
+    let backendProgress = await backend.getProgress(bookId)
+    // load progress from database
+    let databaseProgress = await databaseLoad(PROGRESS_TABLE, bookId)
+    if (backendProgress != null && databaseProgress != null) {
+        // use the latest progress
+        if (backendProgress.date > databaseProgress.date) {
+            return backendProgress.progress
+        } else {
+            return databaseProgress.progress
+        }
+    } else if (backendProgress != null) {
+        // save backend progress to local db and return it
+        let res = await databaseSave(PROGRESS_TABLE, backendProgress)
+        return backendProgress.progress
+    } else if (databaseProgress != null) {
+        return databaseProgress.progress
+    } else {
+        // we have no progress info, default position is 0
+        return 0
+    }
+}
+
 async function syncProgress(request) {
     let url = new URL(request.url)
     let pathParts = url.pathname.split("/")
@@ -435,7 +460,7 @@ async function syncProgress(request) {
         console.log("saved progress to backend successful? " + saveProgressResult)
         return getJsonResponse(progress)
     } else {
-        // todo: load progress from backend, if it exists
+        /*// load progress from backend, if it exists
         let backend = await Backend.factory()
         let backendProgress = await backend.getProgress(bookId)
         console.log("backend progress:")
@@ -460,7 +485,9 @@ async function syncProgress(request) {
         } else {
             // we have no progress info, default position is 0
             return getJsonResponse(0)
-        }
+        }*/
+        let progress = await getProgressForBook(bookId)
+        return getJsonResponse(progress)
     }
 }
 
@@ -473,23 +500,19 @@ async function loadBookMeta(request) {
     let bookObject = await databaseLoad(FILE_TABLE, bookId, ["title", "extension"])
     console.log("book object for meta")
     console.log(bookObject)
-    if (bookObject) {
-        console.log(bookObject)
+    if (bookObject == null) {
+        console.log("no meta in local db")
+        let backend = await Backend.factory()
+        let metaResponse = await backend.getMeta(bookId)
+        if (metaResponse.status == 200) {
+            bookObject = await metaResponse.json()
+        }
+    }
+    if (bookObject != null) {
+        bookObject.progress = await getProgressForBook(bookId)
         return getJsonResponse(bookObject)
     } else {
-        console.log("no meta in local db")
-        /*try {
-            let st = await getServerAndToken()
-            let response = await fetch(getServerMetaUrl(st.server, bookId), { headers: {"Authorization": "Bearer " + st.token}})
-            //console.log("server meta:")
-            //console.log(response)
-            return response
-        } catch (error) {
-            console.log(error)
-            return get404Response()
-        }*/
-        let backend = await Backend.factory()
-        return await backend.getMeta(bookId)
+        return get404Response()
     }
 }
 

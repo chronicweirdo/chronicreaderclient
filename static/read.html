@@ -54,7 +54,7 @@
         function getUrlPosition() {
             let params = new URLSearchParams(window.location.search)
             let position = params.get("position")
-            return position
+            return Number(position)
         }
         function getSyncUrl(position = undefined) {
             let url = "/sync/" + getBookId()
@@ -63,7 +63,7 @@
             }
             return url
         }
-        async function getCurrentPosition() {
+        /*async function getCurrentPosition() {
             let position = getUrlPosition()
             if (position == undefined) {
                 positionResponse = await fetch(getSyncUrl())
@@ -71,19 +71,17 @@
                 console.log("loaded position: " + position)
             }
             return Number(position)
-        }
+        }*/
         window.onload = function() {
             let bookId = getBookId()
-            /*let startPosition = getUrlPosition()
-            if (startPosition == undefined) {
-                startPosition = 0
-            }
-            console.log(bookId)
-            console.log(startPosition)*/
-            getCurrentPosition().then(startPosition => {
-                fetch("/bookmeta/" + bookId)
+            fetch("/bookmeta/" + bookId)
                 .then(response => response.json())
                 .then(meta => {
+                    console.log(meta)
+                    let startPosition = getUrlPosition()
+                    if (! startPosition) {
+                        startPosition = meta.progress
+                    }
                     document.reader = new ChronicReader(
                         "/book/" + bookId,
                         document.getElementById("page"),
@@ -94,7 +92,6 @@
                         }
                     )
                 })
-            })
         }
     </script>
     <link rel="stylesheet" type="text/css" href="fonts.css">
