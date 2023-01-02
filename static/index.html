@@ -12,23 +12,48 @@
                 this.withCollections = withCollections
             }
 
+            createTitle(name) {
+                let title = document.createElement("h1")
+                title.innerHTML = name
+                return title
+            }
+
+            createListElement() {
+                let list = document.createElement('ul')
+                list.style.padding = '0'
+                list.style.listStyleType = 'none'
+                list.style.display = 'grid'
+                list.style.gridTemplateColumns = '30vw 30vw 30vw'
+                list.style.columnGap = '2.5vw'
+                list.style.rowGap = '2.5vw'
+                return list
+            }
+
             getListElement() {
                 if (this.listElement == undefined) {
-                    let list = document.createElement('ul')
-                    list.style.padding = '0'
-                    list.style.listStyleType = 'none'
-                    list.style.display = 'grid'
-                    list.style.gridTemplateColumns = '30vw 30vw 30vw'
-                    list.style.columnGap = '2.5vw'
-                    list.style.rowGap = '2.5vw'
-                    this.element.appendChild(list)
-                    this.listElement = list
+                    this.listElement = this.createListElement()
+                    this.element.appendChild(this.listElement)
                 }
                 return this.listElement
             }
 
             getCollectionElement(collection) {
-                return null
+                if (this.collections == undefined) {
+                    this.collections = new Map()
+                }
+                if (this.collections.has(collection)) {
+                    return this.collections.get(collection).list
+                } else {
+                    let collectionTitle = this.createTitle(collection)
+                    this.element.appendChild(collectionTitle)
+                    let collectionList = this.createListElement()
+                    this.element.appendChild(collectionList)
+                    this.collections.set(collection, {
+                        title: collectionTitle,
+                        list: collectionList
+                    })
+                    return collectionList
+                }
             }
 
             addBook(book) {
@@ -305,7 +330,7 @@
             }
 
             firstSearch() {
-                this.bookList = new BookList(this.element)
+                this.bookList = new BookList(this.element, true)
                 this.page = 0
                 this.runSearch()
             }
