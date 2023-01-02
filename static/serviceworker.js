@@ -269,6 +269,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(searchServer(e.request))
     } else if (url.pathname.startsWith("/login")) {
         e.respondWith(login(e.request))
+    } else if (url.pathname.startsWith("/download")) {
+        e.respondWith(handleDownload(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -471,6 +473,33 @@ async function login(request) {
     return Response.redirect("/", 302)
 }
 
+async function handleDownload(request) {
+    let url = new URL(request.url)
+    let pathParts = url.pathname.split("/")
+    let bookId = pathParts[pathParts.length - 1]
+    console.log("downloading " + bookId)
+
+    // download book from backend
+    let backend = await Backend.factory()
+    let bookMetaResponse = await backend.getMeta(bookId)
+    console.log(bookMetaResponse)
+    if (bookMetaResponse.status == 200) {
+        let bookMeta = await bookMetaResponse.json()
+        console.log(bookMeta)
+        let contentResponse = await backend.getContent(bookId)
+        console.log(contentResponse)
+        if (contentResponse.status == 200) {
+            let bytes = await contentResponse.arrayBuffer()
+
+            let db = new Database()
+            await db.saveFile(bookMeta.id, bookMeta.title, bookMeta.extension, bookMeta.size, bookMeta.cover, bytes)
+
+            return getJsonResponse(bookMeta)
+        }
+    }
+    return get404Response()
+}
+
 async function handleUpload(request) {
     let form = await request.formData()
     let file = form.get("filename")
@@ -517,26 +546,6 @@ async function searchServer(request) {
     let url = new URL(request.url)
     let params = new URLSearchParams(url.search)
     let query = params.get("q")
-    
-    /*try {
-        let st = await getServerAndToken()
-        //console.log("connection for search:")
-        //console.log(st)
-        let url = getServerSearchUrl(st.server, query)
-        //console.log("url: " + url)
-        let headers = { 'Authorization': 'Bearer ' + st.token}
-        //console.log("headers")
-        //console.log(headers)
-        let response = await fetch(url, {
-            /*credentials: 'include',
-            headers : headers
-        })
-        //console.log(response)
-        return response
-    } catch (error) {
-        //console.log(error)
-        return get500Response()
-    }*/
 
     let backend = await Backend.factory()
     return await backend.search(query)

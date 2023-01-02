@@ -80,6 +80,13 @@
             libraryLink.href = "/"
             p.appendChild(libraryLink)
 
+            let downloadLink = document.createElement("a")
+            downloadLink.innerHTML = "download"
+            downloadLink.onclick = () => {
+                fetch("/download/" + getBookId()).then(response => console.log(response))
+            }
+            p.appendChild(downloadLink)
+
             return p
         }
         window.onload = function() {
