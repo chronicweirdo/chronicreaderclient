@@ -75,6 +75,32 @@
             //image.style.left = '-50%'
             image.style.position = "relative"
             imageEnclosure.appendChild(image)
+
+            if (book.position) {
+                let progressEnclosure = document.createElement("span")
+                progressEnclosure.style.position = "relative"
+                progressEnclosure.style.width = "80%"
+                progressEnclosure.style.height = "5%"
+                progressEnclosure.style.top = "-10%"
+                progressEnclosure.style.left = "10%"
+                progressEnclosure.style.display = "inline-block"
+                progressEnclosure.style.backgroundColor = "white"
+
+                let progress = document.createElement("span")
+                progress.style.position = "relative"
+                progress.style.display = "inline-block"
+                /*progress.style.margin = "10%"*/
+                progress.style.height = "80%"
+                progress.style.width = (98 * (book.position / book.size)) + "%"
+                progress.style.top = "10%"
+                progress.style.left = "1%"
+                progress.style.backgroundColor = "black"
+
+                progressEnclosure.appendChild(progress)
+                
+                imageEnclosure.appendChild(progressEnclosure)
+            }
+
             itemLink.appendChild(imageEnclosure)
 
             let title = document.createElement("span")
@@ -173,10 +199,10 @@
         window.onload = function() {
             fetch("/books")
             .then(response => {
-                console.log(response)
                 return response.json()
             })
             .then((books) => {
+                console.log(books)
                 let bookList = document.getElementById("bookList")
                 bookList.innerHTML = ""
                 bookList.appendChild(getBookList(books))

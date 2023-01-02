@@ -231,8 +231,8 @@ class Backend {
                 let progressJson = await response.json()
                 return {
                     id: bookId,
-                    date: new Date(progressJson.timestamp),
-                    progress: progressJson.position
+                    updated: new Date(progressJson.updated),
+                    position: progressJson.position
                 }
             } else {
                 return null
@@ -314,15 +314,16 @@ async function handleUpload(request) {
     let extension = getFileExtension(file.name)
     console.log("extension: " + extension)
     let title = file.name.substring(0, file.name.length - extension.length - 1)
-    let contentType = file.type
+    //let contentType = file.type
     let bytes = await file.arrayBuffer()
 
     let cover = null
+    let size = null
     try {
         let archive = ArchiveWrapper.factory(file, new Blob([bytes]), extension)
         let book = BookWrapper.factory(archive, extension)
         cover = await book.getCover()
-        console.log(cover)
+        size = await book.getSize()
     } catch(error) {
         console.log(error)
     }
@@ -336,7 +337,7 @@ async function handleUpload(request) {
         "id": hash,
         "title": title,
         "extension": extension,
-        "contentType": contentType,
+        "size": size,
         "cover": cover,
         "content": bytes
     }
@@ -350,9 +351,15 @@ async function handleUpload(request) {
 }
 
 async function loadAllBooks() {
-    let databaseBooks = await databaseLoadColumns(FILE_TABLE, "id", ["title", "cover"])
+    let databaseBooks = Array.from(await databaseLoadColumns(FILE_TABLE, "id", ["title", "cover", "size"]))
+    for (let book of databaseBooks) {
+        let progress = await databaseLoad(PROGRESS_TABLE, book.id)
+        if (progress) {
+            book.position = progress.position
+        }
+    }
     console.log(databaseBooks)
-    return getJsonResponse(Array.from(databaseBooks))
+    return getJsonResponse(databaseBooks)
 }
 
 /*function getServerSearchUrl(server, term) {
@@ -423,17 +430,17 @@ async function getProgressForBook(bookId) {
     let databaseProgress = await databaseLoad(PROGRESS_TABLE, bookId)
     if (backendProgress != null && databaseProgress != null) {
         // use the latest progress
-        if (backendProgress.date > databaseProgress.date) {
-            return backendProgress.progress
+        if (backendProgress.updated > databaseProgress.updated) {
+            return backendProgress.position
         } else {
-            return databaseProgress.progress
+            return databaseProgress.position
         }
     } else if (backendProgress != null) {
         // save backend progress to local db and return it
         let res = await databaseSave(PROGRESS_TABLE, backendProgress)
-        return backendProgress.progress
+        return backendProgress.position
     } else if (databaseProgress != null) {
-        return databaseProgress.progress
+        return databaseProgress.position
     } else {
         // we have no progress info, default position is 0
         return 0
@@ -459,8 +466,8 @@ async function syncProgress(request) {
         try {
             let res = await databaseSave(PROGRESS_TABLE, {
                 "id": bookId,
-                "date": now,
-                "progress": progress
+                "updated": now,
+                "position": progress
             })
             console.log("res")
         } catch (error) {
