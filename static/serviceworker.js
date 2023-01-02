@@ -412,17 +412,32 @@ class Backend {
         return headers
     }
 
-    async search(query, page = null, pageSize = null) {
+    async search(term, page = null, pageSize = null) {
         try {
             let url = this.server + "/search"
-            if (query) {
-                url += "?" + new URLSearchParams({term: query})
+            let params = new Map()
+            if (term != null) {
+                params.set("term", term)
+            }
+            if (page != null) {
+                params.set("page", page)
+            }
+            if (pageSize != null) {
+                params.set("pageSize", pageSize)
+            }
+            if (params.size > 0) {
+                url += "?" + new URLSearchParams(params)
             }
             console.log("search " + url)
             let response = await fetch(url, {
                 headers: this.getAuthHeaders()
             })
-            return response
+            if (response.status == 200) {
+                let result = await response.json()
+                return result
+            } else {
+                return []
+            }
         } catch (error) {
             console.log(error)
             return get500Response()
@@ -626,10 +641,18 @@ async function searchServer(request) {
     console.log("searching on server")
     let url = new URL(request.url)
     let params = new URLSearchParams(url.search)
-    let query = params.get("term")
+    let term = params.get("term")
+    console.log("term: " + term)
+    let page = Number(params.get("page"))
+    console.log("page: " + page)
+    let pageSize = Number(params.get("pageSize"))
+    console.log("page size: " + pageSize)
+    
 
     let backend = await Backend.factory()
-    return await backend.search(query)
+    let searchResult = await backend.search(term, page, pageSize)
+    console.log(searchResult)
+    return getJsonResponse(searchResult)
 }
 
 async function getProgressForBook(bookId) {

@@ -208,7 +208,7 @@
                 bookList.innerHTML = ""
                 bookList.appendChild(getBookList(books))
             })
-            fetch("search")
+            /*fetch("search")
             .then(response => {
                 console.log(response)
                 return response.json()
@@ -217,24 +217,72 @@
                 let searchList = document.getElementById("searchList")
                 searchList.innerHTML = ""
                 searchList.appendChild(getBookList(searchResult))
-            })
+            })*/
+            document.getElementById("searchForm").onsubmit()
             //createBookCover("A book about political science and all other stupid shit that has a ridiculously long title", 300, 500, document.getElementById("testCover"))
         }
 
-        function search(form) {
-            console.log(form)
-            let data = new FormData(form)
-            let term = data.get("term")
-            fetch("search?" + new URLSearchParams({term: term}))
-            .then(response => {
-                console.log(response)
-                return response.json()
-            })
-            .then(searchResult => {
-                let searchList = document.getElementById("searchList")
-                searchList.innerHTML = ""
-                searchList.appendChild(getBookList(searchResult))
-            })
+        class Search {
+            constructor(element, term, pageSize = 2) {
+                this.element = element
+                this.term = term
+                this.pageSize = pageSize
+            }
+
+            getUrl() {
+                return "search?" + new URLSearchParams({
+                    term: this.term,
+                    page: this.page,
+                    pageSize: this.pageSize
+                }) 
+            }
+
+            addBooksToResult(books) {
+                if (this.nextPage) {
+                    this.nextPage.remove()
+                    this.nextPage = null
+                }
+                this.element.appendChild(getBookList(books))
+                if (books.length > 0) {
+                    this.nextPage = document.createElement("a")
+                    this.nextPage.innerHTML = "next"
+                    this.nextPage.onclick = () => this.nextSearch()
+                    this.element.appendChild(this.nextPage)
+                }
+            }
+
+            runSearch() {
+                fetch(this.getUrl())
+                .then(response => {
+                    console.log(response)
+                    return response.json()
+                })
+                .then(searchResult => {
+                    console.log(searchResult)
+                    this.addBooksToResult(searchResult)
+                })
+            }
+
+            firstSearch() {
+                this.element.innerHTML = ""
+                this.page = 0
+                this.runSearch()
+            }
+
+            nextSearch() {
+                this.page = this.page + 1
+                this.runSearch()
+            }
+        }
+        function searchForm(form) {
+            try {
+                let data = new FormData(form)
+                let term = data.get("term")
+                document.search = new Search(document.getElementById("searchList"), term)
+                document.search.firstSearch()
+            } catch (error) {
+                console.log(error)
+            }
             return false
         }
     </script>
@@ -259,7 +307,7 @@
         <label for="password"></label><input name="password" type="password" />
         <button name="submit" type="submit">Login</button>
     </form>
-    <form action="search" onsubmit="return search(this)">
+    <form id="searchForm" onsubmit="return searchForm(this);">
         <label for="term">term:</label><input name="term" type="text" />
         <button name="submit" type="submit">Search</button>
     </form>
