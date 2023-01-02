@@ -5,6 +5,44 @@
     <link rel="manifest" href="manifest.json">
     <script src="/serviceworkerinstall.js"></script>
     <script>
+        class BookList {
+            constructor(element, withCollections = false) {
+                this.element = element
+                this.element.innerHTML = ""
+                this.withCollections = withCollections
+            }
+
+            getListElement() {
+                if (this.listElement == undefined) {
+                    let list = document.createElement('ul')
+                    list.style.padding = '0'
+                    list.style.listStyleType = 'none'
+                    list.style.display = 'grid'
+                    list.style.gridTemplateColumns = '30vw 30vw 30vw'
+                    list.style.columnGap = '2.5vw'
+                    list.style.rowGap = '2.5vw'
+                    this.element.appendChild(list)
+                    this.listElement = list
+                }
+                return this.listElement
+            }
+
+            getCollectionElement(collection) {
+                return null
+            }
+
+            addBook(book) {
+                let parent = null
+                if (this.withCollections) {
+                    parent = this.getCollectionElement(book.collection)
+                } else {
+                    parent = this.getListElement()
+                }
+
+                let bookItem = getBookItem(book)
+                parent.appendChild(bookItem)
+            }
+        }
         function getBookItem(book, fill=true) {
             //console.log(book)
             let item = document.createElement("li")
@@ -242,7 +280,10 @@
                     this.nextPage.remove()
                     this.nextPage = null
                 }
-                this.element.appendChild(getBookList(books))
+                for (let book of books) {
+                    this.bookList.addBook(book)
+                }
+                //this.element.appendChild(getBookList(books))
                 if (books.length > 0) {
                     this.nextPage = document.createElement("a")
                     this.nextPage.innerHTML = "next"
@@ -264,7 +305,7 @@
             }
 
             firstSearch() {
-                this.element.innerHTML = ""
+                this.bookList = new BookList(this.element)
                 this.page = 0
                 this.runSearch()
             }
