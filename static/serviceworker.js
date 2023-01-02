@@ -416,7 +416,7 @@ class Backend {
         try {
             let url = this.server + "/search"
             if (query) {
-                url += "/" + query
+                url += "?" + new URLSearchParams({term: query})
             }
             console.log("search " + url)
             let response = await fetch(url, {
@@ -626,7 +626,7 @@ async function searchServer(request) {
     console.log("searching on server")
     let url = new URL(request.url)
     let params = new URLSearchParams(url.search)
-    let query = params.get("q")
+    let query = params.get("term")
 
     let backend = await Backend.factory()
     return await backend.search(query)

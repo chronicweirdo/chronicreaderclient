@@ -129,7 +129,7 @@
         function createBookCover(title, width, height, element) {
             let margin = width / 10
             let words = title.split(/\s/g)
-            console.log(words)
+            //console.log(words)
             let rows = []
             let row = ""
             let words_on_row = 3
@@ -149,8 +149,8 @@
                 rows.push(row)
                 if (row.length > rows[longestRow].length) longestRow = rows.length - 1
             }
-            console.log(rows)
-            console.log(longestRow)
+            //console.log(rows)
+            //console.log(longestRow)
             
 
             const canvas = document.createElement('canvas')
@@ -174,12 +174,12 @@
             //let totalHeight = 0
             for (let i = 0; i < rows.length; i++) {
                 let tm = context.measureText(rows[i])
-                console.log(tm)
+                //console.log(tm)
                 let height = tm.actualBoundingBoxAscent + tm.actualBoundingBoxDescent
                 //totalHeight += height
                 if (height > rowHeight) rowHeight = height
             }
-            console.log(rowHeight)
+            //console.log(rowHeight)
             let totalHeight = rowHeight * rows.length
 
             for (let i = 0; i < rows.length; i++) {
@@ -220,6 +220,23 @@
             })
             //createBookCover("A book about political science and all other stupid shit that has a ridiculously long title", 300, 500, document.getElementById("testCover"))
         }
+
+        function search(form) {
+            console.log(form)
+            let data = new FormData(form)
+            let term = data.get("term")
+            fetch("search?" + new URLSearchParams({term: term}))
+            .then(response => {
+                console.log(response)
+                return response.json()
+            })
+            .then(searchResult => {
+                let searchList = document.getElementById("searchList")
+                searchList.innerHTML = ""
+                searchList.appendChild(getBookList(searchResult))
+            })
+            return false
+        }
     </script>
     <style>
         body {
@@ -241,6 +258,10 @@
         <label for="username">Username</label><input name="username" type="text" />
         <label for="password"></label><input name="password" type="password" />
         <button name="submit" type="submit">Login</button>
+    </form>
+    <form action="search" onsubmit="return search(this)">
+        <label for="term">term:</label><input name="term" type="text" />
+        <button name="submit" type="submit">Search</button>
     </form>
     <div id="searchList"></div>
 </body>
