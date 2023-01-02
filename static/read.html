@@ -72,6 +72,16 @@
             }
             return Number(position)
         }*/
+        function getTools() {
+            let p = document.createElement("p")
+            
+            let libraryLink = document.createElement("a")
+            libraryLink.innerHTML = "library"
+            libraryLink.href = "/"
+            p.appendChild(libraryLink)
+
+            return p
+        }
         window.onload = function() {
             let bookId = getBookId()
             fetch("/bookmeta/" + bookId)
@@ -88,7 +98,8 @@
                         meta.extension,
                         {
                             "position": startPosition,
-                            "displayPageForCallback": displayPageCallback
+                            "displayPageForCallback": displayPageCallback,
+                            "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools()]
                         }
                     )
                 })
