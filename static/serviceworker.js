@@ -3,40 +3,248 @@ importScripts('/jszip.js')
 importScripts('/libunrar.js')
 importScripts('/reader.js')
 
-const DATABASE_NAME = "chronicreaderclient"
-const DATABASE_VERSION = "3"
-const FILE_TABLE = 'files'
-const PROGRESS_TABLE = 'progress'
-const CONNECTION_TABLE = 'connection'
 
-function getDb() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION)
-        request.onerror = function(event) {
-            console.log("failed to open database")
-            reject()
-        }
-        request.onsuccess = function(event) {
-            console.log("successfully opened database")
-            resolve(event.target.result)
-        }
-        request.onupgradeneeded = function(event) {
-            try {
-                console.log("upgrading database")
-                console.log(event)
-                let localDb = event.target.result
-                let imagesStore = localDb.createObjectStore(FILE_TABLE, {keyPath: 'id'})
-                let progressStore = localDb.createObjectStore(PROGRESS_TABLE, {keyPath: 'id'})
-                let connectionStore = localDb.createObjectStore(CONNECTION_TABLE, {keyPath: 'id'})
-                console.log("upgraded")
-                resolve(localDb)
-            } catch (error) {
-                console.log("failed to upgrade database")
-                console.log(error)
-                reject(error)
+
+class Database {
+    static DATABASE_NAME = "chronicreaderclient"
+    static DATABASE_VERSION = "3"
+    static FILE_TABLE = 'files'
+    static PROGRESS_TABLE = 'progress'
+    static CONNECTION_TABLE = 'connection'
+
+    constructor() {
+
+    }
+
+    getDb() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(Database.DATABASE_NAME, Database.DATABASE_VERSION)
+            request.onerror = function(event) {
+                console.log("failed to open database")
+                reject()
+            }
+            request.onsuccess = function(event) {
+                console.log("successfully opened database")
+                resolve(event.target.result)
+            }
+            request.onupgradeneeded = function(event) {
+                try {
+                    console.log("upgrading database")
+                    console.log(event)
+                    let localDb = event.target.result
+                    let imagesStore = localDb.createObjectStore(Database.FILE_TABLE, {keyPath: 'id'})
+                    let progressStore = localDb.createObjectStore(Database.PROGRESS_TABLE, {keyPath: 'id'})
+                    let connectionStore = localDb.createObjectStore(Database.CONNECTION_TABLE, {keyPath: 'id'})
+                    console.log("upgraded")
+                    resolve(localDb)
+                } catch (error) {
+                    console.log("failed to upgrade database")
+                    console.log(error)
+                    reject(error)
+                }
+            }
+        })
+    }
+
+    databaseSave(table, value) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                console.log("obtained db")
+                console.log(db)
+                let transaction = db.transaction([table], "readwrite")
+                console.log("obtained transaction")
+                transaction.oncomplete = function(event) {
+                    console.log("save transaction complete")
+                    resolve(value)
+                }
+                let objectStore = transaction.objectStore(table)
+                value['date'] = new Date()
+                console.log("saving value:")
+                console.log(value)
+                let addRequest = objectStore.put(value)
+                addRequest.onsuccess = (event) => {
+                    console.log("add request successful")
+                }
+            })
+        })
+    }
+    
+    databaseLoad(table, key, columns = null) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                let transaction = db.transaction([table])
+                let objectStore = transaction.objectStore(table)
+                let dbRequest = objectStore.get(key)
+                dbRequest.onsuccess = function(event) {
+                    if (event.target.result) {
+                        if (columns != null) {
+                            let obj = {}
+                            for (let c = 0; c < columns.length; c++) {
+                                obj[columns[c]] = event.target.result[columns[c]]
+                            }
+                            resolve(obj)
+                        } else {
+                            resolve(event.target.result)
+                        }
+                    } else {
+                        resolve()
+                    }
+                }
+                dbRequest.onerror = function(event) {
+                    reject()
+                }
+            })
+        })
+    }
+    
+    databaseLoadAll(table) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                let transaction = db.transaction([table])
+                let objectStore = transaction.objectStore(table)
+                let dbRequest = objectStore.getAll()
+                dbRequest.onsuccess = function(event) {
+                    if (event.target.result) {
+                        resolve(event.target.result)
+                    } else {
+                        resolve()
+                    }
+                }
+                dbRequest.onerror = function(event) {
+                    reject()
+                }
+            })
+        })
+    }
+    
+    databaseDeleteAll(table) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                let transaction = db.transaction([table], "readwrite")
+                let objectStore = transaction.objectStore(table)
+                let dbRequest = objectStore.clear()
+                dbRequest.onsuccess = (event) => {
+                    console.log(event)
+                    resolve()
+                }
+                dbRequest.onerror = (event) => {
+                    console.log(event)
+                    reject()
+                }
+            })
+        })
+    }
+    
+    databaseLoadColumns(table, key, columns) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                let transaction = db.transaction([table])
+                let objectStore = transaction.objectStore(table)
+                let cursorRequest = objectStore.openCursor()
+    
+                let result = []
+                cursorRequest.onsuccess = event => {
+                    let cursor = event.target.result
+                    if (cursor) {
+                        let obj = {}
+                        obj[key] = cursor.value[key]
+                        for (let c = 0; c < columns.length; c++) {
+                            obj[columns[c]] = cursor.value[columns[c]]
+                        }
+                        result.push(obj)
+                        cursor.continue()
+                    } else {
+                        resolve(result)
+                    }
+                }
+                cursorRequest.onerror = event => reject()
+            })
+        })
+    }
+    
+    /*databaseLoadDistinct(table, column) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                let transaction = db.transaction([table])
+                let objectStore = transaction.objectStore(table)
+                let cursorRequest = objectStore.openCursor()
+                let distinctValues = new Set()
+                cursorRequest.onsuccess = event => {
+                    let cursor = event.target.result
+                    if (cursor) {
+                        distinctValues.add(cursor.value[column])
+                        cursor.continue()
+                    } else {
+                        resolve(distinctValues)
+                    }
+                }
+                cursorRequest.onerror = event => reject()
+            })
+        })
+    }*/
+
+    async loadToken() {
+        let connections = await this.databaseLoadAll(Database.CONNECTION_TABLE)
+        if (connections.length >= 1) {
+            let connection = connections[0]
+            return {
+                server: connection.id,
+                token: connection.token
             }
         }
-    })
+        return {
+            server: null,
+            token: null
+        }
+    }
+    async saveToken(server, username, token) {
+        console.log("deleting old token")
+        let deletedResult = await this.databaseDeleteAll(Database.CONNECTION_TABLE)
+        console.log("saving new token")
+        let savedResult = await this.databaseSave(Database.CONNECTION_TABLE, {
+            id: server,
+            username: username,
+            token: token
+        })
+    }
+
+    async saveFile(id, title, extension, size, cover, bytes) {
+        let dbFile = {
+            "id": id,
+            "title": title,
+            "extension": extension,
+            "size": size,
+            "cover": cover,
+            "content": bytes
+        }
+        return await this.databaseSave(Database.FILE_TABLE, dbFile)
+    }
+
+    async saveProgress(bookId, updated, progress) {
+        return await this.databaseSave(Database.PROGRESS_TABLE, {
+            "id": bookId,
+            "updated": updated,
+            "position": progress
+        })
+    }
+
+    async loadProgress(bookId) {
+        return await this.databaseLoad(Database.PROGRESS_TABLE, bookId)
+    }
+
+    async loadBookMeta(bookId) {
+        return await this.databaseLoad(Database.FILE_TABLE, bookId, ["title", "extension", "size", "cover"])
+    }
+
+    async loadBook(bookId) {
+        return await this.databaseLoad(Database.FILE_TABLE, bookId)
+    }
+
+    async loadAllBookMetas() {
+        let books = await this.databaseLoadColumns(Database.FILE_TABLE, "id", ["title", "extension", "cover", "size"])
+        console.log(books)
+        return Array.from(books)
+    }
 }
 
 self.addEventListener('install', e => {
@@ -130,28 +338,12 @@ class Backend {
         this.token = token
     }
     static async loadToken() {
-        let connections = await databaseLoadAll(CONNECTION_TABLE)
-        if (connections.length >= 1) {
-            let connection = connections[0]
-            return {
-                server: connection.id,
-                token: connection.token
-            }
-        }
-        return {
-            server: null,
-            token: null
-        }
+        let db = new Database()
+        return await db.loadToken()
     }
     static async saveToken(server, username, token) {
-        console.log("deleting old token")
-        let deletedResult = await databaseDeleteAll(CONNECTION_TABLE)
-        console.log("saving new token")
-        let savedResult = await databaseSave(CONNECTION_TABLE, {
-            id: server,
-            username: username,
-            token: token
-        })
+        let db = new Database()
+        return await db.saveToken(server, username, token)
     }
     async login(server, username, password) {
         try {
@@ -273,34 +465,6 @@ async function login(request) {
     let username = form.get("username")
     let password = form.get("password")
 
-    // run login with server
-    /*try {
-        let url = server + "/login"
-        console.log("url: " + url)
-        let body = JSON.stringify({username: username, password: password}) 
-        console.log(body)
-        let loginResponse = await fetch(server + '/login', { 
-            method: 'POST', 
-            body: body,
-            headers: { 'Content-Type': 'application/json'}
-        })
-        console.log(loginResponse)
-        if (loginResponse.status == 200) {
-            let responseJson = await loginResponse.json()
-            console.log(responseJson)
-            let serverUsername = responseJson.data.username
-            console.log("server username: " + serverUsername)
-            let token = responseJson.data.token
-            console.log("token: " + token)
-            await databaseSave(CONNECTION_TABLE, {
-                id: server,
-                username: serverUsername,
-                token: token
-            })
-        }
-    } catch (error) {
-        console.log(error)
-    }*/
     let backend = new Backend(server, null)
     backend.login(server, username, password)
 
@@ -310,11 +474,8 @@ async function login(request) {
 async function handleUpload(request) {
     let form = await request.formData()
     let file = form.get("filename")
-    console.log(file)
     let extension = getFileExtension(file.name)
-    console.log("extension: " + extension)
     let title = file.name.substring(0, file.name.length - extension.length - 1)
-    //let contentType = file.type
     let bytes = await file.arrayBuffer()
 
     let cover = null
@@ -328,69 +489,28 @@ async function handleUpload(request) {
         console.log(error)
     }
 
-
     // https://stackoverflow.com/questions/67549348/how-to-create-sha256-hash-from-byte-array-in-javascript
     // compute bytes hash for id
     let hash = getArrayBufferSHA256(bytes)
-    console.log("hash: " + hash)
-    let dbFile = {
-        "id": hash,
-        "title": title,
-        "extension": extension,
-        "size": size,
-        "cover": cover,
-        "content": bytes
-    }
 
-    let savedValue = await databaseSave(FILE_TABLE, dbFile)
-
-    console.log("saved file")
+    let db = new Database()
+    let savedValue = await db.saveFile(hash, title, extension, size, cover, bytes)
     console.log(savedValue)
 
     return Response.redirect("/", 302)
 }
 
 async function loadAllBooks() {
-    let databaseBooks = Array.from(await databaseLoadColumns(FILE_TABLE, "id", ["title", "cover", "size"]))
+    let db = new Database()
+    let databaseBooks = await db.loadAllBookMetas()
     for (let book of databaseBooks) {
-        let progress = await databaseLoad(PROGRESS_TABLE, book.id)
+        let progress = await db.loadProgress(book.id)
         if (progress) {
             book.position = progress.position
         }
     }
-    console.log(databaseBooks)
     return getJsonResponse(databaseBooks)
 }
-
-/*function getServerSearchUrl(server, term) {
-    if (term) {
-        return server + "/search/" + term
-    } else {
-        return server + "/search"
-    }
-}*/
-
-/*function getServerContentUrl(server, id) {
-    return server + "/content/" + id
-}*/
-
-/*function getServerMetaUrl(server, id) {
-    return server + "/book/" + id
-}*/
-
-/*async function getServerAndToken() {
-    let connections = await databaseLoadAll(CONNECTION_TABLE)
-    //console.log("connections:")
-    //console.log(connections)
-    if (connections.length >= 1) {
-        let connection = connections[0]
-        return {
-            server: connection.id,
-            token: connection.token
-        }
-    }
-    return null
-}*/
 
 async function searchServer(request) {
     console.log("searching on server")
@@ -427,7 +547,8 @@ async function getProgressForBook(bookId) {
     let backend = await Backend.factory()
     let backendProgress = await backend.getProgress(bookId)
     // load progress from database
-    let databaseProgress = await databaseLoad(PROGRESS_TABLE, bookId)
+    let db = new Database()
+    let databaseProgress = await db.loadProgress(bookId)
     if (backendProgress != null && databaseProgress != null) {
         // use the latest progress
         if (backendProgress.updated > databaseProgress.updated) {
@@ -437,7 +558,7 @@ async function getProgressForBook(bookId) {
         }
     } else if (backendProgress != null) {
         // save backend progress to local db and return it
-        let res = await databaseSave(PROGRESS_TABLE, backendProgress)
+        let res = await db.saveProgress(backendProgress.id, backendProgress.updated, backend.position)
         return backendProgress.position
     } else if (databaseProgress != null) {
         return databaseProgress.position
@@ -464,11 +585,8 @@ async function syncProgress(request) {
         // save progress
         let now = new Date()
         try {
-            let res = await databaseSave(PROGRESS_TABLE, {
-                "id": bookId,
-                "updated": now,
-                "position": progress
-            })
+            let db = new Database()
+            let res = await db.saveProgress(bookId, now, progress)
             console.log("res")
         } catch (error) {
             console.log(error)
@@ -490,7 +608,8 @@ async function loadBookMeta(request) {
     let pathParts = url.pathname.split("/")
     let bookId = pathParts[pathParts.length - 1]
 
-    let bookObject = await databaseLoad(FILE_TABLE, bookId, ["title", "extension"])
+    let db = new Database()
+    let bookObject = await db.loadBookMeta(bookId)
     console.log("book object for meta")
     console.log(bookObject)
     if (bookObject == null) {
@@ -515,165 +634,20 @@ async function loadBook(request) {
     let bookId = pathParts[pathParts.length - 1]
 
     // check locally for book
-    let bookObject = await databaseLoad(FILE_TABLE, bookId)
+    let db = new Database()
+    let bookObject = await db.loadBook(bookId)
     if (bookObject) {
         console.log(bookObject)
         console.log(typeof bookObject.content)
         const hdrs = new Headers()
-        hdrs.append('Content-Type', bookObject.contentType)
+        //hdrs.append('Content-Type', bookObject.contentType)
         return new Response(bookObject.content, {
             status: 200,
             headers: hdrs
         })
     } else {
-        console.log("no book in local db")
         // check for book on server
-        /*try {
-            let st = await getServerAndToken()
-            let response = await fetch(getServerContentUrl(st.server, bookId), {headers: {"Authorization": "Bearer " + st.token}})
-            return response
-        } catch (error) {
-            console.log(error)
-            return get404Response()
-        }*/
         let backend = await Backend.factory()
         return await backend.getContent(bookId)
     }
-}
-
-function databaseSave(table, value) {
-    return new Promise((resolve, reject) => {
-        getDb().then(db => {
-            console.log("obtained db")
-            console.log(db)
-            let transaction = db.transaction([table], "readwrite")
-            console.log("obtained transaction")
-            transaction.oncomplete = function(event) {
-                console.log("save transaction complete")
-                resolve(value)
-            }
-            let objectStore = transaction.objectStore(table)
-            value['date'] = new Date()
-            console.log("saving value:")
-            console.log(value)
-            let addRequest = objectStore.put(value)
-            addRequest.onsuccess = (event) => {
-                console.log("add request successful")
-            }
-        })
-    })
-}
-
-function databaseLoad(table, key, columns = null) {
-    return new Promise((resolve, reject) => {
-        getDb().then(db => {
-            let transaction = db.transaction([table])
-            let objectStore = transaction.objectStore(table)
-            let dbRequest = objectStore.get(key)
-            dbRequest.onsuccess = function(event) {
-                if (event.target.result) {
-                    if (columns != null) {
-                        let obj = {}
-                        for (let c = 0; c < columns.length; c++) {
-                            obj[columns[c]] = event.target.result[columns[c]]
-                        }
-                        resolve(obj)
-                    } else {
-                        resolve(event.target.result)
-                    }
-                } else {
-                    resolve()
-                }
-            }
-            dbRequest.onerror = function(event) {
-                reject()
-            }
-        })
-    })
-}
-
-function databaseLoadAll(table) {
-    return new Promise((resolve, reject) => {
-        getDb().then(db => {
-            let transaction = db.transaction([table])
-            let objectStore = transaction.objectStore(table)
-            let dbRequest = objectStore.getAll()
-            dbRequest.onsuccess = function(event) {
-                if (event.target.result) {
-                    resolve(event.target.result)
-                } else {
-                    resolve()
-                }
-            }
-            dbRequest.onerror = function(event) {
-                reject()
-            }
-        })
-    })
-}
-
-function databaseDeleteAll(table) {
-    return new Promise((resolve, reject) => {
-        getDb().then(db => {
-            let transaction = db.transaction([table], "readwrite")
-            let objectStore = transaction.objectStore(table)
-            let dbRequest = objectStore.clear()
-            dbRequest.onsuccess = (event) => {
-                console.log(event)
-                resolve()
-            }
-            dbRequest.onerror = (event) => {
-                console.log(event)
-                reject()
-            }
-        })
-    })
-}
-
-function databaseLoadColumns(table, key, columns) {
-    return new Promise((resolve, reject) => {
-        getDb().then(db => {
-            let transaction = db.transaction([table])
-            let objectStore = transaction.objectStore(table)
-            let cursorRequest = objectStore.openCursor()
-
-            let result = []
-            cursorRequest.onsuccess = event => {
-                let cursor = event.target.result
-                if (cursor) {
-                    let obj = {}
-                    obj[key] = cursor.value[key]
-                    for (let c = 0; c < columns.length; c++) {
-                        obj[columns[c]] = cursor.value[columns[c]]
-                    }
-                    result.push(obj)
-                    cursor.continue()
-                } else {
-                    resolve(result)
-                }
-            }
-            cursorRequest.onerror = event => reject()
-        })
-    })
-}
-
-function databaseLoadDistinct(table, column) {
-    return new Promise((resolve, reject) => {
-        getDb().then(db => {
-            let transaction = db.transaction([table])
-            let objectStore = transaction.objectStore(table)
-            let cursorRequest = objectStore.openCursor()
-            let distinctValues = new Set()
-            cursorRequest.onsuccess = event => {
-                let cursor = event.target.result
-                if (cursor) {
-                    distinctValues.add(cursor.value[column])
-                    cursor.continue()
-                } else {
-                    resolve(distinctValues)
-                }
-            }
-            cursorRequest.onerror = event => reject()
-        })
-    })
 }
