@@ -11,6 +11,7 @@ class Database {
     static FILE_TABLE = 'files'
     static PROGRESS_TABLE = 'progress'
     static CONNECTION_TABLE = 'connection'
+    static BOOK_META = ["title", "extension", "collection", "size", "cover"]
 
     constructor() {
 
@@ -226,15 +227,16 @@ class Database {
         })
     }
 
-    async deleteFile(id) {
+    async deleteBook(id) {
         return await this.databaseDelete(Database.FILE_TABLE, id)
     }
 
-    async saveFile(id, title, extension, size, cover, bytes) {
+    async saveBook(id, title, extension, collection, size, cover, bytes) {
         let dbFile = {
             "id": id,
             "title": title,
             "extension": extension,
+            "collection": collection,
             "size": size,
             "cover": cover,
             "content": bytes
@@ -255,7 +257,7 @@ class Database {
     }
 
     async loadBookMeta(bookId) {
-        let book = await this.databaseLoad(Database.FILE_TABLE, bookId, ["title", "extension", "size", "cover"])
+        let book = await this.databaseLoad(Database.FILE_TABLE, bookId, Database.BOOK_META)
         if (book) {
             book.local = true
         }
@@ -271,7 +273,7 @@ class Database {
     }
 
     async loadAllBookMetas() {
-        let books = await this.databaseLoadColumns(Database.FILE_TABLE, "id", ["title", "extension", "cover", "size"])
+        let books = await this.databaseLoadColumns(Database.FILE_TABLE, "id", Database.BOOK_META)
         console.log(books)
         return Array.from(books)
     }
@@ -512,7 +514,7 @@ async function handleDelete(request) {
     console.log("deleting " + bookId)
 
     let db = new Database()
-    let deleteResult = await db.deleteFile(bookId)
+    let deleteResult = await db.deleteBook(bookId)
     console.log(deleteResult)
     if (deleteResult) {
         return getJsonResponse(true)
@@ -539,7 +541,15 @@ async function handleDownload(request) {
             let bytes = await contentResponse.arrayBuffer()
 
             let db = new Database()
-            await db.saveFile(bookMeta.id, bookMeta.title, bookMeta.extension, bookMeta.size, bookMeta.cover, bytes)
+            await db.saveBook(
+                bookMeta.id, 
+                bookMeta.title, 
+                bookMeta.extension, 
+                bookMeta.collection, 
+                bookMeta.size, 
+                bookMeta.cover, 
+                bytes
+            )
 
             return getJsonResponse(true)
         }
@@ -569,8 +579,32 @@ async function handleUpload(request) {
     // compute bytes hash for id
     let hash = getArrayBufferSHA256(bytes)
 
+    // try to get information from server
+    let collection = null
+    try {
+        let backend = await Backend.factory()
+        let metaResponse = await backend.getMeta(hash)
+        console.log(metaResponse)
+        if (metaResponse.status == 200) {
+            let meta = await metaResponse.json()
+            console.log(meta)
+            collection = meta.collection
+            // todo: do we want to update titles and stuff?
+        }
+    } catch (error) {
+        console.log(error)
+    }
+
     let db = new Database()
-    let savedValue = await db.saveFile(hash, title, extension, size, cover, bytes)
+    let savedValue = await db.saveBook(
+        hash, 
+        title, 
+        extension, 
+        collection,
+        size,
+        cover,
+        bytes
+    )
     console.log(savedValue)
 
     return Response.redirect("/", 302)
