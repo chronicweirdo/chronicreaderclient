@@ -266,10 +266,10 @@
                 return response.json()
             })
             .then((books) => {
-                console.log(books)
-                let bookList = document.getElementById("bookList")
-                bookList.innerHTML = ""
-                bookList.appendChild(getBookList(books))
+                let list = new BookList(document.getElementById("localList"))
+                for (let book of books) {
+                    list.addBook(book)
+                }
             })
             /*fetch("search")
             .then(response => {
@@ -361,7 +361,7 @@
 <body>
     <h1>Chronic Reader Client</h1>
     <div id="testCover"></div>
-    <div id="bookList"></div>
+    <div id="localList"></div>
     <form action="upload" enctype="multipart/form-data" method="post">
         <label for="myFile">Upload Your File</label>
         <input id="myFile" accept=".epub,.cbz,.cbr" name="filename" type="file" />
