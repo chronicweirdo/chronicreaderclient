@@ -72,7 +72,7 @@
             }
             return Number(position)
         }*/
-        function getTools() {
+        function getTools(bookMeta) {
             let p = document.createElement("p")
             
             let libraryLink = document.createElement("a")
@@ -80,12 +80,40 @@
             libraryLink.href = "/"
             p.appendChild(libraryLink)
 
-            let downloadLink = document.createElement("a")
-            downloadLink.innerHTML = "download"
-            downloadLink.onclick = () => {
-                fetch("/download/" + getBookId()).then(response => console.log(response))
+            document.downloadLink = document.createElement("a")
+            document.downloadLink.innerHTML = "download"
+            document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
+            document.downloadLink.onclick = () => {
+                fetch("/download/" + getBookId())
+                    .then(response => response.json())
+                    .then(result => {
+                        console.log("downloaded book to device: " + result)
+                        if (result) {
+                            document.downloadLink.style.display = "none"
+                            document.deleteLink.style.display = "inline-block"
+                        }
+                    })
             }
-            p.appendChild(downloadLink)
+            p.appendChild(document.downloadLink)
+
+            document.deleteLink = document.createElement("a")
+            document.deleteLink.innerHTML = "delete from local"
+            document.deleteLink.style.display = bookMeta.local ? "inline-block" : "none"
+            document.deleteLink.onclick = () => {
+                let url = "/delete/" + getBookId()
+                console.log("deleting book at " + url)
+                fetch(url)
+                    .then(response => response.json())
+                    .then(result => {
+                        console.log("book successfully deleted: " + result)
+                        if (result) {
+                            document.downloadLink.style.display = "inline-block"
+                            document.deleteLink.style.display = "none"
+                        }
+                    })
+                    .catch(e => console.log(e))
+            }
+            p.appendChild(document.deleteLink)
 
             return p
         }
@@ -106,7 +134,7 @@
                         {
                             "position": startPosition,
                             "displayPageForCallback": displayPageCallback,
-                            "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools()]
+                            "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
                         }
                     )
                 })

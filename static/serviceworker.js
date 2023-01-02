@@ -116,6 +116,24 @@ class Database {
             })
         })
     }
+
+    databaseDelete(table, key) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                let transaction = db.transaction([table], 'readwrite')
+                let objectStore = transaction.objectStore(table)
+                let dbRequest = objectStore.delete(key)
+                //transaction.oncomplete = () => resolve(true)
+                dbRequest.onsuccess = function(event) {
+                    console.log("deleted")
+                    resolve(true)
+                }
+                dbRequest.onerror = function(event) {
+                    reject()
+                }
+            })
+        })
+    }
     
     databaseDeleteAll(table) {
         return new Promise((resolve, reject) => {
@@ -208,6 +226,10 @@ class Database {
         })
     }
 
+    async deleteFile(id) {
+        return await this.databaseDelete(Database.FILE_TABLE, id)
+    }
+
     async saveFile(id, title, extension, size, cover, bytes) {
         let dbFile = {
             "id": id,
@@ -233,11 +255,19 @@ class Database {
     }
 
     async loadBookMeta(bookId) {
-        return await this.databaseLoad(Database.FILE_TABLE, bookId, ["title", "extension", "size", "cover"])
+        let book = await this.databaseLoad(Database.FILE_TABLE, bookId, ["title", "extension", "size", "cover"])
+        if (book) {
+            book.local = true
+        }
+        return book
     }
 
     async loadBook(bookId) {
-        return await this.databaseLoad(Database.FILE_TABLE, bookId)
+        let book = await this.databaseLoad(Database.FILE_TABLE, bookId)
+        if (book) {
+            book.local = true
+        }
+        return book
     }
 
     async loadAllBookMetas() {
@@ -271,6 +301,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(login(e.request))
     } else if (url.pathname.startsWith("/download")) {
         e.respondWith(handleDownload(e.request))
+    } else if (url.pathname.startsWith("/delete")) {
+        e.respondWith(handleDelete(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -473,6 +505,21 @@ async function login(request) {
     return Response.redirect("/", 302)
 }
 
+async function handleDelete(request) {
+    let url = new URL(request.url)
+    let pathParts = url.pathname.split("/")
+    let bookId = pathParts[pathParts.length - 1]
+    console.log("deleting " + bookId)
+
+    let db = new Database()
+    let deleteResult = await db.deleteFile(bookId)
+    console.log(deleteResult)
+    if (deleteResult) {
+        return getJsonResponse(true)
+    }
+    return getJsonResponse(false)
+}
+
 async function handleDownload(request) {
     let url = new URL(request.url)
     let pathParts = url.pathname.split("/")
@@ -494,10 +541,10 @@ async function handleDownload(request) {
             let db = new Database()
             await db.saveFile(bookMeta.id, bookMeta.title, bookMeta.extension, bookMeta.size, bookMeta.cover, bytes)
 
-            return getJsonResponse(bookMeta)
+            return getJsonResponse(true)
         }
     }
-    return get404Response()
+    return getJsonResponse(false)
 }
 
 async function handleUpload(request) {
