@@ -175,9 +175,13 @@ class Backend {
         }
     }
 
-    getAuthHeaders() {
-        console.log(this.token)
-        return { 'Authorization': 'Bearer ' + this.token}
+    getAuthHeaders(contentType = null) {
+        //console.log(this.token)
+        let headers = { 'Authorization': 'Bearer ' + this.token}
+        if (contentType != null) {
+            headers["Content-Type"] = contentType
+        }
+        return headers
     }
 
     async search(query, page = null, pageSize = null) {
@@ -239,10 +243,18 @@ class Backend {
         }
     }
 
-    async saveProgress(bookId, position) {
+    async saveProgress(bookId, position, updated) {
         try {
-            let url = this.server + "/progress/" + bookId + "/" + position
-            let response = await fetch(url, {method: 'PUT', headers: this.getAuthHeaders()})
+            let url = this.server + "/progress/" + bookId // + "/" + position
+            let body = JSON.stringify({
+                position: position,
+                updated: updated
+            })
+            let response = await fetch(url, {
+                method: 'PUT', 
+                body: body,
+                headers: this.getAuthHeaders("application/json")
+            })
             if (response.status == 200) {
                 return true
             } else {
@@ -456,36 +468,10 @@ async function syncProgress(request) {
         }
         // todo: sync progress with backend if it exists
         let backend = await Backend.factory()
-        let saveProgressResult = await backend.saveProgress(bookId, progress)
+        let saveProgressResult = await backend.saveProgress(bookId, progress, now)
         console.log("saved progress to backend successful? " + saveProgressResult)
         return getJsonResponse(progress)
     } else {
-        /*// load progress from backend, if it exists
-        let backend = await Backend.factory()
-        let backendProgress = await backend.getProgress(bookId)
-        console.log("backend progress:")
-        console.log(backendProgress)
-        // load progress from database
-        let databaseProgress = await databaseLoad(PROGRESS_TABLE, bookId)
-        console.log(databaseProgress)
-        if (backendProgress != null && databaseProgress != null) {
-            // use the latest progress
-            if (backendProgress.date > databaseProgress.date) {
-                return getJsonResponse(backendProgress.progress)
-            } else {
-                return getJsonResponse(databaseProgress.progress)
-            }
-        } else if (backendProgress != null) {
-            // save backend progress to local db and return it
-            let res = await databaseSave(PROGRESS_TABLE, backendProgress)
-            return getJsonResponse(backendProgress.progress)
-        } else if (databaseProgress != null) {
-            // todo: compare two progress, return latest, update latest in local database
-            return getJsonResponse(databaseProgress.progress)
-        } else {
-            // we have no progress info, default position is 0
-            return getJsonResponse(0)
-        }*/
         let progress = await getProgressForBook(bookId)
         return getJsonResponse(progress)
     }
