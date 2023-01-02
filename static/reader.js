@@ -1,5 +1,3 @@
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-
 var NOT_IMPLEMENTED_EXCEPTION = "not implemented"
 var chronicReaderInstance = null
 
@@ -1324,6 +1322,7 @@ class Display {
         this.setDefault("swipeLength", 0.06)
         this.setDefault("swipeAngleThreshold", 30)
         this.setDefault("enableKeyboard", false)
+        this.setDefault("toolsContents", ["cover", "toc", "zoom", "progress"])
     }
 
     getPosition() {
@@ -1499,6 +1498,7 @@ class Display {
         }
         this.loading = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100 - 2 * this.settings.leftMarginPercent) + "%", "100%", "#ffffff00")
         this.loading.appendChild(this.getLoadingSvg())
+        this.loading.style.zIndex = 2000
         if (this.settings.displayControls) {
             this.setControlsColor(this.settings.controlsColor)
         }
@@ -1537,14 +1537,7 @@ class Display {
         }
     }
 
-    async buildToolsUi() {
-        let toolsContents = document.createElement("div")
-        toolsContents.classList.add("ebookPage")
-        toolsContents.style.position = "absolute"
-        toolsContents.style.top = 0
-        toolsContents.style.left = 0
-        toolsContents.style.width = "100%"
-
+    async addCoverToToolsUi(toolsContents) {
         // add cover
         let coverBase64 = await this.book.getCover()
         if (coverBase64) {
@@ -1552,16 +1545,20 @@ class Display {
             coverElement.src = coverBase64
             toolsContents.appendChild(coverElement)
         }
-        
+    }
+
+    async addTocToToolsUi(toolsContents) {
         // add toc
         let buildTocListFunction = (node) => {
             let item = document.createElement("li")
             let link = document.createElement("a")
             link.innerHTML = node.name
             link.setAttribute("position", node.position)
+            link.style.direction = "ltr"
+            link.style.display = "inline-block"
             link.onclick = () => {
-                this.displayPageFor(node.position)
                 this.hideTools()
+                this.displayPageFor(node.position)
             }
             item.appendChild(link)
             if (node.children && node.children.length > 0) {
@@ -1609,19 +1606,52 @@ class Display {
             toolsContents.appendChild(tocList)
             this.tocElement = tocList
         }
+    }
+
+    async addZoomToToolsContents(toolsContents) {
         let decreaseTextSizeButton = document.createElement("a")
         decreaseTextSizeButton.innerHTML = "zoom out"
         decreaseTextSizeButton.onclick = () => this.zoomOut()
         toolsContents.appendChild(decreaseTextSizeButton)
         let increaseTextSizeButton = document.createElement("a")
-        increaseTextSizeButton.innerHTML = "zoomIn"
+        increaseTextSizeButton.innerHTML = "zoom in"
         increaseTextSizeButton.onclick = () => this.zoomIn()
         toolsContents.appendChild(increaseTextSizeButton)
+    }
 
+    async addProgressToToolsContents(toolsContents) {
         this.progressDisplay = document.createElement("p")
         this.progressDisplay.style.direction = "ltr"
         this.progressDisplay.innerHTML = "remaining"
         toolsContents.appendChild(this.progressDisplay)
+    }
+
+    async buildToolsUi() {
+        let toolsContents = document.createElement("div")
+        toolsContents.classList.add("ebookPage")
+        toolsContents.style.position = "absolute"
+        toolsContents.style.top = 0
+        toolsContents.style.left = 0
+        toolsContents.style.width = "100%"
+
+        console.log(this.settings.toolsContents)
+        for (let content of this.settings.toolsContents) {
+            if (content == "cover") {
+                await this.addCoverToToolsUi(toolsContents)
+            } else if (content == "toc") {
+                await this.addTocToToolsUi(toolsContents)
+            } else if (content == "zoom") {
+                await this.addZoomToToolsContents(toolsContents)
+            } else if (content == "progress") {
+                await this.addProgressToToolsContents(toolsContents)
+            } else {
+                //custom content
+                if (typeof content == "function") {
+                    let element = await content()
+                    toolsContents.appendChild(element)
+                }
+            }
+        }
         
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        
@@ -2467,13 +2497,16 @@ class EbookWrapper extends BookWrapper {
         }
     }
 
-    async findSpaceAfter(position) {
+    async findSpaceAfter(position, start = null) {
         let size = await this.getSize()
-        if (position < 0 || position >= size) return null
         let nodes = await this.getNodes()
         for (var index in nodes) {
             let node = nodes[index]
-            if (node.start <= position && position <= node.end) {
+            let nodeSelectPosition = position
+            if (start != null) {
+                nodeSelectPosition = start
+            }
+            if (node.start <= nodeSelectPosition && nodeSelectPosition <= node.end) {
                 return node.findSpaceAfter(position)
             }
         }
@@ -2498,7 +2531,7 @@ class EbookDisplay extends Display {
     configure() {
         super.configure()
 
-        this.setDefault("initialTextSize", 1)
+        this.setDefault("textSize", 1)
         this.setDefault("maximumTextSize", 2)
         this.setDefault("minimumTextSize", 0.5)
         this.setDefault("textSizeStep", 0.1)
@@ -2525,7 +2558,7 @@ class EbookDisplay extends Display {
     triggerComputationForAllPages() {
         this.book.getSize()
             .then(size => {
-                this.#getPageFor(size)
+                this.#computePageFor(size)
                 .then((page) => {
                     if (page != null) console.log("computed final page " + page.start + " - " + page.end)
                 })
@@ -2533,14 +2566,17 @@ class EbookDisplay extends Display {
     }
 
     #setTextSize(value) {
-        this.textSize = value
-        this.page.style.fontSize = this.textSize + "em"
-        this.shadowPage.style.fontSize = this.textSize + "em"
-        this.displayPageFor(this.currentPage.start)
+        this.settings.textSize = value
+        this.page.style.fontSize = this.settings.textSize + "em"
+        this.shadowPage.style.fontSize = this.settings.textSize + "em"
+        this.#timeout(1000).then(() => {
+            console.log("recomputing for text size " + this.settings.textSize)
+            this.displayPageFor(this.currentPage.start)
+        })
     }
 
     zoomIn() {
-        let currentTextSize = this.textSize
+        let currentTextSize = this.settings.textSize
         let newTextSize = currentTextSize + this.settings.textSizeStep
         if (newTextSize > this.settings.maximumTextSize) {
             newTextSize = this.settings.maximumTextSize
@@ -2549,7 +2585,7 @@ class EbookDisplay extends Display {
     }
 
     zoomOut() {
-        let currentTextSize = this.textSize
+        let currentTextSize = this.settings.textSize
         let newTextSize = currentTextSize - this.settings.textSizeStep
         if (newTextSize < this.settings.minimumTextSize) {
             newTextSize = this.settings.minimumTextSize
@@ -2657,22 +2693,37 @@ class EbookDisplay extends Display {
             this.currentPage = page
             this.setPosition(this.currentPage.start)
             let node = await this.book.getNodeAt(page.start)
-            this.page.innerHTML = await this.book.getContentsAt(page.start, page.end)
-            // links need to be fixed on the actual final element
-            // because an onclick event is configured on them
-            await this.fixLinks(this.page, node.key)
+            if (node != null) {
+                let contents = await this.book.getContentsAt(page.start, page.end)
+                if (contents == null) {
+                    this.page.innerHTML = ""
+                } else {
+                    this.page.innerHTML = contents
+                }
+                // links need to be fixed on the actual final element
+                // because an onclick event is configured on them
+                await this.fixLinks(this.page, node.key)
+            } else {
+                this.page.innerHTML = ""
+            }
             this.highlightTocPosition(position)
             this.hideLoading()
             if (this.progressDisplay) {
                 let pagesLeft = await this.#getPagesLeftInChapter()
                 let size = await this.book.getSize()
-                let message = " " + (pagesLeft) + " pages remaining in chapter, position " + this.getPosition() + " of " + this.book.size
-                    this.progressDisplay.innerHTML = message
+                let message = ""
+                if (pagesLeft != null) {
+                    message += " " + (pagesLeft) + " pages remaining in chapter, "
+                }
+                message += "position " + this.getPosition() + " of " + size
+                this.progressDisplay.innerHTML = message
             }
             await this.#timeout(10)
             if (this.settings.displayPageForCallback) {
                 this.settings.displayPageForCallback(this.#buildCallbackControls())
             }
+        } else {
+            console.log("page is NULL!!")
         }
         
         return page
@@ -2727,23 +2778,45 @@ class EbookDisplay extends Display {
         if (this.pages[pageCacheKey] == undefined) {
             this.pages[pageCacheKey] = this.#deserializePageCache(pageCacheKey)
         }
-        return this.pages[pageCacheKey]
+        let cache = this.pages[pageCacheKey]
+        return cache
     }
 
     async #getPagesLeftInChapter() {
         let currentPosition = this.getPosition()
         let currentPage = await this.#getPageFor(currentPosition, true)
         let node = await this.book.getNodeAt(currentPosition)
-        let nextChapterPosition = node.node.findChapterEnd(currentPosition)
-        let chapterEndPage = await this.#getPageFor(nextChapterPosition, true)
-        return chapterEndPage.index - currentPage.index
+        if (node != null) {
+            let nextChapterPosition = node.node.findChapterEnd(currentPosition)
+            let chapterEndPage = await this.#getPageFor(nextChapterPosition, true)
+            return chapterEndPage.index - currentPage.index
+        } else {
+            return null
+        }
     }
 
-    async #getPageFor(position, withIndex = false) {
+    async #getPageFor(position, withIndex = true) {
         let pageCache = this.#getPagesCache()
         let page = pageCache.getPageFor(position, withIndex)
+        if (page != null) {
+            return page
+        } else {
+            //console.log("page not in cache, requesting computation")
+            this.#computePageFor(position)
+            do {
+                await this.#timeout(1000)
+                //console.log("trying to get page again")
+                pageCache = this.#getPagesCache()
+                page = pageCache.getPageFor(position, withIndex)
+            } while (page == null)
+            return page
+        }
+        
+        /*console.log("page: " + page)
         if (page == null) {
+            // trigger page computation
             let computedPage = await this.#computePageFor(position)
+
             if (withIndex) {
                 let pageFromCache = pageCache.getPageFor(position, withIndex)
                 return pageFromCache
@@ -2752,7 +2825,8 @@ class EbookDisplay extends Display {
             }
         } else {
             return page
-        }
+        }*/
+        //return page
     }
     
     #overflowTriggerred() {
@@ -2775,12 +2849,14 @@ class EbookDisplay extends Display {
         let previousEnd = null
         let end = await this.book.findSpaceAfter(start)
         this.shadowElement.innerHTML = ""
+        //let steps = 1
         while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
             previousEnd = end
             end = await this.book.findSpaceAfter(previousEnd)
+            //steps += 1
             this.shadowElement.innerHTML = await this.book.getContentsAt(start, end)
         }
-
+        //console.log("maximal page computed in " + steps + " steps")
         if (previousEnd != null) {
             return new Page(start, previousEnd)
         } else {
@@ -2788,28 +2864,96 @@ class EbookDisplay extends Display {
         }
     }
 
+    #updateAveragePageSize(pageSize) {
+        if (this.averagePageSize) {
+            this.averagePageSize = Math.floor((this.averagePageSize + pageSize) / 2)
+        } else {
+            this.averagePageSize = pageSize
+        }
+    }
+
+    #getAveragePageSize() {
+        if (this.averagePageSize) {
+            return this.averagePageSize
+        } else {
+            return 1000
+        }
+    }
+
+    async #computeMaximalPage2(start) {
+        let jumpStep = Math.floor(this.#getAveragePageSize() * .9)
+        let minimumJumpStep = 10
+        let end = start
+        this.shadowElement.innerHTML = ""
+        //let steps = 1
+        let resolved = false
+
+        do {
+            //steps += 1
+            let tryEnd = end + jumpStep
+            let newEnd = await this.book.findSpaceAfter(tryEnd, start)
+            if (newEnd != null) {
+                let contents = await this.book.getContentsAt(start, newEnd)
+                if (contents != null) {
+                    //console.log(contents)
+                    this.shadowElement.innerHTML = contents
+                    let overflow = await this.#overflowTriggerred()
+                    //console.log("st te ne ovf " + start + " " + tryEnd + " " + newEnd + ' ' + overflow)
+                    if (overflow == false) {
+                        if (newEnd == end) {
+                            // not making progress, we are probably at the end
+                            resolved = true
+                        } else {
+                            //we can keep looking
+                            end = newEnd
+                        }
+                    } else {
+                        if (jumpStep > 0) {
+                            // readjust our computation
+                            jumpStep = Math.floor(jumpStep / 4)
+                            if (jumpStep < minimumJumpStep) jumpStep = 0
+                        } else {
+                            // we have found the maximal page at the previous step
+                            resolved = true
+                        }
+                    }
+                } else {
+                    // null content is an issue and we should stop
+                    resolved = true
+                }
+            } else {
+                resolved = true
+            }
+        } while (resolved == false)
+
+        //console.log("computed maximal page in " + steps + ' steps')
+        this.#updateAveragePageSize(end - start)
+        return new Page(start, end)
+    }
+
     async #computePageFor(position) {
         if (this.computationInProgress == undefined || this.computationInProgress == false) {
+            //let startTimestamp = Date.now()
             this.computationInProgress = true
             let originalPageCache = this.#getPagesCache()
             let currentPageCache = originalPageCache
             let start = originalPageCache.getEnd()
             if (start > 0) start = start + 1
-            let page = await this.#computeMaximalPage(start)
+            let page = await this.#computeMaximalPage2(start)
             originalPageCache.addPage(page)
             let lastSavedTimestamp = Date.now()
             while (! page.contains(position) && originalPageCache == currentPageCache && this.stopped != true) {
                 let newStart = page.end + 1
-                page = await this.#computeMaximalPage(newStart)
+                page = await this.#computeMaximalPage2(newStart)
                 originalPageCache.addPage(page)
                 if (Date.now() - lastSavedTimestamp > 30000) {
                     this.#serializePageCache(originalPageCache)
                     lastSavedTimestamp = Date.now()
                 }
                 currentPageCache = this.#getPagesCache()
-                await this.#timeout(10)
+                await this.#timeout(1)
             }
-            console.log("finished computing page for " + position + " (stopped " + this.stopped + ")")
+            //console.log("finished computing page for " + position + " in " + (Date.now() - startTimestamp) + " (stopped " + this.stopped + ")")
             this.#serializePageCache(originalPageCache)
             if (originalPageCache != currentPageCache) {
                 this.computationInProgress = false
@@ -2934,5 +3078,3 @@ class ChronicReader {
         }
     }
 }
-
-//export { ChronicReader }
