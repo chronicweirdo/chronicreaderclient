@@ -414,22 +414,26 @@ class Backend {
         return headers
     }
 
-    async search(term, page = null, pageSize = null) {
+    async search(term, page, pageSize, order) {
         try {
-            let url = this.server + "/search"
-            let params = new Map()
-            if (term != null) {
-                params.set("term", term)
+            if (term == undefined || term == null) {
+                term = ""
             }
-            if (page != null) {
-                params.set("page", page)
+            if (page == undefined || page == null) {
+                page = 0
             }
-            if (pageSize != null) {
-                params.set("pageSize", pageSize)
+            if (pageSize == undefined || pageSize == null) {
+                pageSize = 10
             }
-            if (params.size > 0) {
-                url += "?" + new URLSearchParams(params)
+            if (order == undefined || order == null) {
+                order = ""
             }
+            let url = this.server + "/search?" + new URLSearchParams({
+                term: term,
+                page: page,
+                pageSize: pageSize,
+                order: order
+            })
             console.log("search " + url)
             let response = await fetch(url, {
                 headers: this.getAuthHeaders()
@@ -438,11 +442,11 @@ class Backend {
                 let result = await response.json()
                 return result
             } else {
-                return []
+                return null
             }
         } catch (error) {
             console.log(error)
-            return get500Response()
+            return null
         }
     }
 
@@ -671,12 +675,16 @@ async function searchServer(request) {
     console.log("page: " + page)
     let pageSize = Number(params.get("pageSize"))
     console.log("page size: " + pageSize)
-    
+    let order = params.get("order")
+    console.log("order: " + order)
 
     let backend = await Backend.factory()
-    let searchResult = await backend.search(term, page, pageSize)
-    console.log(searchResult)
-    return getJsonResponse(searchResult)
+    let searchResult = await backend.search(term, page, pageSize, order)
+    if (searchResult != null) {
+        return getJsonResponse(searchResult)
+    } else {
+        return get404Response()
+    }
 }
 
 async function getProgressForBook(bookId) {
