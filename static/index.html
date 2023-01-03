@@ -4,10 +4,8 @@
     <title>Chronic Reader Client</title>
     <link rel="manifest" href="manifest.json">
     <script src="/serviceworkerinstall.js"></script>
+    <link rel="stylesheet" type="text/css" href="fonts.css">
     <script>
-        
-        
-
         class BookList {
             static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
             constructor(element, withCollections = false) {
@@ -60,7 +58,7 @@
                 }
             }
 
-            addBook(book) {
+            async addBook(book) {
                 let parent = null
                 if (this.withCollections) {
                     parent = this.getCollectionElement(book.collection)
@@ -68,7 +66,7 @@
                     parent = this.getListElement()
                 }
 
-                let bookItem = this.getBookItem(book)
+                let bookItem = await this.getBookItem(book)
                 parent.appendChild(bookItem)
             }
 
@@ -102,7 +100,7 @@
             }
             
             
-            getCoverItem(book) {
+            async getCoverItem(book) {
                 let imageEnclosure = document.createElement("span")
                 imageEnclosure.style.overflow = 'hidden'
                 imageEnclosure.style.position = "relative"
@@ -111,7 +109,7 @@
 
                 let image = document.createElement("img")
                 if (book.cover == null) {
-                    image.src = this.createBookCover(book.id, book.title, 500, 800)
+                    image.src = await this.createBookCover(book.id, book.title, 500, 800)
                 } else {
                     image.src = book.cover
                 }
@@ -120,13 +118,7 @@
                     image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
                     image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
                 }
-                //image.style.width = "100%"
                 image.style.height = '100%'
-                /*image.style.marginLeft = 'auto'
-                image.style.marginRight = 'auto'
-                image.style.marginTop = 'auto'
-                image.style.marginBottom = 'auto'*/
-                //image.style.left = '-50%'
                 image.style.position = "relative"
                 imageEnclosure.appendChild(image)
 
@@ -148,9 +140,6 @@
                 let r = Math.round(Math.sin(0.024 * i + 0) * 127 + 128)
                 let g = Math.round(Math.sin(0.024 * i + 2) * 127 + 128)
                 let b = Math.round(Math.sin(0.024 * i + 4) * 127 + 128)
-                //let rgb = `rgb(${r},${g},${b})`
-                //console.log("rgb for " + val + ": " + rgb)
-                //return rgb
                 return [r, g, b]
             }
 
@@ -161,11 +150,9 @@
                 return Math.sqrt(0.299*R*R + 0.587*G*G + 0.114*B*B)
             }
 
-            createBookCover(id, title, width, height, element) {
-                //console.log(title)
+            async createBookCover(id, title, width, height, element) {
                 let margin = width / 10
                 let words = title.split(/\s/g)
-                //console.log(words)
                 let rows = []
                 let row = ""
                 let words_on_row = 3
@@ -193,32 +180,27 @@
                 let colorSeed = this.getIdSeed(id)
                 let coverRgb = this.numToRgb(colorSeed)
                 let coverColor = `rgb(${coverRgb[0]},${coverRgb[1]},${coverRgb[2]})`
-
-                //let textColorSeed = colorSeed + .5//colorSeed <= 1 ? colorSeed + .5 : 1 // (1 - colorSeed)+.5
-                //let textColor = this.numToRgb(textColorSeed) // "#FFFFFF"
                 let luminance = this.computeLuminance(coverRgb)
                 let threshold = 140
-                //let textLightness = (coverRgb[0] < threshold ? 1 : 0) + (coverRgb[1] < threshold ? 1 : 0) + (coverRgb[2] < threshold ? 1 : 0)
                 let textColor = "#000000"
                 if (luminance < threshold) {
                     textColor = "#ffffff"
                 }
-                //console.log("for rgb " + coverRgb + " text color " + textColor + " because luminance " + luminance)
-                //if (colorSeed < .5) {
-                //    textColor = "#000000"
-                //}
                 context.fillStyle = coverColor
                 context.fillRect(0, 0, width, height)
                 context.fillStyle = textColor
                 context.textAlign = "center"
 
                 // find correct font size
+                //let f = new FontFace("Merriweather", 'url("/Merriweather/Merriweather-Regular.ttf")')
+                //await f.load()
+
                 let fontSize = width/rows[longestRow].length * 3
-                context.font = fontSize + "px serif"
+                context.font = fontSize + 'px "Merriweather"'
                 while (context.measureText(rows[longestRow]).width > width - margin) {
                     fontSize -= 1
                     // font-family: 'Merriweather', serif;
-                    context.font = fontSize + "px Merriweather"
+                    context.font = fontSize + 'px "Merriweather"'
                 }
 
                 let rowHeight = 0
@@ -251,7 +233,7 @@
                 return base64
             }
 
-            getBookItem(book) {
+            async getBookItem(book) {
                 let item = document.createElement("li")
                 item.style.width = '100%'
                 item.style.overflow = 'hidden'
@@ -261,7 +243,7 @@
                 itemLink.style.position = 'relative'
                 itemLink.href = "/read.html?book=" + book.id
                 
-                itemLink.appendChild(this.getCoverItem(book))
+                itemLink.appendChild(await this.getCoverItem(book))
 
                 let title = document.createElement("span")
                 title.innerHTML = book.title
@@ -390,6 +372,7 @@
             return false
         }
     </script>
+    
     <style>
         body {
             font-family: 'Merriweather', serif;
