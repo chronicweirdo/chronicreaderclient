@@ -8,15 +8,23 @@
     <script>
         class BookList {
             static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
-            constructor(element, withCollections = false) {
+            constructor(element, withCollections = false, searchFunction = null) {
                 this.element = element
                 this.element.innerHTML = ""
                 this.withCollections = withCollections
+                this.searchFunction = searchFunction
             }
 
-            createTitle(name) {
+            createTitle(collection) {
                 let title = document.createElement("h1")
-                title.innerHTML = name
+                if (this.searchFunction != undefined && this.searchFunction != null) {
+                    let items = this.getCollectionItems(collection)
+                    for (let i of items) {
+                        title.appendChild(i)
+                    }
+                } else {
+                    title.innerHTML = collection
+                }
                 return title
             }
 
@@ -233,6 +241,37 @@
                 return base64
             }
 
+            getCollectionItems(collection) {
+                console.log(collection)
+                if (collection == undefined || collection == null || collection.length == 0) return []
+                if (this.searchFunction != undefined && this.searchFunction != null) {
+                    let collectionParts = collection.split("/").filter(e => e.length > 0)
+                    let cumulative = ""
+                    let items = []
+                    for (let part of collectionParts) {
+                        let partName = "/" + part
+                        let partSearch = cumulative + partName
+
+                        let collectionItem = document.createElement("a")
+                        collectionItem.innerHTML = partName
+                        collectionItem.onclick = () => this.searchFunction(partSearch)
+                        items.push(collectionItem)
+
+                        cumulative = partSearch
+                    }
+
+                    return items
+                } else {
+                    let collectionItem = document.createElement("span")
+                    collectionItem.innerHTML = collection
+                    return [collectionItem]
+                }
+            }
+
+            getBookLink(book) {
+                return "/read.html?book=" + book.id
+            }
+
             async getBookItem(book) {
                 let item = document.createElement("li")
                 item.style.width = '100%'
@@ -241,14 +280,35 @@
                 let itemLink = document.createElement("a")
                 itemLink.style.overflow = 'hidden'
                 itemLink.style.position = 'relative'
-                itemLink.href = "/read.html?book=" + book.id
+                itemLink.href = this.getBookLink(book)
                 
                 itemLink.appendChild(await this.getCoverItem(book))
-
-                let title = document.createElement("span")
-                title.innerHTML = book.title
-                itemLink.appendChild(title)
                 item.appendChild(itemLink)
+
+                if (this.withCollections == false) {
+                    let title = document.createElement("span")
+                    let items = this.getCollectionItems(book.collection)
+                    for (let i of items) {
+                        title.appendChild(i)
+                    }
+                    if (items.length > 0) {
+                        let slash = document.createElement("span")
+                        slash.innerHTML = "/"
+                        title.appendChild(slash)
+                    }
+                    let actualTitle = document.createElement("a")
+                    actualTitle.innerHTML = book.title
+                    actualTitle.href = this.getBookLink(book)
+                    title.appendChild(actualTitle)
+                    item.appendChild(title)
+                } else {
+                    let title = document.createElement("a")
+                    title.innerHTML = book.title
+                    title.href = this.getBookLink(book)
+                    item.appendChild(title)
+                }
+                
+                
                 return item
             }
         }
@@ -350,7 +410,7 @@
 
             firstSearch() {
                 let withCollectionSections = (this.order == Search.ORDER_TITLE)
-                this.bookList = new BookList(this.element, withCollectionSections)
+                this.bookList = new BookList(this.element, withCollectionSections/*, (term) => console.log("searching " + term)*/)
                 this.page = 0
                 this.runSearch()
             }
@@ -378,6 +438,11 @@
             font-family: 'Merriweather', serif;
             font-size: 1.5rem;
         }
+        a {
+            color: black;
+            text-decoration: underline;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -395,14 +460,16 @@
         <label for="password"></label><input name="password" type="password" />
         <button name="submit" type="submit">Login</button>
     </form>
+    <h1>Latest read</h1>
+    <div id="latestReadList"></div>
+    <h1>Latest added</h1>
+    <div id="latestAddedList"></div>
+
     <form id="searchForm" onsubmit="return searchForm(this);">
         <label for="term">term:</label><input name="term" type="text" />
         <button name="submit" type="submit">Search</button>
     </form>
     <div id="searchList"></div>
-    <h1>Latest read</h1>
-    <div id="latestReadList"></div>
-    <h1>Latest added</h1>
-    <div id="latestAddedList"></div>
+    
 </body>
 </html>
