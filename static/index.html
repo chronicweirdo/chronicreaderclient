@@ -5,7 +5,11 @@
     <link rel="manifest" href="manifest.json">
     <script src="/serviceworkerinstall.js"></script>
     <script>
+        
+        
+
         class BookList {
+            static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
             constructor(element, withCollections = false) {
                 this.element = element
                 this.element.innerHTML = ""
@@ -96,7 +100,8 @@
                     return null
                 }
             }
-
+            
+            
             getCoverItem(book) {
                 let imageEnclosure = document.createElement("span")
                 imageEnclosure.style.overflow = 'hidden'
@@ -106,7 +111,7 @@
 
                 let image = document.createElement("img")
                 if (book.cover == null) {
-                    image.src = this.createBookCover(book.title, 500, 800)
+                    image.src = this.createBookCover(book.id, book.title, 500, 800)
                 } else {
                     image.src = book.cover
                 }
@@ -133,7 +138,31 @@
                 return imageEnclosure
             }
 
-            createBookCover(title, width, height, element) {
+            getIdSeed(id) {
+                return parseInt(id, 16) / BookList.SEED_MAX
+            }
+
+            numToRgb(val) {
+                let maxVal = 1
+                let i = (val * 255 / maxVal)
+                let r = Math.round(Math.sin(0.024 * i + 0) * 127 + 128)
+                let g = Math.round(Math.sin(0.024 * i + 2) * 127 + 128)
+                let b = Math.round(Math.sin(0.024 * i + 4) * 127 + 128)
+                //let rgb = `rgb(${r},${g},${b})`
+                //console.log("rgb for " + val + ": " + rgb)
+                //return rgb
+                return [r, g, b]
+            }
+
+            computeLuminance(rgb) {
+                let R = rgb[0]
+                let G = rgb[1]
+                let B = rgb[2]
+                return Math.sqrt(0.299*R*R + 0.587*G*G + 0.114*B*B)
+            }
+
+            createBookCover(id, title, width, height, element) {
+                //console.log(title)
                 let margin = width / 10
                 let words = title.split(/\s/g)
                 //console.log(words)
@@ -152,7 +181,7 @@
                         row += " " + words[i]
                     }
                 }
-                if (rows.length > 0) {
+                if (row.length > 0) {
                     rows.push(row)
                     if (row.length > rows[longestRow].length) longestRow = rows.length - 1
                 }
@@ -161,9 +190,26 @@
                 canvas.width = width
                 canvas.height = height
                 const context = canvas.getContext('2d')
-                context.fillStyle = "#FE0000"
+                let colorSeed = this.getIdSeed(id)
+                let coverRgb = this.numToRgb(colorSeed)
+                let coverColor = `rgb(${coverRgb[0]},${coverRgb[1]},${coverRgb[2]})`
+
+                //let textColorSeed = colorSeed + .5//colorSeed <= 1 ? colorSeed + .5 : 1 // (1 - colorSeed)+.5
+                //let textColor = this.numToRgb(textColorSeed) // "#FFFFFF"
+                let luminance = this.computeLuminance(coverRgb)
+                let threshold = 140
+                //let textLightness = (coverRgb[0] < threshold ? 1 : 0) + (coverRgb[1] < threshold ? 1 : 0) + (coverRgb[2] < threshold ? 1 : 0)
+                let textColor = "#000000"
+                if (luminance < threshold) {
+                    textColor = "#ffffff"
+                }
+                //console.log("for rgb " + coverRgb + " text color " + textColor + " because luminance " + luminance)
+                //if (colorSeed < .5) {
+                //    textColor = "#000000"
+                //}
+                context.fillStyle = coverColor
                 context.fillRect(0, 0, width, height)
-                context.fillStyle = "#FFFFFF"
+                context.fillStyle = textColor
                 context.textAlign = "center"
 
                 // find correct font size
@@ -171,7 +217,8 @@
                 context.font = fontSize + "px serif"
                 while (context.measureText(rows[longestRow]).width > width - margin) {
                     fontSize -= 1
-                    context.font = fontSize + "px serif"
+                    // font-family: 'Merriweather', serif;
+                    context.font = fontSize + "px Merriweather"
                 }
 
                 let rowHeight = 0
@@ -184,10 +231,12 @@
                     if (height > rowHeight) rowHeight = height
                 }
                 //console.log(rowHeight)
+                let rowSpacing = 10
+                rowHeight = rowHeight + rowSpacing
                 let totalHeight = rowHeight * rows.length
 
                 for (let i = 0; i < rows.length; i++) {
-                    let h = (height/2) - (totalHeight/2) + i * rowHeight + rowHeight / 2
+                    let h = (height/2) - (totalHeight/2) + (i+1) * rowHeight// + rowHeight / 2
                     context.fillText(rows[i], width/2, h)
                 }
                 
@@ -308,11 +357,11 @@
             runSearch() {
                 fetch(this.getUrl())
                 .then(response => {
-                    console.log(response)
+                    //console.log(response)
                     return response.json()
                 })
                 .then(searchResult => {
-                    console.log(searchResult)
+                    //console.log(searchResult)
                     this.addBooksToResult(searchResult)
                 })
             }
@@ -343,6 +392,7 @@
     </script>
     <style>
         body {
+            font-family: 'Merriweather', serif;
             font-size: 1.5rem;
         }
     </style>
