@@ -313,22 +313,7 @@
             }
         }
         
-        /*function getBookList(books) {
-            let list = document.createElement('ul')
-            list.style.padding = '0'
-            list.style.listStyleType = 'none'
-            list.style.display = 'grid'
-            list.style.gridTemplateColumns = '30vw 30vw 30vw'
-            list.style.columnGap = '2.5vw'
-            list.style.rowGap = '2.5vw'
-
-            for (let i = 0; i < books.length; i++) {
-                let item = getBookItem(books[i])
-                list.appendChild(item)
-            }
-
-            return list
-        }*/
+        
         
         window.onload = function() {
             fetch("/books")
@@ -336,7 +321,7 @@
                 return response.json()
             })
             .then((books) => {
-                let list = new BookList(document.getElementById("localList"))
+                let list = new BookList(document.getElementById("localList"), false, doSearch)
                 for (let book of books) {
                     list.addBook(book)
                 }
@@ -352,8 +337,8 @@
                 searchList.appendChild(getBookList(searchResult))
             })*/
             document.getElementById("searchForm").onsubmit()
-            new Search(document.getElementById("latestReadList"), "", 5, Search.ORDER_LATEST_READ, false).firstSearch()
-            new Search(document.getElementById("latestAddedList"), "", 5, Search.ORDER_LATEST_ADDED, false).firstSearch()
+            new Search(document.getElementById("latestReadList"), "", 5, Search.ORDER_LATEST_READ, false, doSearch).firstSearch()
+            new Search(document.getElementById("latestAddedList"), "", 5, Search.ORDER_LATEST_ADDED, false, doSearch).firstSearch()
             //createBookCover("A book about political science and all other stupid shit that has a ridiculously long title", 300, 500, document.getElementById("testCover"))
         }
 
@@ -361,12 +346,13 @@
             static ORDER_LATEST_READ = "read"
             static ORDER_LATEST_ADDED = "added"
             static ORDER_TITLE = ""
-            constructor(element, term, pageSize, order, multipage) {
+            constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null) {
                 this.element = element
                 this.term = term
                 this.pageSize = pageSize
                 this.order = order
                 this.multipage = multipage
+                this.collectionLinkFunction = collectionLinkFunction
             }
 
             getUrl() {
@@ -410,7 +396,7 @@
 
             firstSearch() {
                 let withCollectionSections = (this.order == Search.ORDER_TITLE)
-                this.bookList = new BookList(this.element, withCollectionSections/*, (term) => console.log("searching " + term)*/)
+                this.bookList = new BookList(this.element, withCollectionSections, this.collectionLinkFunction)
                 this.page = 0
                 this.runSearch()
             }
@@ -420,12 +406,15 @@
                 this.runSearch()
             }
         }
+        function doSearch(term) {
+            let search = new Search(document.getElementById("searchList"), term, 5, Search.ORDER_TITLE, true, doSearch)
+            search.firstSearch()
+        }
         function searchForm(form) {
             try {
                 let data = new FormData(form)
                 let term = data.get("term")
-                document.search = new Search(document.getElementById("searchList"), term, 5, Search.ORDER_TITLE, true)
-                document.search.firstSearch()
+                doSearch(term)
             } catch (error) {
                 console.log(error)
             }
