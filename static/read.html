@@ -129,7 +129,7 @@
                     }
                     document.reader = new ChronicReader(
                         "/book/" + bookId,
-                        document.getElementById("page"),
+                        document.body, //getElementById("page"),
                         meta.extension,
                         {
                             "position": startPosition,
@@ -148,13 +148,13 @@
             padding: 0;
             border: 0;
             overflow: hidden;
+            font-family: 'Merriweather', serif;
+            font-size: 1.5rem;
         }
         #page {
             width: 100%;
             height: 100%;
             position: absolute;
-            font-family: 'Merriweather', serif;
-            font-size: 1.5rem;
         }
         img, svg {
             /*max-height: 80vh !important;
@@ -208,6 +208,5 @@
     </style>
 </head>
 <body>
-    <div id="page">book page</div>
 </body>
 </html>

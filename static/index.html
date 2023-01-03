@@ -6,6 +6,175 @@
     <script src="/serviceworkerinstall.js"></script>
     <link rel="stylesheet" type="text/css" href="fonts.css">
     <script>
+
+        class TabbedPage {
+            constructor(element) {
+                this.element = element
+            }
+
+            createButton(label, func) {
+                let button = document.createElement("a")
+                button.innerHTML = label
+                button.onclick = func
+                button.style.display = "inline-block"
+                button.style.padding = ".4em"
+                button.style.cursor = "pointer"
+                button.style.color = "white"
+                button.style.backgroundColor = "black"
+                return button
+            }
+
+            highlightButton(button) {
+                button.style.backgroundColor = "gold"
+            }
+
+            resetButton(button) {
+                button.style.backgroundColor = "black"
+            }
+
+            resetButtons() {
+                this.resetButton(this.onDeviceButton)
+                this.resetButton(this.latestReadButton)
+                this.resetButton(this.latestAddedButton)
+                this.resetButton(this.searchButton)
+            }
+
+            async load() {
+                this.element.innerHTML = ""
+
+                let buttons = document.createElement("div")
+                this.element.appendChild(buttons)
+
+                this.content = document.createElement("div")
+                this.element.appendChild(this.content)
+
+                let searchTab = new LibrarySearchTab(this.content)
+                let globalSearchFunction = (term) => {
+                    this.resetButtons()
+                    this.highlightButton(this.searchButton)
+                    searchTab.load().then(() => searchTab.search(term))
+                }
+                let onDeviceTab = new OnDeviceTab(this.content, globalSearchFunction)
+                let latestReadTab = new LatestReadTab(this.content, globalSearchFunction)
+                let latestAddedTab = new LatestAddedTab(this.content, globalSearchFunction)
+                
+
+                this.onDeviceButton = this.createButton("on device", () => {
+                    this.resetButtons()
+                    this.highlightButton(this.onDeviceButton)
+                    onDeviceTab.load()
+                })
+                buttons.appendChild(this.onDeviceButton)
+
+                this.latestReadButton = this.createButton("latest read", () => {
+                    this.resetButtons()
+                    this.highlightButton(this.latestReadButton)
+                    latestReadTab.load()
+                })
+                buttons.appendChild(this.latestReadButton)
+
+                this.latestAddedButton = this.createButton("latest added", () => {
+                    this.resetButtons()
+                    this.highlightButton(this.latestAddedButton)
+                    latestAddedTab.load()
+                })
+                buttons.appendChild(this.latestAddedButton)
+
+                this.searchButton = this.createButton("search", () => {
+                    this.resetButtons()
+                    this.highlightButton(this.searchButton)
+                    searchTab.load()
+                })
+                buttons.appendChild(this.searchButton)
+
+                this.highlightButton(this.onDeviceButton)
+                onDeviceTab.load()
+            }
+        }
+
+        class OnDeviceTab {
+            constructor(element, searchFunction = null) {
+                this.element = element
+                this.searchFunction = searchFunction
+            }
+
+            async load() {
+                this.element.innerHTML = ""
+
+                await fetch("/books")
+                    .then(response => response.json())
+                    .then((books) => {
+                        let list = new BookList(this.element, false, this.searchFunction)
+                        for (let book of books) {
+                            list.addBook(book)
+                        }
+                    })
+            }
+        }
+
+        class LatestReadTab {
+            constructor(element, searchFunction = null) {
+                this.element = element
+                this.searchFunction = searchFunction
+            }
+
+            async load() {
+                this.element.innerHTML = ""
+                let search = new Search(this.element, "", 5, Search.ORDER_LATEST_READ, false, this.searchFunction)
+                await search.firstSearch()
+            }
+        }
+
+        class LatestAddedTab {
+            constructor(element, searchFunction = null) {
+                this.element = element
+                this.searchFunction = searchFunction
+            }
+
+            async load() {
+                this.element.innerHTML = ""
+                let search = new Search(this.element, "", 5, Search.ORDER_LATEST_ADDED, false, this.searchFunction)
+                await search.firstSearch()
+            }
+        }
+
+        class LibrarySearchTab {
+            constructor(element) {
+                this.element = element
+            }
+
+            async search(term = null) {
+                console.log(this)
+                if (term == null) {
+                    term = this.searchField.value
+                } else {
+                    this.searchField.value = term
+                }
+                console.log("searching for: " + term)
+
+                let search = new Search(this.searchList, term, 5, Search.ORDER_TITLE, true, (term) => this.search(term))
+                await search.firstSearch()
+            }
+
+            async load() {
+                this.element.innerHTML = ""
+
+                this.searchField = document.createElement("input")
+                this.searchField.type = "text"
+                this.element.appendChild(this.searchField)
+
+                this.searchButton = document.createElement("a")
+                this.searchButton.innerHTML = "search"
+                this.searchButton.onclick = () => this.search()
+                this.element.appendChild(this.searchButton)
+
+                this.searchList = document.createElement("div")
+                this.element.appendChild(this.searchList)
+
+                await this.search()
+            }
+        }
+
         class BookList {
             static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
             constructor(element, withCollections = false, searchFunction = null) {
@@ -316,30 +485,7 @@
         
         
         window.onload = function() {
-            fetch("/books")
-            .then(response => {
-                return response.json()
-            })
-            .then((books) => {
-                let list = new BookList(document.getElementById("localList"), false, doSearch)
-                for (let book of books) {
-                    list.addBook(book)
-                }
-            })
-            /*fetch("search")
-            .then(response => {
-                console.log(response)
-                return response.json()
-            })
-            .then(searchResult => {
-                let searchList = document.getElementById("searchList")
-                searchList.innerHTML = ""
-                searchList.appendChild(getBookList(searchResult))
-            })*/
-            document.getElementById("searchForm").onsubmit()
-            new Search(document.getElementById("latestReadList"), "", 5, Search.ORDER_LATEST_READ, false, doSearch).firstSearch()
-            new Search(document.getElementById("latestAddedList"), "", 5, Search.ORDER_LATEST_ADDED, false, doSearch).firstSearch()
-            //createBookCover("A book about political science and all other stupid shit that has a ridiculously long title", 300, 500, document.getElementById("testCover"))
+            new TabbedPage(document.body).load()
         }
 
         class Search {
@@ -382,43 +528,29 @@
                 }
             }
 
-            runSearch() {
-                fetch(this.getUrl())
-                .then(response => {
-                    //console.log(response)
-                    return response.json()
-                })
-                .then(searchResult => {
-                    //console.log(searchResult)
-                    this.addBooksToResult(searchResult)
-                })
+            async runSearch() {
+                await fetch(this.getUrl())
+                    .then(response => {
+                        //console.log(response)
+                        return response.json()
+                    })
+                    .then(searchResult => {
+                        //console.log(searchResult)
+                        this.addBooksToResult(searchResult)
+                    })
             }
 
-            firstSearch() {
+            async firstSearch() {
                 let withCollectionSections = (this.order == Search.ORDER_TITLE)
                 this.bookList = new BookList(this.element, withCollectionSections, this.collectionLinkFunction)
                 this.page = 0
-                this.runSearch()
+                await this.runSearch()
             }
 
-            nextSearch() {
+            async nextSearch() {
                 this.page = this.page + 1
-                this.runSearch()
+                await this.runSearch()
             }
-        }
-        function doSearch(term) {
-            let search = new Search(document.getElementById("searchList"), term, 5, Search.ORDER_TITLE, true, doSearch)
-            search.firstSearch()
-        }
-        function searchForm(form) {
-            try {
-                let data = new FormData(form)
-                let term = data.get("term")
-                doSearch(term)
-            } catch (error) {
-                console.log(error)
-            }
-            return false
         }
     </script>
     
@@ -435,30 +567,5 @@
     </style>
 </head>
 <body>
-    <h1>Chronic Reader Client</h1>
-    <div id="testCover"></div>
-    <div id="localList"></div>
-    <form action="upload" enctype="multipart/form-data" method="post">
-        <label for="myFile">Upload Your File</label>
-        <input id="myFile" accept=".epub,.cbz,.cbr" name="filename" type="file" />
-        <button name="submit" type="submit">Upload File</button>
-    </form>
-    <form action="login" method="post">
-        <label for="server">Server</label><input name="server" type="text" />
-        <label for="username">Username</label><input name="username" type="text" />
-        <label for="password"></label><input name="password" type="password" />
-        <button name="submit" type="submit">Login</button>
-    </form>
-    <h1>Latest read</h1>
-    <div id="latestReadList"></div>
-    <h1>Latest added</h1>
-    <div id="latestAddedList"></div>
-
-    <form id="searchForm" onsubmit="return searchForm(this);">
-        <label for="term">term:</label><input name="term" type="text" />
-        <button name="submit" type="submit">Search</button>
-    </form>
-    <div id="searchList"></div>
-    
 </body>
 </html>
