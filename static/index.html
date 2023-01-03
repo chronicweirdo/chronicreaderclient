@@ -261,21 +261,29 @@
                 searchList.appendChild(getBookList(searchResult))
             })*/
             document.getElementById("searchForm").onsubmit()
+            new Search(document.getElementById("latestReadList"), "", 5, Search.ORDER_LATEST_READ, false).firstSearch()
+            new Search(document.getElementById("latestAddedList"), "", 5, Search.ORDER_LATEST_ADDED, false).firstSearch()
             //createBookCover("A book about political science and all other stupid shit that has a ridiculously long title", 300, 500, document.getElementById("testCover"))
         }
 
         class Search {
-            constructor(element, term, pageSize = 2) {
+            static ORDER_LATEST_READ = "read"
+            static ORDER_LATEST_ADDED = "added"
+            static ORDER_TITLE = ""
+            constructor(element, term, pageSize, order, multipage) {
                 this.element = element
                 this.term = term
                 this.pageSize = pageSize
+                this.order = order
+                this.multipage = multipage
             }
 
             getUrl() {
                 return "search?" + new URLSearchParams({
                     term: this.term,
                     page: this.page,
-                    pageSize: this.pageSize
+                    pageSize: this.pageSize,
+                    order: this.order
                 }) 
             }
 
@@ -287,12 +295,13 @@
                 for (let book of books) {
                     this.bookList.addBook(book)
                 }
-                //this.element.appendChild(getBookList(books))
-                if (books.length > 0) {
-                    this.nextPage = document.createElement("a")
-                    this.nextPage.innerHTML = "next"
-                    this.nextPage.onclick = () => this.nextSearch()
-                    this.element.appendChild(this.nextPage)
+                if (this.multipage) {
+                    if (books.length == this.pageSize) {
+                        this.nextPage = document.createElement("a")
+                        this.nextPage.innerHTML = "next"
+                        this.nextPage.onclick = () => this.nextSearch()
+                        this.element.appendChild(this.nextPage)
+                    }
                 }
             }
 
@@ -309,7 +318,8 @@
             }
 
             firstSearch() {
-                this.bookList = new BookList(this.element, true)
+                let withCollectionSections = (this.order == Search.ORDER_TITLE)
+                this.bookList = new BookList(this.element, withCollectionSections)
                 this.page = 0
                 this.runSearch()
             }
@@ -323,7 +333,7 @@
             try {
                 let data = new FormData(form)
                 let term = data.get("term")
-                document.search = new Search(document.getElementById("searchList"), term)
+                document.search = new Search(document.getElementById("searchList"), term, 5, Search.ORDER_TITLE, true)
                 document.search.firstSearch()
             } catch (error) {
                 console.log(error)
@@ -357,5 +367,9 @@
         <button name="submit" type="submit">Search</button>
     </form>
     <div id="searchList"></div>
+    <h1>Latest read</h1>
+    <div id="latestReadList"></div>
+    <h1>Latest added</h1>
+    <div id="latestAddedList"></div>
 </body>
 </html>
