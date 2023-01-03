@@ -508,7 +508,7 @@ class Backend {
         }
     }
 
-    async saveProgress(bookId, position, updated) {
+    async saveProgress(bookId, updated, position) {
         try {
             let url = this.server + "/progress/" + bookId // + "/" + position
             let body = JSON.stringify({
@@ -695,21 +695,32 @@ async function getProgressForBook(bookId) {
     let db = new Database()
     let databaseProgress = await db.loadProgress(bookId)
     if (backendProgress != null && databaseProgress != null) {
+        console.log("> found progress in both")
         // use the latest progress
         if (backendProgress.updated > databaseProgress.updated) {
-            return backendProgress.position
+            console.log("> using backend progress")
+            return backendProgress
         } else {
-            return databaseProgress.position
+            console.log("> using database progress")
+            return databaseProgress
         }
     } else if (backendProgress != null) {
         // save backend progress to local db and return it
+        console.log("> only found backend progress")
         let res = await db.saveProgress(backendProgress.id, backendProgress.updated, backend.position)
-        return backendProgress.position
+        return backendProgress
     } else if (databaseProgress != null) {
-        return databaseProgress.position
+        console.log("> only found database progress")
+        let res = await backend.saveProgress(databaseProgress.id, databaseProgress.updated, databaseProgress.position)
+        return databaseProgress
     } else {
+        console.log("> no progress found")
         // we have no progress info, default position is 0
-        return 0
+        return {
+            id: bookId,
+            updated: new Date(),
+            position: 0
+        }
     }
 }
 
@@ -738,7 +749,7 @@ async function syncProgress(request) {
         }
         // todo: sync progress with backend if it exists
         let backend = await Backend.factory()
-        let saveProgressResult = await backend.saveProgress(bookId, progress, now)
+        let saveProgressResult = await backend.saveProgress(bookId, now, progress)
         console.log("saved progress to backend successful? " + saveProgressResult)
         return getJsonResponse(progress)
     } else {
@@ -766,7 +777,9 @@ async function loadBookMeta(request) {
         }
     }
     if (bookObject != null) {
-        bookObject.progress = await getProgressForBook(bookId)
+        let progress = await getProgressForBook(bookId)
+        bookObject.position = progress.position
+        bookObject.updated = progress.updated
         return getJsonResponse(bookObject)
     } else {
         return get404Response()

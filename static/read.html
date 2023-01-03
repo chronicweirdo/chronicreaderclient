@@ -125,7 +125,7 @@
                     console.log(meta)
                     let startPosition = getUrlPosition()
                     if (! startPosition) {
-                        startPosition = meta.progress
+                        startPosition = meta.position
                     }
                     document.reader = new ChronicReader(
                         "/book/" + bookId,
