@@ -305,6 +305,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(handleDownload(e.request))
     } else if (url.pathname.startsWith("/delete")) {
         e.respondWith(handleDelete(e.request))
+    } else if (url.pathname.startsWith("/verify")) {
+        e.respondWith(handleVerify(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -455,6 +457,22 @@ class Backend {
         }
     }
 
+    async verifyConnection() {
+        try {
+            let url = this.server + "/verify"
+            let response = await fetch(url, {headers: this.getAuthHeaders()})
+            if (response.status == 200) {
+                let responseContent = await response.json()
+                return responseContent
+            } else {
+                return false
+            }
+        } catch (error) {
+            console.log(error)
+            return false
+        }
+    }
+
     async getMeta(bookId) {
         try {
             let url = this.server + "/book/" + bookId
@@ -508,6 +526,12 @@ class Backend {
             return false
         }
     }
+}
+
+async function handleVerify(request) {
+    let backend = await Backend.factory()
+    let result = await backend.verifyConnection()
+    return getJsonResponse(result)
 }
 
 async function login(request) {
