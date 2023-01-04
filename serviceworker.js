@@ -1,7 +1,7 @@
-importScripts('chronicreaderclient/crypto-js.js')
-importScripts('chronicreaderclient/jszip.js')
-importScripts('chronicreaderclient/libunrar.js')
-importScripts('chronicreaderclient/reader.js')
+importScripts('crypto-js.js')
+importScripts('jszip.js')
+importScripts('libunrar.js')
+importScripts('reader.js')
 
 
 
