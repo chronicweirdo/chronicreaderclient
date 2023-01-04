@@ -1,7 +1,7 @@
-importScripts('crypto-js.js')
-importScripts('jszip.js')
-importScripts('libunrar.js')
-importScripts('reader.js')
+importScripts('./crypto-js.js')
+importScripts('./jszip.js')
+importScripts('./libunrar.js')
+importScripts('./reader.js')
 
 
 
