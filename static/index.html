@@ -148,7 +148,7 @@
             }
         }
 
-        class LoginForm extends Component {
+        class FormComponent extends Component {
             constructor(element) {
                 super(element)
             }
@@ -169,6 +169,14 @@
                 return t
             }
 
+            file(name) {
+                let t = document.createElement("input")
+                t.type = "file"
+                t.name = name
+                t.accept = ".cbz,.cbr,.epub"
+                return t
+            }
+
             password(name) {
                 let t = document.createElement("input")
                 t.type = "password"
@@ -182,6 +190,69 @@
                     p.appendChild(e)
                 }
                 return p
+            }
+
+            async load() {
+                super.load()
+            }
+        }
+
+        class UploadForm extends FormComponent {
+            constructor(element) {
+                super(element)
+            }
+
+            async load() {
+                super.load()
+
+                let fileLabel = this.label("filename", "filename")
+                let fileInput = this.file("filename")
+                this.element.appendChild(this.p([fileLabel, fileInput]))
+
+                let uploadResult = document.createElement("span")
+                uploadResult.style.color = "white"
+                uploadResult.style.marginLeft = "1em"
+                let button = document.createElement("a")
+                button.innerHTML = "upload"
+                button.onclick = () => {
+                    let file = fileInput.files[0]
+
+                    fetch("/upload", { 
+                        method: 'POST', 
+                        body: file,
+                        headers: {
+                            'Content-Type': 'application/octet-stream', 
+                            'filename': file.name
+                        }
+                    })
+                    .then(response => {
+                        if (response.status == 200) {
+                            return response.json()
+                        } else {
+                            return null
+                        }
+                    })
+                    .then(result => {
+                        if (result == true) {
+                            uploadResult.innerHTML = "file upload was successful"
+                            uploadResult.style.backgroundColor = "green"
+                        } else {
+                            uploadResult.innerHTML = "file upload failed"
+                            uploadResult.style.backgroundColor = "red"
+                        }
+                        timeout(5000).then(() => {
+                            uploadResult.innerHTML = ""
+                            uploadResult.style.backgroundColor = "transparent"
+                        })
+                    })
+                }
+                this.element.appendChild(this.p([button, uploadResult]))
+            }
+        }
+
+        class LoginForm extends FormComponent {
+            constructor(element) {
+                super(element)
             }
 
             async load() {
@@ -206,6 +277,7 @@
 
                 let loginResult = document.createElement("span")
                 loginResult.style.marginLeft = "1em"
+                loginResult.style.color = "white"
                 let button = document.createElement("a")
                 button.innerHTML = "submit"
                 button.onclick = () => {
@@ -227,12 +299,15 @@
                         console.log(result)
                         if (result == true) {
                             loginResult.innerHTML = "login successful"
+                            loginResult.style.backgroundColor = "green"
                         } else {
                             loginResult.innerHTML = "login failed"
+                            loginResult.style.backgroundColor = "red"
                         }
                         serverConnectionDisplay.load()
                         timeout(5000).then(() => {
                             loginResult.innerHTML = ""
+                            loginResult.style.backgroundColor = "transparent"
                         })
                     })
                 }
@@ -253,6 +328,10 @@
                 let loginForm = new LoginForm(loginFormDiv)
                 await loginForm.load()
 
+                let uploadFormDiv = document.createElement("div")
+                this.element.appendChild(uploadFormDiv)
+                let uploadForm = new UploadForm(uploadFormDiv)
+                await uploadForm.load()
             }
         }
 
