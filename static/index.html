@@ -14,9 +14,18 @@
             })
         }
 
-        class TabbedPage {
+        class Component {
             constructor(element) {
                 this.element = element
+            }
+            async load() {
+                this.element.innerHTML = ""
+            }
+        }
+
+        class TabbedPage extends Component {
+            constructor(element) {
+                super(element)
             }
 
             createButton(label, func) {
@@ -48,7 +57,7 @@
             }
 
             async load() {
-                this.element.innerHTML = ""
+                super.load()
 
                 let buttons = document.createElement("div")
                 this.element.appendChild(buttons)
@@ -108,13 +117,13 @@
             }
         }
 
-        class ServerConnectionDisplay {
+        class ServerConnectionDisplay extends Component {
             constructor(element) {
-                this.element = element
+                super(element)
             }
 
             async load() {
-                this.element.innerHTML = ""
+                super.load()
 
                 let status = document.createElement("span")
                 status.style.display = "inline-block"
@@ -135,9 +144,9 @@
             }
         }
 
-        class LoginForm {
+        class LoginForm extends Component {
             constructor(element) {
-                this.element = element
+                super(element)
             }
 
             label(text, forName) {
@@ -172,8 +181,7 @@
             }
 
             async load() {
-                console.log("initializing login form")
-                this.element.innerHTML = ""
+                super.load()
 
                 let connectionDisplay = document.createElement("p")
                 this.element.appendChild(connectionDisplay)
@@ -228,13 +236,13 @@
             }
         }
 
-        class SettingsTab {
+        class SettingsTab extends Component {
             constructor(element) {
-                this.element = element
+                super(element)
             }
 
             async load() {
-                this.element.innerHTML = ""
+                super.load()
 
                 let loginFormDiv = document.createElement("div")
                 this.element.appendChild(loginFormDiv)
@@ -244,14 +252,14 @@
             }
         }
 
-        class OnDeviceTab {
+        class OnDeviceTab extends Component {
             constructor(element, searchFunction = null) {
-                this.element = element
+                super(element)
                 this.searchFunction = searchFunction
             }
 
             async load() {
-                this.element.innerHTML = ""
+                super.load()
 
                 await fetch("/books")
                     .then(response => response.json())
@@ -264,35 +272,35 @@
             }
         }
 
-        class LatestReadTab {
+        class LatestReadTab extends Component {
             constructor(element, searchFunction = null) {
-                this.element = element
+                super(element)
                 this.searchFunction = searchFunction
             }
 
             async load() {
-                this.element.innerHTML = ""
+                super.load()
                 let search = new Search(this.element, "", 5, Search.ORDER_LATEST_READ, true, this.searchFunction)
                 await search.firstSearch()
             }
         }
 
-        class LatestAddedTab {
+        class LatestAddedTab extends Component {
             constructor(element, searchFunction = null) {
-                this.element = element
+                super(element)
                 this.searchFunction = searchFunction
             }
 
             async load() {
-                this.element.innerHTML = ""
+                super.load()
                 let search = new Search(this.element, "", 5, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
                 await search.firstSearch()
             }
         }
 
-        class LibrarySearchTab {
+        class LibrarySearchTab extends Component {
             constructor(element) {
-                this.element = element
+                super(element)
             }
 
             async search(term = null) {
@@ -309,7 +317,7 @@
             }
 
             async load() {
-                this.element.innerHTML = ""
+                super.load()
 
                 this.searchField = document.createElement("input")
                 this.searchField.type = "text"
@@ -327,76 +335,13 @@
             }
         }
 
-        class BookList {
-            static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
-            constructor(element, withCollections = false, searchFunction = null) {
-                this.element = element
-                this.element.innerHTML = ""
-                this.withCollections = withCollections
+        class BookItem extends Component {
+            constructor(element, book, withCollection, searchFunction = null) {
+                super(element)
+                if (element.tagName != "LI") throw "book item must be applied to li"
+                this.book = book
+                this.withCollection = withCollection
                 this.searchFunction = searchFunction
-            }
-
-            createTitle(collection) {
-                let title = document.createElement("h1")
-                if (this.searchFunction != undefined && this.searchFunction != null) {
-                    let items = this.getCollectionItems(collection)
-                    for (let i of items) {
-                        title.appendChild(i)
-                    }
-                } else {
-                    title.innerHTML = collection
-                }
-                return title
-            }
-
-            createListElement() {
-                let list = document.createElement('ul')
-                list.style.padding = '0'
-                list.style.listStyleType = 'none'
-                list.style.display = 'grid'
-                list.style.gridTemplateColumns = '30vw 30vw 30vw'
-                list.style.columnGap = '2.5vw'
-                list.style.rowGap = '2.5vw'
-                return list
-            }
-
-            getListElement() {
-                if (this.listElement == undefined) {
-                    this.listElement = this.createListElement()
-                    this.element.appendChild(this.listElement)
-                }
-                return this.listElement
-            }
-
-            getCollectionElement(collection) {
-                if (this.collections == undefined) {
-                    this.collections = new Map()
-                }
-                if (this.collections.has(collection)) {
-                    return this.collections.get(collection).list
-                } else {
-                    let collectionTitle = this.createTitle(collection)
-                    this.element.appendChild(collectionTitle)
-                    let collectionList = this.createListElement()
-                    this.element.appendChild(collectionList)
-                    this.collections.set(collection, {
-                        title: collectionTitle,
-                        list: collectionList
-                    })
-                    return collectionList
-                }
-            }
-
-            async addBook(book) {
-                let parent = null
-                if (this.withCollections) {
-                    parent = this.getCollectionElement(book.collection)
-                } else {
-                    parent = this.getListElement()
-                }
-
-                let bookItem = await this.getBookItem(book)
-                parent.appendChild(bookItem)
             }
 
             getProgressItem(book) {
@@ -562,10 +507,10 @@
                 return base64
             }
 
-            getCollectionItems(collection) {
+            static getCollectionItems(collection, searchFunction) {
                 console.log(collection)
                 if (collection == undefined || collection == null || collection.length == 0) return []
-                if (this.searchFunction != undefined && this.searchFunction != null) {
+                if (searchFunction != undefined && searchFunction != null) {
                     let collectionParts = collection.split("/").filter(e => e.length > 0)
                     let cumulative = ""
                     let items = []
@@ -575,7 +520,7 @@
 
                         let collectionItem = document.createElement("a")
                         collectionItem.innerHTML = partName
-                        collectionItem.onclick = () => this.searchFunction(partSearch)
+                        collectionItem.onclick = () => searchFunction(partSearch)
                         items.push(collectionItem)
 
                         cumulative = partSearch
@@ -589,26 +534,27 @@
                 }
             }
 
-            getBookLink(book) {
-                return "/read.html?book=" + book.id
+            getBookLink() {
+                return "/read.html?book=" + this.book.id
             }
 
-            async getBookItem(book) {
-                let item = document.createElement("li")
-                item.style.width = '100%'
-                item.style.overflow = 'hidden'
+            async load() {
+                super.load()
+
+                this.element.style.width = '100%'
+                this.element.style.overflow = 'hidden'
 
                 let itemLink = document.createElement("a")
                 itemLink.style.overflow = 'hidden'
                 itemLink.style.position = 'relative'
-                itemLink.href = this.getBookLink(book)
+                itemLink.href = this.getBookLink()
                 
-                itemLink.appendChild(await this.getCoverItem(book))
-                item.appendChild(itemLink)
+                itemLink.appendChild(await this.getCoverItem(this.book))
+                this.element.appendChild(itemLink)
 
-                if (this.withCollections == false) {
+                if (this.withCollection == true) {
                     let title = document.createElement("span")
-                    let items = this.getCollectionItems(book.collection)
+                    let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
                     for (let i of items) {
                         title.appendChild(i)
                     }
@@ -618,20 +564,103 @@
                         title.appendChild(slash)
                     }
                     let actualTitle = document.createElement("a")
-                    actualTitle.innerHTML = book.title
-                    actualTitle.href = this.getBookLink(book)
+                    actualTitle.innerHTML = this.book.title
+                    actualTitle.href = this.getBookLink()
                     title.appendChild(actualTitle)
-                    item.appendChild(title)
+                    this.element.appendChild(title)
                 } else {
                     let title = document.createElement("a")
-                    title.innerHTML = book.title
-                    title.href = this.getBookLink(book)
-                    item.appendChild(title)
+                    title.innerHTML = this.book.title
+                    title.href = this.getBookLink()
+                    this.element.appendChild(title)
                 }
-                
-                
-                return item
             }
+        }
+
+        class BookList extends Component {
+            static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
+            constructor(element, withCollections = false, searchFunction = null) {
+                super(element)
+                this.withCollections = withCollections
+                this.searchFunction = searchFunction
+            }
+
+            async load() {
+                super.load()
+            }
+
+            createTitle(collection) {
+                let title = document.createElement("h1")
+                if (this.searchFunction != undefined && this.searchFunction != null) {
+                    let items = BookItem.getCollectionItems(collection, this.searchFunction)
+                    for (let i of items) {
+                        title.appendChild(i)
+                    }
+                } else {
+                    title.innerHTML = collection
+                }
+                return title
+            }
+
+            createListElement() {
+                let list = document.createElement('ul')
+                list.style.padding = '0'
+                list.style.listStyleType = 'none'
+                list.style.display = 'grid'
+                list.style.gridTemplateColumns = '30vw 30vw 30vw'
+                list.style.columnGap = '2.5vw'
+                list.style.rowGap = '2.5vw'
+                return list
+            }
+
+            getListElement() {
+                if (this.listElement == undefined) {
+                    this.listElement = this.createListElement()
+                    this.element.appendChild(this.listElement)
+                }
+                return this.listElement
+            }
+
+            getCollectionElement(collection) {
+                if (this.collections == undefined) {
+                    this.collections = new Map()
+                }
+                if (this.collections.has(collection)) {
+                    return this.collections.get(collection).list
+                } else {
+                    let collectionTitle = this.createTitle(collection)
+                    this.element.appendChild(collectionTitle)
+                    let collectionList = this.createListElement()
+                    this.element.appendChild(collectionList)
+                    this.collections.set(collection, {
+                        title: collectionTitle,
+                        list: collectionList
+                    })
+                    return collectionList
+                }
+            }
+
+            async addBook(book) {
+                let parent = null
+                if (this.withCollections) {
+                    parent = this.getCollectionElement(book.collection)
+                } else {
+                    parent = this.getListElement()
+                }
+
+                let bookListItem = document.createElement("li")
+                parent.appendChild(bookListItem)
+                let bookItem = new BookItem(bookListItem, book, ! this.withCollections, this.searchFunction) //await this.getBookItem(book)
+                bookItem.load()
+            }
+
+            async update(books) {
+                for (let book of books) {
+                    this.addBook(book)
+                }
+            }
+
+            
         }
         
         
@@ -640,12 +669,12 @@
             new TabbedPage(document.body).load()
         }
 
-        class Search {
+        class Search extends Component {
             static ORDER_LATEST_READ = "read"
             static ORDER_LATEST_ADDED = "added"
             static ORDER_TITLE = ""
             constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null) {
-                this.element = element
+                super(element)
                 this.term = term
                 this.pageSize = pageSize
                 this.order = order
@@ -683,20 +712,32 @@
             async runSearch() {
                 await fetch(this.getUrl())
                     .then(response => {
-                        //console.log(response)
-                        return response.json()
+                        if (response.status == 200) {
+                            return response.json()
+                        } else {
+                            return null
+                        }
                     })
                     .then(searchResult => {
-                        //console.log(searchResult)
-                        this.addBooksToResult(searchResult)
+                        if (searchResult != null) {
+                            this.addBooksToResult(searchResult)
+                        } else {
+
+                        }
                     })
             }
 
             async firstSearch() {
                 let withCollectionSections = (this.order == Search.ORDER_TITLE)
                 this.bookList = new BookList(this.element, withCollectionSections, this.collectionLinkFunction)
+                this.bookList.load()
                 this.page = 0
                 await this.runSearch()
+            }
+
+            async load() {
+                super.load()
+                await firstSearch()
             }
 
             async nextSearch() {
