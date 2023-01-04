@@ -399,9 +399,13 @@ class Backend {
                 await Backend.saveToken(server, serverUsername, token)
                 this.server = server
                 this.token = token
+                return true
+            } else {
+                return false
             }
         } catch (error) {
             console.log(error)
+            return false
         }
     }
 
@@ -539,15 +543,18 @@ async function handleVerify(request) {
 }
 
 async function login(request) {
-    let form = await request.formData()
+    /*let form = await request.formData()
     let server = form.get("server")
     let username = form.get("username")
-    let password = form.get("password")
+    let password = form.get("password")*/
+    let body = await request.json()
 
-    let backend = new Backend(server, null)
-    backend.login(server, username, password)
+    let backend = new Backend(body.server, null)
+    let loginResult = await backend.login(body.server, body.username, body.password)
+    console.log("login result: " + loginResult)
 
-    return Response.redirect("/", 302)
+    //return Response.redirect("/", 302)
+    return getJsonResponse(loginResult)
 }
 
 async function handleDelete(request) {
