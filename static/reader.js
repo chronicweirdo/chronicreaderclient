@@ -1345,6 +1345,7 @@ class Display {
         this.setDefault("swipeAngleThreshold", 30)
         this.setDefault("enableKeyboard", false)
         this.setDefault("toolsContents", ["cover", "toc", "zoom", "progress"])
+        this.setDefault("flipToolsAlignment", false)
     }
 
     getPosition() {
@@ -1505,12 +1506,14 @@ class Display {
                 this.tools.style.display = "block"
                 this.toolsMinimizeLeft.style.display = "block"
                 this.toolsMinimizeRight.style.display = "block"
-                if (alignedRight) {
-                    this.tools.style.textAlign = "right"
-                    this.tools.style.direction = "rtl"
-                } else {
-                    this.tools.style.textAlign = "left"
-                    this.tools.style.direction = "ltr"
+                if (this.settings.flipToolsAlignment == true) {
+                    if (alignedRight) {
+                        this.tools.style.textAlign = "right"
+                        this.tools.style.direction = "rtl"
+                    } else {
+                        this.tools.style.textAlign = "left"
+                        this.tools.style.direction = "ltr"
+                    }
                 }
             }
             this.toolsLeft.onclick = () => displayToolsFunction(false)
@@ -1575,7 +1578,7 @@ class Display {
             link.innerHTML = node.name
             link.setAttribute("position", node.position)
             link.style.direction = "ltr"
-            link.style.display = "inline-block"
+            //link.style.display = "inline-block"
             link.onclick = () => {
                 this.hideTools()
                 this.displayPageFor(node.position)
