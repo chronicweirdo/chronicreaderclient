@@ -241,7 +241,12 @@ class Database {
             "cover": cover,
             "content": bytes
         }
-        return await this.databaseSave(Database.FILE_TABLE, dbFile)
+        let saveResult = await this.databaseSave(Database.FILE_TABLE, dbFile)
+        if (saveResult != undefined && saveResult != null) {
+            return true
+        } else {
+            return false
+        }
     }
 
     async saveProgress(bookId, updated, progress) {
@@ -608,21 +613,21 @@ async function handleDownload(request) {
 }
 
 async function handleUpload(request) {
-    let form = await request.formData()
-    let file = form.get("filename")
-    let extension = getFileExtension(file.name)
-    let title = file.name.substring(0, file.name.length - extension.length - 1)
-    let bytes = await file.arrayBuffer()
+    let filename = request.headers.get('filename')
+    let extension = getFileExtension(filename)
+    let title = filename.substring(0, filename.length - extension.length - 1)
+    let bytes = await request.arrayBuffer()
 
     let cover = null
     let size = null
     try {
-        let archive = ArchiveWrapper.factory(file, new Blob([bytes]), extension)
+        let archive = ArchiveWrapper.factory(filename, new Blob([bytes]), extension)
         let book = BookWrapper.factory(archive, extension)
         cover = await book.getCover()
         size = await book.getSize()
     } catch(error) {
         console.log(error)
+        return getJsonResponse(false)
     }
 
     // https://stackoverflow.com/questions/67549348/how-to-create-sha256-hash-from-byte-array-in-javascript
@@ -634,12 +639,10 @@ async function handleUpload(request) {
     try {
         let backend = await Backend.factory()
         let metaResponse = await backend.getMeta(hash)
-        console.log(metaResponse)
         if (metaResponse.status == 200) {
             let meta = await metaResponse.json()
-            console.log(meta)
             collection = meta.collection
-            // todo: do we want to update titles and stuff?
+            title = meta.title
         }
     } catch (error) {
         console.log(error)
@@ -655,9 +658,8 @@ async function handleUpload(request) {
         cover,
         bytes
     )
-    console.log(savedValue)
 
-    return Response.redirect("/", 302)
+    return getJsonResponse(savedValue)
 }
 
 async function loadAllBooks() {
