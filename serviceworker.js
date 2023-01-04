@@ -298,19 +298,19 @@ self.addEventListener('fetch', e => {
         e.respondWith(loadAllBooks())
     } else if (url.pathname.match(/\/bookmeta\//)) {
         e.respondWith(loadBookMeta(e.request))
-    } else if (url.pathname.startsWith(/\/book\//)) {
+    } else if (url.pathname.match(/\/book\//)) {
         e.respondWith(loadBook(e.request))
-    } else if (url.pathname.startsWith(/\/sync\//)) {
+    } else if (url.pathname.match(/\/sync\//)) {
         e.respondWith(syncProgress(e.request))
-    } else if (url.pathname.startsWith(/\/search/)) {
+    } else if (url.pathname.match(/\/search/)) {
         e.respondWith(searchServer(e.request))
-    } else if (url.pathname.startsWith(/\/login/)) {
+    } else if (url.pathname.match(/\/login/)) {
         e.respondWith(login(e.request))
-    } else if (url.pathname.startsWith(/\/download/)) {
+    } else if (url.pathname.match(/\/download/)) {
         e.respondWith(handleDownload(e.request))
-    } else if (url.pathname.startsWith(/\/delete/)) {
+    } else if (url.pathname.match(/\/delete/)) {
         e.respondWith(handleDelete(e.request))
-    } else if (url.pathname.startsWith(/\/verify/)) {
+    } else if (url.pathname.match(/\/verify/)) {
         e.respondWith(handleVerify(e.request))
     } else {
         e.respondWith(fetch(e.request))
