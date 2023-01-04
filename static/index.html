@@ -21,6 +21,10 @@
             async load() {
                 this.element.innerHTML = ""
             }
+
+            async update(data) {
+                console.log("update not implemented for " + this)
+            }
         }
 
         class TabbedPage extends Component {
@@ -265,9 +269,10 @@
                     .then(response => response.json())
                     .then((books) => {
                         let list = new BookList(this.element, false, this.searchFunction)
-                        for (let book of books) {
+                        list.load().then(() => list.update(books))
+                        /*for (let book of books) {
                             list.addBook(book)
-                        }
+                        }*/
                     })
             }
         }
@@ -696,9 +701,10 @@
                     this.nextPage.remove()
                     this.nextPage = null
                 }
-                for (let book of books) {
+                this.bookList.update(books)
+                /*for (let book of books) {
                     this.bookList.addBook(book)
-                }
+                }*/
                 if (this.multipage) {
                     if (books.length == this.pageSize) {
                         this.nextPage = document.createElement("a")
