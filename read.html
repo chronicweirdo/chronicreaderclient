@@ -57,7 +57,7 @@
             return Number(position)
         }
         function getSyncUrl(position = undefined) {
-            let url = "/sync/" + getBookId()
+            let url = "sync/" + getBookId()
             if (position) {
                 url += "?position=" + position
             }
@@ -78,7 +78,7 @@
             let libraryLink = document.createElement("a")
             libraryLink.innerHTML = "library"
             let loc = window.location.pathname
-            let cutoff = loc.indexOf("/read.html")
+            let cutoff = loc.indexOf("read.html")
             libraryLink.href = loc.substring(0, cutoff)
             p.appendChild(libraryLink)
 
@@ -131,7 +131,7 @@
                     }
                     document.reader = new ChronicReader(
                         "book/" + bookId,
-                        document.body, //getElementById("page"),
+                        document.getElementById("page"),
                         meta.extension,
                         {
                             "position": startPosition,
@@ -204,11 +204,12 @@
             font-weight: normal;
             font-style: normal;
         }
-        img {
+        /*img {
             max-width: 100%;
-        }
+        }*/
     </style>
 </head>
 <body>
+    <div id="page"></div>
 </body>
 </html>
