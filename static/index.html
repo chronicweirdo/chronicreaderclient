@@ -286,7 +286,7 @@
             async load() {
                 super.load()
                 let search = new Search(this.element, "", 5, Search.ORDER_LATEST_READ, true, this.searchFunction)
-                await search.firstSearch()
+                await search.load()
             }
         }
 
@@ -299,7 +299,7 @@
             async load() {
                 super.load()
                 let search = new Search(this.element, "", 5, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
-                await search.firstSearch()
+                await search.load()
             }
         }
 
@@ -318,7 +318,7 @@
                 console.log("searching for: " + term)
 
                 let search = new Search(this.searchList, term, 5, Search.ORDER_TITLE, true, (term) => this.search(term))
-                await search.firstSearch()
+                await search.load()
             }
 
             async load() {
@@ -702,9 +702,6 @@
                     this.nextPage = null
                 }
                 this.bookList.update(books)
-                /*for (let book of books) {
-                    this.bookList.addBook(book)
-                }*/
                 if (this.multipage) {
                     if (books.length == this.pageSize) {
                         this.nextPage = document.createElement("a")
@@ -713,6 +710,18 @@
                         this.element.appendChild(this.nextPage)
                     }
                 }
+            }
+
+            displaySearchError() {
+                if (this.nextPage) {
+                    this.nextPage.remove()
+                    this.nextPage = null
+                }
+                let errorMessage = document.createElement("p")
+                errorMessage.innerHTML = "there was an issue running the search"
+                errorMessage.style.backgroundColor = "red"
+                errorMessage.style.color = "white"
+                this.element.appendChild(errorMessage)
             }
 
             async runSearch() {
@@ -728,22 +737,18 @@
                         if (searchResult != null) {
                             this.addBooksToResult(searchResult)
                         } else {
-
+                            this.displaySearchError()
                         }
                     })
             }
 
-            async firstSearch() {
-                let withCollectionSections = (this.order == Search.ORDER_TITLE)
-                this.bookList = new BookList(this.element, withCollectionSections, this.collectionLinkFunction)
-                this.bookList.load()
-                this.page = 0
-                await this.runSearch()
-            }
-
             async load() {
                 super.load()
-                await firstSearch()
+                let withCollectionSections = (this.order == Search.ORDER_TITLE)
+                this.bookList = new BookList(this.element, withCollectionSections, this.collectionLinkFunction)
+                await this.bookList.load()
+                this.page = 0
+                await this.runSearch()
             }
 
             async nextSearch() {
