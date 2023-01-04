@@ -28,7 +28,7 @@
             if (callbackControl.position) {
                 // sync progress with backend
                 let bookId = getBookId()
-                fetch("/sync/" + bookId + "?position=" + callbackControl.position).then(response => {
+                fetch("sync/" + bookId + "?position=" + callbackControl.position).then(response => {
                     console.log(response)
                 })
                 // update ui
@@ -84,7 +84,7 @@
             document.downloadLink.innerHTML = "download"
             document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
             document.downloadLink.onclick = () => {
-                fetch("/download/" + getBookId())
+                fetch("download/" + getBookId())
                     .then(response => response.json())
                     .then(result => {
                         console.log("downloaded book to device: " + result)
@@ -100,7 +100,7 @@
             document.deleteLink.innerHTML = "delete from local"
             document.deleteLink.style.display = bookMeta.local ? "inline-block" : "none"
             document.deleteLink.onclick = () => {
-                let url = "/delete/" + getBookId()
+                let url = "delete/" + getBookId()
                 console.log("deleting book at " + url)
                 fetch(url)
                     .then(response => response.json())
@@ -119,7 +119,7 @@
         }
         window.onload = function() {
             let bookId = getBookId()
-            fetch("/bookmeta/" + bookId)
+            fetch("bookmeta/" + bookId)
                 .then(response => response.json())
                 .then(meta => {
                     console.log(meta)
@@ -128,7 +128,7 @@
                         startPosition = meta.position
                     }
                     document.reader = new ChronicReader(
-                        "/book/" + bookId,
+                        "book/" + bookId,
                         document.body, //getElementById("page"),
                         meta.extension,
                         {
