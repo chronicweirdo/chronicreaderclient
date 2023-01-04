@@ -108,6 +108,33 @@
             }
         }
 
+        class ServerConnectionDisplay {
+            constructor(element) {
+                this.element = element
+            }
+
+            async load() {
+                this.element.innerHTML = ""
+
+                let status = document.createElement("span")
+                status.style.display = "inline-block"
+                status.style.color = "white"
+                fetch("/verify")
+                .then(response => response.json())
+                .then(connected => {
+                    if (connected == true) {
+                        status.innerHTML = "connected"
+                        status.style.backgroundColor = "green"
+                    } else {
+                        status.innerHTML = "not connected"
+                        status.style.backgroundColor = "red"
+                    }
+                })
+
+                this.element.appendChild(status)
+            }
+        }
+
         class LoginForm {
             constructor(element) {
                 this.element = element
@@ -147,6 +174,11 @@
             async load() {
                 console.log("initializing login form")
                 this.element.innerHTML = ""
+
+                let connectionDisplay = document.createElement("p")
+                this.element.appendChild(connectionDisplay)
+                let serverConnectionDisplay = new ServerConnectionDisplay(connectionDisplay)
+                serverConnectionDisplay.load()
                 
                 let serverLabel = this.label("server", "server")
                 let serverInput = this.input("server")
@@ -186,6 +218,7 @@
                         } else {
                             loginResult.innerHTML = "login failed"
                         }
+                        serverConnectionDisplay.load()
                         timeout(5000).then(() => {
                             loginResult.innerHTML = ""
                         })
