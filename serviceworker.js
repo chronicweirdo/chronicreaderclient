@@ -292,11 +292,11 @@ self.addEventListener('fetch', e => {
     var url = new URL(e.request.url)
     console.log("pathname: " + url.pathname)
 
-    if (url.pathname.match(/\/upload\//)) {
+    if (url.pathname.match(/\/upload/)) {
         e.respondWith(handleUpload(e.request))
-    } else if (url.pathname.match(/\/books\//)) {
+    } else if (url.pathname.match(/\/books/)) {
         e.respondWith(loadAllBooks())
-    } else if (url.pathname.match(/\/bookmeta\//)) {
+    } else if (url.pathname.match(/\/bookmeta/)) {
         e.respondWith(loadBookMeta(e.request))
     } else if (url.pathname.match(/\/book\//)) {
         e.respondWith(loadBook(e.request))
