@@ -3,7 +3,7 @@
 <head>
     <title>Chronic Reader Client</title>
     <link rel="manifest" href="manifest.json">
-    <script src="/serviceworkerinstall.js"></script>
+    <script src="serviceworkerinstall.js"></script>
     <link rel="stylesheet" type="text/css" href="fonts.css">
     <script>
         function timeout(ms) {
@@ -619,7 +619,7 @@
             }
 
             getBookLink() {
-                return "/read.html?book=" + this.book.id
+                return "read.html?book=" + this.book.id
             }
 
             async load() {

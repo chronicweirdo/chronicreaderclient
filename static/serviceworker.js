@@ -1,7 +1,7 @@
-importScripts('/crypto-js.js')
-importScripts('/jszip.js')
-importScripts('/libunrar.js')
-importScripts('/reader.js')
+importScripts('crypto-js.js')
+importScripts('jszip.js')
+importScripts('libunrar.js')
+importScripts('reader.js')
 
 
 
@@ -292,25 +292,25 @@ self.addEventListener('fetch', e => {
     var url = new URL(e.request.url)
     console.log("pathname: " + url.pathname)
 
-    if (url.pathname.startsWith("/upload")) {
+    if (url.pathname.match(/\/upload/)) {
         e.respondWith(handleUpload(e.request))
-    } else if (url.pathname.startsWith("/books")) {
+    } else if (url.pathname.match(/\/books/)) {
         e.respondWith(loadAllBooks())
-    } else if (url.pathname.startsWith("/bookmeta/")) {
+    } else if (url.pathname.match(/\/bookmeta/)) {
         e.respondWith(loadBookMeta(e.request))
-    } else if (url.pathname.startsWith("/book/")) {
+    } else if (url.pathname.match(/\/book\//)) {
         e.respondWith(loadBook(e.request))
-    } else if (url.pathname.startsWith("/sync/")) {
+    } else if (url.pathname.match(/\/sync\//)) {
         e.respondWith(syncProgress(e.request))
-    } else if (url.pathname.startsWith("/search")) {
+    } else if (url.pathname.match(/\/search/)) {
         e.respondWith(searchServer(e.request))
-    } else if (url.pathname.startsWith("/login")) {
+    } else if (url.pathname.match(/\/login/)) {
         e.respondWith(login(e.request))
-    } else if (url.pathname.startsWith("/download")) {
+    } else if (url.pathname.match(/\/download/)) {
         e.respondWith(handleDownload(e.request))
-    } else if (url.pathname.startsWith("/delete")) {
+    } else if (url.pathname.match(/\/delete/)) {
         e.respondWith(handleDelete(e.request))
-    } else if (url.pathname.startsWith("/verify")) {
+    } else if (url.pathname.match(/\/verify/)) {
         e.respondWith(handleVerify(e.request))
     } else {
         e.respondWith(fetch(e.request))

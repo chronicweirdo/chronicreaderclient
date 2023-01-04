@@ -1565,6 +1565,7 @@ class Display {
         let coverBase64 = await this.book.getCover()
         if (coverBase64) {
             let coverElement = document.createElement("img")
+            coverElement.style.maxWidth = "100%"
             coverElement.src = coverBase64
             toolsContents.appendChild(coverElement)
         }

@@ -2,9 +2,9 @@
 <html>
 <head>
     <title>Chronic Reader Client</title>
-    <script src="/jszip.js"></script>
-    <script src="/libunrar.js"></script>
-    <script src="/reader.js"></script>
+    <script src="jszip.js"></script>
+    <script src="libunrar.js"></script>
+    <script src="reader.js"></script>
     <script>
         /*function updateUrl(display) {
             let newPosition = display.position
@@ -28,7 +28,7 @@
             if (callbackControl.position) {
                 // sync progress with backend
                 let bookId = getBookId()
-                fetch("/sync/" + bookId + "?position=" + callbackControl.position).then(response => {
+                fetch("sync/" + bookId + "?position=" + callbackControl.position).then(response => {
                     console.log(response)
                 })
                 // update ui
@@ -57,7 +57,7 @@
             return Number(position)
         }
         function getSyncUrl(position = undefined) {
-            let url = "/sync/" + getBookId()
+            let url = "sync/" + getBookId()
             if (position) {
                 url += "?position=" + position
             }
@@ -77,14 +77,16 @@
             
             let libraryLink = document.createElement("a")
             libraryLink.innerHTML = "library"
-            libraryLink.href = "/"
+            let loc = window.location.pathname
+            let cutoff = loc.indexOf("read.html")
+            libraryLink.href = loc.substring(0, cutoff)
             p.appendChild(libraryLink)
 
             document.downloadLink = document.createElement("a")
             document.downloadLink.innerHTML = "download"
             document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
             document.downloadLink.onclick = () => {
-                fetch("/download/" + getBookId())
+                fetch("download/" + getBookId())
                     .then(response => response.json())
                     .then(result => {
                         console.log("downloaded book to device: " + result)
@@ -100,7 +102,7 @@
             document.deleteLink.innerHTML = "delete from local"
             document.deleteLink.style.display = bookMeta.local ? "inline-block" : "none"
             document.deleteLink.onclick = () => {
-                let url = "/delete/" + getBookId()
+                let url = "delete/" + getBookId()
                 console.log("deleting book at " + url)
                 fetch(url)
                     .then(response => response.json())
@@ -119,7 +121,7 @@
         }
         window.onload = function() {
             let bookId = getBookId()
-            fetch("/bookmeta/" + bookId)
+            fetch("bookmeta/" + bookId)
                 .then(response => response.json())
                 .then(meta => {
                     console.log(meta)
@@ -128,8 +130,8 @@
                         startPosition = meta.position
                     }
                     document.reader = new ChronicReader(
-                        "/book/" + bookId,
-                        document.body, //getElementById("page"),
+                        "book/" + bookId,
+                        document.getElementById("page"),
                         meta.extension,
                         {
                             "position": startPosition,
@@ -202,11 +204,12 @@
             font-weight: normal;
             font-style: normal;
         }
-        img {
+        /*img {
             max-width: 100%;
-        }
+        }*/
     </style>
 </head>
 <body>
+    <div id="page"></div>
 </body>
 </html>

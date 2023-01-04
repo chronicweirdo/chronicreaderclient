@@ -28,35 +28,48 @@ function getFileMimeType(filename) {
         return "text/javascript"
     } else if (extension == "html") {
         return "text/html"
+    } else if (extension == "css") {
+        return "text/css"
     } else {
         return "text/plain"
     }
 }
 
+var applicationRoot = "/chronicreaderclient"
+
 var staticServe = function(req, res) {
     var resolvedBase = path.resolve(staticBasePath)
     var safeSuffix = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '')
-    let queryStringStart = safeSuffix.indexOf('?')
-    if (queryStringStart >= 0) {
-        safeSuffix = safeSuffix.substring(0, queryStringStart)
-    }
-    if (safeSuffix == "/") safeSuffix = "/index.html"
-    var fileLoc = path.join(resolvedBase, safeSuffix)
-    console.log(fileLoc)
-
-    fs.readFile(fileLoc, function(err, data) {
-        if (err) {
-            res.writeHead(404, 'Not Found')
-            res.write('404: File Not Found!')
-            return res.end()
+    console.log("safe suffix: " + safeSuffix)
+    if (safeSuffix.startsWith(applicationRoot)) {
+        safeSuffix = safeSuffix.substring(applicationRoot.length)
+        console.log("updated safe suffix: " + safeSuffix)
+        let queryStringStart = safeSuffix.indexOf('?')
+        if (queryStringStart >= 0) {
+            safeSuffix = safeSuffix.substring(0, queryStringStart)
         }
-        var stats = fs.statSync(fileLoc)
-        res.statusCode = 200
-        res.setHeader("Content-Type", getFileMimeType(fileLoc))
-        res.setHeader("Content-Length", stats["size"])
-        res.write(data)
+        if (safeSuffix == "" || safeSuffix == "/") safeSuffix = "/index.html"
+        var fileLoc = path.join(resolvedBase, safeSuffix)
+        console.log(fileLoc)
+
+        fs.readFile(fileLoc, function(err, data) {
+            if (err) {
+                res.writeHead(404, 'Not Found')
+                res.write('404: File Not Found!')
+                return res.end()
+            }
+            var stats = fs.statSync(fileLoc)
+            res.statusCode = 200
+            res.setHeader("Content-Type", getFileMimeType(fileLoc))
+            res.setHeader("Content-Length", stats["size"])
+            res.write(data)
+            return res.end()
+        })
+    } else {
+        res.writeHead(404, 'Not Found')
+        res.write('404: File Not Found!')
         return res.end()
-    })
+    }
 }
 
 var httpServer = http.createServer(staticServe)
