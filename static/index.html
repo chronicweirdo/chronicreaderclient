@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, height=device-height, viewport-fit=cover">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, height=device-height">
     <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -70,6 +70,7 @@
                 super.load()
 
                 let buttons = document.createElement("div")
+                buttons.style.marginBottom = "2.5vw"
                 this.element.appendChild(buttons)
 
                 this.content = document.createElement("div")
@@ -669,6 +670,7 @@
 
         class BookList extends Component {
             static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
+
             constructor(element, withCollections = false, searchFunction = null) {
                 super(element)
                 this.withCollections = withCollections
@@ -700,6 +702,7 @@
                 list.style.gridTemplateColumns = '30vw 30vw 30vw'
                 list.style.columnGap = '2.5vw'
                 list.style.rowGap = '2.5vw'
+                list.style.marginLeft = "2.5vw"
                 return list
             }
 
@@ -781,35 +784,77 @@
                 }) 
             }
 
+            createNextButton() {
+                let button = document.createElement("a")
+                button.innerHTML = "next"
+                button.style.margin = "2.5vw"
+                button.style.display = "block"
+                button.style.display = "none"
+                button.onclick = () => {
+                    this.nextSearch()
+                }
+                return button
+            }
+
+            createLoading() {
+                let p = document.createElement("p")
+                p.innerHTML = "Loading..."
+                p.style.margin = "2.5vw"
+                p.style.display = "none"
+                return p
+            }
+
+            showLoading() {
+                this.hideNextButton()
+                this.loading.style.display = "block"
+            }
+
+            hideLoading() {
+                this.loading.style.display = "none"
+            }
+
+            showNextButton() {
+                this.nextButton.style.display = "block"
+            }
+
+            hideNextButton() {
+                this.nextButton.style.display = "none"
+            }
+
+            showErrorMessage() {
+                this.hideLoading()
+                this.hideNextButton()
+                this.errorMessage.style.display = "block"
+            }
+
             addBooksToResult(books) {
-                if (this.nextPage) {
+                /*if (this.nextPage) {
                     this.nextPage.remove()
                     this.nextPage = null
-                }
+                }*/
+                this.hideLoading()
                 this.bookList.update(books)
                 if (this.multipage) {
                     if (books.length == this.pageSize) {
-                        this.nextPage = document.createElement("a")
-                        this.nextPage.innerHTML = "next"
-                        this.nextPage.onclick = () => this.nextSearch()
-                        this.element.appendChild(this.nextPage)
+                        this.showNextButton()
+                        /*this.nextPage = this.createNextButton()
+                        this.element.appendChild(this.nextPage)*/
                     }
                 }
             }
 
-            displaySearchError() {
-                if (this.nextPage) {
-                    this.nextPage.remove()
-                    this.nextPage = null
-                }
+            createSearchError() {
                 let errorMessage = document.createElement("p")
                 errorMessage.innerHTML = "there was an issue running the search"
                 errorMessage.style.backgroundColor = "red"
                 errorMessage.style.color = "white"
-                this.element.appendChild(errorMessage)
+                errorMessage.style.margin = "2.5vw"
+                errorMessage.style.display = "none"
+                return errorMessage
             }
 
             async runSearch() {
+                this.showLoading()
                 await fetch(this.getUrl())
                     .then(response => {
                         if (response.status == 200) {
@@ -822,7 +867,7 @@
                         if (searchResult != null) {
                             this.addBooksToResult(searchResult)
                         } else {
-                            this.displaySearchError()
+                            this.showErrorMessage()
                         }
                     })
             }
@@ -830,8 +875,18 @@
             async load() {
                 super.load()
                 let withCollectionSections = (this.order == Search.ORDER_TITLE)
-                this.bookList = new BookList(this.element, withCollectionSections, this.collectionLinkFunction)
+                let bookListDiv = document.createElement("div")
+                this.element.appendChild(bookListDiv)
+                this.bookList = new BookList(bookListDiv, withCollectionSections, this.collectionLinkFunction)
                 await this.bookList.load()
+
+                this.nextButton = this.createNextButton()
+                this.element.appendChild(this.nextButton)
+                this.loading = this.createLoading()
+                this.element.appendChild(this.loading)
+                this.errorMessage = this.createSearchError()
+                this.element.appendChild(this.errorMessage)
+
                 this.page = 0
                 await this.runSearch()
             }
@@ -844,9 +899,13 @@
     </script>
     
     <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
         body {
             font-family: 'Merriweather', serif;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
         }
         a {
             color: black;
