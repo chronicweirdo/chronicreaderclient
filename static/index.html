@@ -437,10 +437,10 @@
             getProgressItem(book) {
                 if (book.position) {
                     let progressEnclosure = document.createElement("span")
-                    progressEnclosure.style.position = "relative"
+                    progressEnclosure.style.position = "absolute"
                     progressEnclosure.style.width = "80%"
                     progressEnclosure.style.height = "5%"
-                    progressEnclosure.style.top = "-10%"
+                    progressEnclosure.style.bottom = "5%"
                     progressEnclosure.style.left = "10%"
                     progressEnclosure.style.display = "inline-block"
                     progressEnclosure.style.backgroundColor = "white"
