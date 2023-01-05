@@ -52,19 +52,30 @@ var staticServe = function(req, res) {
         var fileLoc = path.join(resolvedBase, safeSuffix)
         console.log(fileLoc)
 
-        fs.readFile(fileLoc, function(err, data) {
-            if (err) {
-                res.writeHead(404, 'Not Found')
-                res.write('404: File Not Found!')
-                return res.end()
-            }
-            var stats = fs.statSync(fileLoc)
+        if (fileLoc.endsWith("manifest.json")) {
+            let manifestContents = JSON.parse(fs.readFileSync(fileLoc))
+            manifestContents.start_url = applicationRoot
+            let body = JSON.stringify(manifestContents)
             res.statusCode = 200
-            res.setHeader("Content-Type", getFileMimeType(fileLoc))
-            res.setHeader("Content-Length", stats["size"])
-            res.write(data)
+            res.setHeader("Content-Type", "application/json")
+            res.setHeader("Content-Length", body.length)
+            res.write(body)
             return res.end()
-        })
+        } else {
+            fs.readFile(fileLoc, function(err, data) {
+                if (err) {
+                    res.writeHead(404, 'Not Found')
+                    res.write('404: File Not Found!')
+                    return res.end()
+                }
+                var stats = fs.statSync(fileLoc)
+                res.statusCode = 200
+                res.setHeader("Content-Type", getFileMimeType(fileLoc))
+                res.setHeader("Content-Length", stats["size"])
+                res.write(data)
+                return res.end()
+            })
+        }
     } else {
         res.writeHead(404, 'Not Found')
         res.write('404: File Not Found!')
