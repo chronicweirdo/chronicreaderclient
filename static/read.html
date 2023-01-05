@@ -133,7 +133,7 @@
                     console.log(meta)
                     let startPosition = getUrlPosition()
                     if (! startPosition) {
-                        startPosition = meta.position
+                        startPosition = Number(meta.position)
                     }
                     document.reader = new ChronicReader(
                         "book/" + bookId,
