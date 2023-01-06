@@ -141,12 +141,21 @@
                 status.style.color = "white"
                 fetch("/verify")
                 .then(response => response.json())
-                .then(connected => {
-                    if (connected == true) {
-                        status.innerHTML = "connected"
+                .then(result => {
+                    if (result && result != null && result.connected == true) {
+                        status.innerHTML = "connected to " + result.server
                         status.style.backgroundColor = "green"
                     } else {
-                        status.innerHTML = "not connected"
+                        let message = "not connected"
+                        if (result && result != null && result.server != null && result.server.length > 0) {
+                            message += " to " + result.server
+                        }
+                        if (result.code != undefined && result.code == 401) {
+                            message += " - try to log in again"
+                        } else {
+                            message += " - server is unavailable"
+                        }
+                        status.innerHTML = message
                         status.style.backgroundColor = "red"
                     }
                 })

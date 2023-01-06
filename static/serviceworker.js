@@ -476,13 +476,25 @@ class Backend {
             let response = await fetch(url, {headers: this.getAuthHeaders()})
             if (response.status == 200) {
                 let responseContent = await response.json()
-                return responseContent
+                return {
+                    server: this.server,
+                    code: 200,
+                    connected: responseContent
+                }
             } else {
-                return false
+                return {
+                    server: this.server,
+                    code: response.status,
+                    connected: false
+                }
             }
         } catch (error) {
             console.log(error)
-            return false
+            return {
+                server: this.server,
+                error: error.message,
+                connected: false
+            }
         }
     }
 
