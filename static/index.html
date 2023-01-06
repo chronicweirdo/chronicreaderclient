@@ -58,17 +58,19 @@
                 button.style.display = "inline-block"
                 button.style.padding = ".4em"
                 button.style.cursor = "pointer"
-                button.style.color = "white"
-                button.style.backgroundColor = "black"
+                /*button.style.color = "white"
+                button.style.backgroundColor = "black"*/
                 return button
             }
 
             highlightButton(button) {
-                button.style.backgroundColor = "gold"
+                //button.style.backgroundColor = "gold"
+                button.classList.add("highlighted")
             }
 
             resetButton(button) {
-                button.style.backgroundColor = "black"
+                //button.style.backgroundColor = "black"
+                button.classList.remove("highlighted")
             }
 
             resetButtons() {
@@ -152,6 +154,7 @@
                 let status = document.createElement("span")
                 status.style.display = "inline-block"
                 status.style.color = "white"
+
                 fetch("/verify")
                 .then(response => response.json())
                 .then(result => {
@@ -287,10 +290,7 @@
             async load() {
                 await super.load()
 
-                let connectionDisplay = document.createElement("p")
-                this.element.appendChild(connectionDisplay)
-                let serverConnectionDisplay = new ServerConnectionDisplay(connectionDisplay)
-                serverConnectionDisplay.load()
+                let serverConnectionDisplay = await ServerConnectionDisplay.createInParent(this.element, "p")
                 
                 let serverLabel = this.label("server", "server")
                 let serverInput = this.input("server")
@@ -352,22 +352,25 @@
             async load() {
                 await super.load()
 
-                let loginFormDiv = document.createElement("div")
+                await LoginForm.createInParent(this.element, "div")
+                /*let loginFormDiv = document.createElement("div")
                 this.element.appendChild(loginFormDiv)
                 let loginForm = new LoginForm(loginFormDiv)
-                await loginForm.load()
+                await loginForm.load()*/
 
-                let uploadFormDiv = document.createElement("div")
+                await UploadForm.createInParent(this.element, "div")
+                /*let uploadFormDiv = document.createElement("div")
                 this.element.appendChild(uploadFormDiv)
                 let uploadForm = new UploadForm(uploadFormDiv)
-                await uploadForm.load()
+                await uploadForm.load()*/
 
-                let dtbc = await ColorSetting.createInParent(this.element, "p", "dark theme background color", "#ff0000")
-
-                /*let darkThemeBackgroundColorElement = document.createElement("p")
-                this.element.appendChild(darkThemeBackgroundColorElement)
-                let darkThemeBackgroundColor = new ColorSetting(darkThemeBackgroundColorElement, )
-                await darkThemeBackgroundColor.load()*/
+                for (let setting of document.settings) {
+                    let p = document.createElement("p")
+                    this.element.appendChild(p)
+                    setting.element = p
+                    setting.load()
+                }
+                //let dtbc = await ColorSetting.createInParent(this.element, "p", "light theme background color", "#ff0000")
             }
         }
 
@@ -787,9 +790,7 @@
         
         
         
-        window.onload = function() {
-            new TabbedPage(document.body).load()
-        }
+        
 
         class Search extends Component {
             static ORDER_LATEST_READ = "read"
@@ -931,6 +932,7 @@
                 super(element)
                 this.name = name
                 this.defaultValue = defaultValue
+                this.apply()
             }
 
             async load() {
@@ -942,16 +944,20 @@
             }
 
             persist(value) {
-                window.localStorage.setItem(this.name, JSON.stringify(value))
+                window.localStorage.setItem(this.getKey(), JSON.stringify(value))
             }
 
-            initialize() {
-                let savedValue = window.localStorage.getItem(this.name)
+            get() {
+                let savedValue = window.localStorage.getItem(this.getKey())
                 if (savedValue != undefined && savedValue != null) {
                     return JSON.parse(savedValue)
                 } else {
                     return this.defaultValue
                 }
+            }
+
+            apply() {
+
             }
         }
 
@@ -975,30 +981,80 @@
                 let input = document.createElement("input")
                 input.type = "color"
                 input.name = this.getKey()
-                input.value = this.initialize()
+                input.value = this.get()
                 this.element.appendChild(input)
                 
                 input.onchange = () => {
-                    console.log(input.value)
-                    this.setCssProperty(this.getKey(), input.value)
+                    this.persist(input.value)
+                    this.apply()
                 }
             }
+
+            apply() {
+                this.setCssProperty(this.getKey(), this.get())
+            }
+        }
+
+        window.onload = function() {
+            document.settings = [
+                new ColorSetting(null, "light theme background color", "#ffffff"),
+                new ColorSetting(null, "light theme text color", "#000000"),
+                new ColorSetting(null, "light theme highlight color", "#FFD700"),
+                new ColorSetting(null, "light theme highlight text color", "#000000"),
+                new ColorSetting(null, "dark theme background color", "#000000"),
+                new ColorSetting(null, "dark theme text color", "#ffffff"),
+                new ColorSetting(null, "dark theme highlight color", "#FFD700"),
+                new ColorSetting(null, "dark theme highlight text color", "#000000")
+            ]
+            new TabbedPage(document.getElementById("content")).load()
         }
     </script>
     
     <style>
         :root {
-            --dark_theme_background_color: white;
+            --dark_theme_background_color: black;
+            --dark_theme_text_color: white;
+            --dark_theme_highlight_color: gold;
+            --dark_theme_highlight_text_color: black;
+            --light_theme_background_color: white;
+            --light_theme_text_color: black;
+            --light_theme_highlight_color: gold;
+            --light_theme_highlight_text_color: black;
         }
         * {
             padding: 0;
             margin: 0;
         }
+        
         body {
             font-family: 'Merriweather', serif;
             font-size: 1.2rem;
-            background-color: var(--dark_theme_background_color, white);
         }
+
+        * {
+            background-color: var(--light_theme_background_color, white);
+            color: var(--light_theme_text_color, black);
+            border-color: var(--light_theme_text_color, black);
+        }
+
+        .highlighted {
+            color: var(--light_theme_highlight_text_color, black);
+            border-color: var(--light_theme_highlight_text_color, black);
+            background-color: var(--light_theme_highlight_color, gold);
+        }
+
+        .dark, .dark * {
+            color: var(--dark_theme_text_color, white);
+            border-color: var(--dark_theme_text_color, white);
+            background-color: var(--dark_theme_background_color, black);
+        }
+
+        .dark .highlighted {
+            color: var(--light_theme_highlight_text_color, black);
+            border-color: var(--light_theme_highlight_text_color, black);
+            background-color: var(--light_theme_highlight_color, gold);
+        }
+
         a {
             color: black;
             text-decoration: underline;
@@ -1007,8 +1063,13 @@
         input {
             font-size: 1.5rem;
         }
+        #content {
+            height: 100vh;
+            /*width: 100vw;*/
+        }
     </style>
 </head>
 <body>
+    <div id="content"></div>
 </body>
 </html>
