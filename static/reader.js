@@ -3087,8 +3087,8 @@ class ChronicReader {
     }
 
     async #init() {
-        let response = await fetch(this.url)
         this.display = Display.factory(this.element, this.settings, this.extension)
+        let response = await fetch(this.url)
         let content = await response.blob()
 
         let archiveWrapper = ArchiveWrapper.factory(this.url, content, this.extension)
