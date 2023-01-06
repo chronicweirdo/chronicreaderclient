@@ -957,17 +957,17 @@
             }
 
             apply() {
-
+                if (this.chainedSettings != null) {
+                    for (let s of this.chainedSettings) {
+                        s.apply()
+                    }
+                }
             }
         }
 
         class ColorSetting extends Setting {
             constructor(element, name, defaultValue = "#ffffff") {
                 super(element, name, defaultValue)
-            }
-
-            setCssProperty(name, value) {
-                document.documentElement.style.setProperty("--" + name, value)
             }
 
             async load() {
@@ -991,12 +991,128 @@
             }
 
             apply() {
-                this.setCssProperty(this.getKey(), this.get())
+                document.documentElement.style.setProperty("--" + this.getKey(), this.get())
+                super.apply()
+            }
+        }
+
+        class OptionsSliderSetting extends Setting {
+            constructor(element, name, values, defaultValue) {
+                super(element, name, defaultValue)
+                this.values = values
+            }
+
+            async load() {
+                await super.load()
+
+                let label = document.createElement("label")
+                label.innerHTML = this.name
+                label.forName = this.getKey()
+                this.element.appendChild(label)
+
+                let valueLabel = document.createElement("span")
+                valueLabel.innerHTML = this.get()
+                this.element.appendChild(valueLabel)
+
+                let input = document.createElement("input")
+                input.type = "range"
+                input.name = this.getKey()
+                input.min = 0
+                input.max = this.values.length - 1
+                input.step = 1
+                console.log(this.values.indexOf(this.get()))
+                input.value = this.values.indexOf(this.get())
+                this.element.appendChild(input)
+                
+                input.onchange = () => {
+                    let value = this.values[input.value]
+                    this.persist(value)
+                    valueLabel.innerHTML = value
+                    this.apply()
+                }
+            }
+        }
+
+        class ThemeSliderSetting extends OptionsSliderSetting {
+            constructor(element, dayStartSetting, dayEndSetting) {
+                super(element, "theme", ["light", "OS theme", "time based", "dark"], "light")
+                this.dayStartSetting = dayStartSetting
+                this.dayEndSetting = dayEndSetting
+                this.apply()
+            }
+            
+            timeStringToDate(value) {
+                return new Date((new Date()).toDateString() + " " + value)
+            }
+
+            apply() {
+                if (this.dayStartSetting != undefined && this.dayEndSetting != undefined) {
+                    let value = this.get()
+                    if (value == "light") {
+                        document.body.classList.remove("dark")
+                    } else if (value == "dark") {
+                        document.body.classList.add("dark")
+                    } else if (value == "OS theme") {
+                        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                            document.body.classList.add("dark")
+                        } else {
+                            document.body.classList.remove("dark")
+                        }
+                    } else if (value == "time based") {
+                        let dayStart = this.timeStringToDate(this.dayStartSetting.get())
+                        let dayEnd = this.timeStringToDate(this.dayEndSetting.get())
+                        let now = new Date()
+                        if (now < dayStart || dayEnd < now) {
+                            document.body.classList.add("dark")
+                        } else {
+                            document.body.classList.remove("dark")
+                        }
+                    }
+                    super.apply()
+                }
+            }
+        }
+
+        class TimeSetting extends Setting {
+            constructor(element, name, defaultValue) {
+                super(element, name, defaultValue)
+            }
+
+            async load() {
+                await super.load()
+
+                let label = document.createElement("label")
+                label.innerHTML = this.name
+                label.forName = this.getKey()
+                this.element.appendChild(label)
+
+                let input = document.createElement("input")
+                input.type = "time"
+                input.name = this.getKey()
+                input.value = this.get()
+                this.element.appendChild(input)
+                
+                input.onchange = () => {
+                    this.persist(input.value)
+                    this.apply()
+                }
+            }
+
+            apply() {
+                super.apply()
             }
         }
 
         window.onload = function() {
+            let dayStartSetting = new TimeSetting(null, "day start", "07:00")
+            let dayEndSetting = new TimeSetting(null, "day end", "21:00")
+            let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting)
+            dayStartSetting.chainedSettings = [themeSetting]
+            dayEndSetting.chainedSettings = [themeSetting]
             document.settings = [
+                dayStartSetting,
+                dayEndSetting,
+                themeSetting,
                 new ColorSetting(null, "light theme background color", "#ffffff"),
                 new ColorSetting(null, "light theme text color", "#000000"),
                 new ColorSetting(null, "light theme highlight color", "#FFD700"),
@@ -1007,6 +1123,13 @@
                 new ColorSetting(null, "dark theme highlight text color", "#000000")
             ]
             new TabbedPage(document.getElementById("content")).load()
+
+            window.addEventListener("focus", () => {
+                themeSetting.apply()
+            }, false)
+            document.getElementById("content").addEventListener("click", () => {
+                themeSetting.apply()
+            }, false)
         }
     </script>
     
