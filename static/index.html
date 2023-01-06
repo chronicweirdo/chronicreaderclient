@@ -21,6 +21,19 @@
         }
 
         class Component {
+            static async create(tagName, ...args) {
+                let element = document.createElement(tagName)
+                let component = new this(element, ...args)
+                await component.load()
+                return element
+            }
+            static async createInParent(parent, tagName, ...args) {
+                let element = document.createElement(tagName)
+                parent.appendChild(element)
+                let component = new this(element, ...args)
+                await component.load()
+                return component
+            }
             constructor(element) {
                 this.element = element
             }
@@ -67,7 +80,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 let buttons = document.createElement("div")
                 buttons.style.marginBottom = "2.5vw"
@@ -134,7 +147,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 let status = document.createElement("span")
                 status.style.display = "inline-block"
@@ -209,7 +222,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
             }
         }
 
@@ -219,7 +232,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 let fileLabel = this.label("filename", "filename")
                 let fileInput = this.file("filename")
@@ -272,7 +285,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 let connectionDisplay = document.createElement("p")
                 this.element.appendChild(connectionDisplay)
@@ -337,7 +350,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 let loginFormDiv = document.createElement("div")
                 this.element.appendChild(loginFormDiv)
@@ -348,6 +361,13 @@
                 this.element.appendChild(uploadFormDiv)
                 let uploadForm = new UploadForm(uploadFormDiv)
                 await uploadForm.load()
+
+                let dtbc = await ColorSetting.createInParent(this.element, "p", "dark theme background color", "#ff0000")
+
+                /*let darkThemeBackgroundColorElement = document.createElement("p")
+                this.element.appendChild(darkThemeBackgroundColorElement)
+                let darkThemeBackgroundColor = new ColorSetting(darkThemeBackgroundColorElement, )
+                await darkThemeBackgroundColor.load()*/
             }
         }
 
@@ -358,7 +378,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 await fetch("/books")
                     .then(response => response.json())
@@ -379,7 +399,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
                 let search = new Search(this.element, "", 5, Search.ORDER_LATEST_READ, true, this.searchFunction)
                 await search.load()
             }
@@ -392,7 +412,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
                 let search = new Search(this.element, "", 5, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
                 await search.load()
             }
@@ -417,7 +437,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 this.searchField = document.createElement("input")
                 this.searchField.type = "text"
@@ -639,7 +659,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
 
                 this.element.style.width = '100%'
                 this.element.style.overflow = 'hidden'
@@ -687,7 +707,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
             }
 
             createTitle(collection) {
@@ -882,7 +902,7 @@
             }
 
             async load() {
-                super.load()
+                await super.load()
                 let withCollectionSections = (this.order == Search.ORDER_TITLE)
                 let bookListDiv = document.createElement("div")
                 this.element.appendChild(bookListDiv)
@@ -905,9 +925,71 @@
                 await this.runSearch()
             }
         }
+
+        class Setting extends Component {
+            constructor(element, name, defaultValue = null) {
+                super(element)
+                this.name = name
+                this.defaultValue = defaultValue
+            }
+
+            async load() {
+                await super.load()
+            }
+
+            getKey() {
+                return this.name.replaceAll(/\s/g, "_")
+            }
+
+            persist(value) {
+                window.localStorage.setItem(this.name, JSON.stringify(value))
+            }
+
+            initialize() {
+                let savedValue = window.localStorage.getItem(this.name)
+                if (savedValue != undefined && savedValue != null) {
+                    return JSON.parse(savedValue)
+                } else {
+                    return this.defaultValue
+                }
+            }
+        }
+
+        class ColorSetting extends Setting {
+            constructor(element, name, defaultValue = "#ffffff") {
+                super(element, name, defaultValue)
+            }
+
+            setCssProperty(name, value) {
+                document.documentElement.style.setProperty("--" + name, value)
+            }
+
+            async load() {
+                await super.load()
+
+                let label = document.createElement("label")
+                label.innerHTML = this.name
+                label.forName = this.getKey()
+                this.element.appendChild(label)
+
+                let input = document.createElement("input")
+                input.type = "color"
+                input.name = this.getKey()
+                input.value = this.initialize()
+                this.element.appendChild(input)
+                
+                input.onchange = () => {
+                    console.log(input.value)
+                    this.setCssProperty(this.getKey(), input.value)
+                }
+            }
+        }
     </script>
     
     <style>
+        :root {
+            --dark_theme_background_color: white;
+        }
         * {
             padding: 0;
             margin: 0;
@@ -915,6 +997,7 @@
         body {
             font-family: 'Merriweather', serif;
             font-size: 1.2rem;
+            background-color: var(--dark_theme_background_color, white);
         }
         a {
             color: black;
