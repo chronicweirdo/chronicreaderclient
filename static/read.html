@@ -11,6 +11,7 @@
     <script src="jszip.js"></script>
     <script src="libunrar.js"></script>
     <script src="reader.js"></script>
+    <script src="client.js"></script>
     <script>
         /*function updateUrl(display) {
             let newPosition = display.position
@@ -46,6 +47,7 @@
                 let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString()
                 window.history.replaceState('', '', newUrl)
             }
+            document.themeSetting.apply()
         }
         function getBookId() {
             /*let queryString = window.location.search
@@ -126,6 +128,13 @@
             return p
         }
         window.onload = function() {
+            let dayStartSetting = new TimeSetting(null, "day start", "07:00")
+            let dayEndSetting = new TimeSetting(null, "day end", "21:00")
+            document.themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting)
+            window.addEventListener("focus", () => {
+                document.themeSetting.apply()
+            }, false)
+
             let bookId = getBookId()
             fetch("bookmeta/" + bookId)
                 .then(response => response.json())
@@ -151,6 +160,44 @@
     </script>
     <link rel="stylesheet" type="text/css" href="fonts.css">
     <style>
+        :root {
+            --dark_theme_background_color: black;
+            --dark_theme_text_color: white;
+            --dark_theme_highlight_color: gold;
+            --dark_theme_highlight_text_color: black;
+            --light_theme_background_color: white;
+            --light_theme_text_color: black;
+            --light_theme_highlight_color: gold;
+            --light_theme_highlight_text_color: black;
+        }
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        * {
+            background-color: var(--light_theme_background_color, white);
+            color: var(--light_theme_text_color, black);
+            border-color: var(--light_theme_text_color, black);
+        }
+
+        .highlighted {
+            color: var(--light_theme_highlight_text_color, black);
+            border-color: var(--light_theme_highlight_text_color, black);
+            background-color: var(--light_theme_highlight_color, gold);
+        }
+
+        .dark, .dark * {
+            color: var(--dark_theme_text_color, white);
+            border-color: var(--dark_theme_text_color, white);
+            background-color: var(--dark_theme_background_color, black);
+        }
+
+        .dark .highlighted {
+            color: var(--light_theme_highlight_text_color, black);
+            border-color: var(--light_theme_highlight_text_color, black);
+            background-color: var(--light_theme_highlight_color, gold);
+        }
         body {
             margin: 0;
             padding: 0;
