@@ -26,9 +26,20 @@
                 new ColorSetting(null, "light theme background color", "#ffffff"),
                 new ColorSetting(null, "light theme text color", "#000000"),
                 new ColorSetting(null, "light theme highlight color", "#FFD700"),
+                new ColorSetting(null, "light theme highlight text color", "#000000"),
+                new ColorSetting(null, "light theme error color", "#dc143c"),
+                new ColorSetting(null, "light theme error text color", "#FFFFFF"),
+                new ColorSetting(null, "light theme success color", "#008000"),
+                new ColorSetting(null, "light theme success text color", "#FFFFFF"),
+
                 new ColorSetting(null, "dark theme background color", "#000000"),
                 new ColorSetting(null, "dark theme text color", "#ffffff"),
-                new ColorSetting(null, "dark theme highlight color", "#FFD700")
+                new ColorSetting(null, "dark theme highlight color", "#FFD700"),
+                new ColorSetting(null, "dark theme highlight text color", "#000000"),
+                new ColorSetting(null, "dark theme error color", "#dc143c"),
+                new ColorSetting(null, "dark theme error text color", "#FFFFFF"),
+                new ColorSetting(null, "dark theme success color", "#008000"),
+                new ColorSetting(null, "dark theme success text color", "#FFFFFF")
             ]
             new TabbedPage(document.getElementById("content")).load()
 
@@ -43,13 +54,25 @@
     
     <style>
         :root {
+            /* dark theme */
             --dark_theme_background_color: black;
             --dark_theme_text_color: white;
             --dark_theme_highlight_color: gold;
+            --dark_theme_highlight_text_color: black;
+            --dark_theme_error_color: red;
+            --dark_theme_error_text_color: white;
+            --dark_theme_success_color: greenyellow;
+            --dark_theme_success_text_color: white;
 
+            /* light theme */
             --light_theme_background_color: white;
             --light_theme_text_color: black;
             --light_theme_highlight_color: gold;
+            --light_theme_highlight_text_color: black;
+            --light_theme_error_color: red;
+            --light_theme_error_text_color: white;
+            --light_theme_success_color: green;
+            --light_theme_success_text_color: white;
         }
 
         * {
@@ -60,34 +83,51 @@
         body {
             font-family: 'Merriweather', serif;
             font-size: 1.2rem;
-            background-color: var(--light_theme_background_color, white);
-            color: var(--light_theme_text_color, black);
+            background-color: var(--light_theme_background_color);
+            color: var(--light_theme_text_color);
         }
 
-        .highlighted {
-            color: var(--light_theme_text_color, black);
-            background-color: var(--light_theme_highlight_color, gold);
-        }
-
-        .success {
-            color: white;
-            background-color: green;
-        }
-
-        .dark .success {
-            color: white;
-            background-color: green;
-        }
-
-        .error {
-            color: white;
-            background-color: red;
+        a {
+            background-color: var(--light_theme_background_color);
+            color: var(--light_theme_text_color);
         }
 
         .dark, .dark a {
             color: var(--dark_theme_text_color, white);
             background-color: var(--dark_theme_background_color, black);
         }
+
+        .highlighted {
+            color: var(--light_theme_highlight_text_color);
+            background-color: var(--light_theme_highlight_color);
+        }
+
+        .dark .highlighted {
+            color: var(--dark_theme_highlight_text_color);
+            background-color: var(--dark_theme_highlight_color);
+        }
+
+        .success {
+            color: var(--light_theme_success_text_color);
+            background-color: var(--light_theme_success_color);
+        }
+
+        .dark .success {
+            color: var(--dark_theme_success_text_color);
+            background-color: var(--dark_theme_success_color);
+        }
+
+        .error {
+            color: var(--light_theme_error_text_color);
+            background-color: var(--light_theme_error_color);
+        }
+
+        .dark .error {
+            color: var(--dark_theme_error_text_color);
+            background-color: var(--dark_theme_error_color);
+        }
+
+        
 
         .menu {
             margin-bottom: 2.5vw;
@@ -152,11 +192,6 @@
             /*.next_button {
                 margin: 1.4285vw;
             }*/
-        }
-
-        .dark .highlighted {
-            color: var(--dark_theme_text_color, black);
-            background-color: var(--dark_theme_highlight_color, gold);
         }
 
         .progress_enclosure {

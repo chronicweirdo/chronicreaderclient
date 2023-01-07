@@ -355,17 +355,18 @@ class LoginForm extends FormComponent {
             })
             .then(result => {
                 console.log(result)
+                loginResult.classList.remove(...loginResult.classList)
                 if (result == true) {
                     loginResult.innerHTML = "login successful"
-                    loginResult.style.backgroundColor = "green"
+                    loginResult.classList.add(CLASS_SUCCESS)
                 } else {
                     loginResult.innerHTML = "login failed"
-                    loginResult.style.backgroundColor = "red"
+                    loginResult.classList.add(CLASS_ERROR)
                 }
                 serverConnectionDisplay.load()
                 timeout(5000).then(() => {
                     loginResult.innerHTML = ""
-                    loginResult.style.backgroundColor = "transparent"
+                    //loginResult.style.backgroundColor = "transparent"
                 })
             })
         }
@@ -1100,7 +1101,7 @@ class OptionsSliderSetting extends Setting {
 
 class ThemeSliderSetting extends OptionsSliderSetting {
     constructor(element, dayStartSetting, dayEndSetting) {
-        super(element, "theme", ["light", "OS theme", "time based", "dark"], "light")
+        super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
         this.dayStartSetting = dayStartSetting
         this.dayEndSetting = dayEndSetting
         this.apply()
