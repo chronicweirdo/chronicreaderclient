@@ -1,5 +1,6 @@
 var CLASS_SUCCESS = "success"
 var CLASS_ERROR = "error"
+var CLASS_HIGHLIGHTED = "highlighted"
 
 function timeout(ms) {
     return new Promise((resolve, reject) => {
@@ -36,7 +37,6 @@ class Component {
 }
 
 class TabbedPage extends Component {
-    CLASS_HIGHLIGHTED = "highlighted"
     CLASS_MENU = "menu"
     
     constructor(element) {
@@ -54,11 +54,11 @@ class TabbedPage extends Component {
     }
 
     highlightButton(button) {
-        button.classList.add(this.CLASS_HIGHLIGHTED)
+        button.classList.add(CLASS_HIGHLIGHTED)
     }
 
     resetButton(button) {
-        button.classList.remove(this.CLASS_HIGHLIGHTED)
+        button.classList.remove(CLASS_HIGHLIGHTED)
     }
 
     resetButtons() {
@@ -74,7 +74,6 @@ class TabbedPage extends Component {
 
         let buttons = document.createElement("div")
         buttons.classList.add(this.CLASS_MENU)
-        //buttons.style.marginBottom = "2.5vw"
         this.element.appendChild(buttons)
 
         this.content = document.createElement("div")
@@ -133,15 +132,12 @@ class TabbedPage extends Component {
 }
 
 class ServerConnectionDisplay extends Component {
-    /*CLASS_FORM_ROW = "form_row"*/
     constructor(element) {
         super(element)
     }
 
     async load() {
         await super.load()
-
-        /*this.element.classList.add(this.CLASS_FORM_ROW)*/
 
         let status = document.createElement("span")
         status.style.display = "inline-block"
@@ -153,7 +149,6 @@ class ServerConnectionDisplay extends Component {
             status.classList.remove(...status.classList)
             if (result && result != null && result.connected == true) {
                 status.innerHTML = "connected to " + result.server
-                //status.style.backgroundColor = "green"
                 status.classList.add(CLASS_SUCCESS)
             } else {
                 let message = "not connected"
@@ -166,7 +161,6 @@ class ServerConnectionDisplay extends Component {
                     message += " - server is unavailable"
                 }
                 status.innerHTML = message
-                //status.style.backgroundColor = "red"
                 status.classList.add(CLASS_ERROR)
             }
         })
@@ -258,15 +252,11 @@ class UploadForm extends FormComponent {
         await super.load()
 
         this.element.appendChild(this.title("File Upload"))
-        /*let fileLabel = this.label("filename", "filename")
-        this.element.appendChild(this.p(fileLabel))*/
 
         let fileInput = this.file("filename")
         this.element.appendChild(this.p(fileInput))
 
         let uploadResult = document.createElement("span")
-        /*uploadResult.style.color = "white"
-        uploadResult.style.marginLeft = "1em"*/
         let button = document.createElement("a")
         button.innerHTML = "upload"
         button.onclick = () => {
@@ -333,8 +323,6 @@ class LoginForm extends FormComponent {
         this.element.appendChild(this.p(passwordLabel, passwordInput))
 
         let loginResult = document.createElement("span")
-        //loginResult.style.marginLeft = "1em"
-        //loginResult.style.color = "white"
 
         let button = document.createElement("a")
         button.innerHTML = "login"
@@ -366,7 +354,6 @@ class LoginForm extends FormComponent {
                 serverConnectionDisplay.load()
                 timeout(5000).then(() => {
                     loginResult.innerHTML = ""
-                    //loginResult.style.backgroundColor = "transparent"
                 })
             })
         }
@@ -383,16 +370,8 @@ class SettingsTab extends Component {
         await super.load()
 
         await LoginForm.createInParent(this.element, "div")
-        /*let loginFormDiv = document.createElement("div")
-        this.element.appendChild(loginFormDiv)
-        let loginForm = new LoginForm(loginFormDiv)
-        await loginForm.load()*/
 
         await UploadForm.createInParent(this.element, "div")
-        /*let uploadFormDiv = document.createElement("div")
-        this.element.appendChild(uploadFormDiv)
-        let uploadForm = new UploadForm(uploadFormDiv)
-        await uploadForm.load()*/
 
         let settingsTitle = document.createElement("h1")
         settingsTitle.innerHTML = "Settings"
@@ -404,7 +383,6 @@ class SettingsTab extends Component {
             setting.element = p
             setting.load()
         }
-        //let dtbc = await ColorSetting.createInParent(this.element, "p", "light theme background color", "#ff0000")
     }
 }
 
@@ -422,9 +400,6 @@ class OnDeviceTab extends Component {
             .then((books) => {
                 let list = new BookList(this.element, false, this.searchFunction)
                 list.load().then(() => list.update(books))
-                /*for (let book of books) {
-                    list.addBook(book)
-                }*/
             })
     }
 }
@@ -482,13 +457,11 @@ class LibrarySearchTab extends Component {
         this.searchField = document.createElement("input")
         this.searchField.type = "text"
         searchSection.appendChild(this.searchField)
-        //this.element.appendChild(this.searchField)
 
         this.searchButton = document.createElement("a")
         this.searchButton.innerHTML = "search"
         this.searchButton.onclick = () => this.search()
         searchSection.appendChild(this.searchButton)
-        //this.element.appendChild(this.searchButton)
         this.element.appendChild(searchSection)
 
         this.searchList = document.createElement("div")
@@ -520,20 +493,16 @@ class BookItem extends Component {
             progressEnclosure.style.bottom = "5%"
             progressEnclosure.style.left = "10%"
             progressEnclosure.style.display = "inline-block"
-            //progressEnclosure.style.backgroundColor = "white"
             progressEnclosure.classList.add(this.CLASS_PROGRESS_ENCLOSURE)
-            //progressEnclosure.style.border = "1px solid black"
 
             let progress = document.createElement("span")
             progress.style.position = "absolute"
             progress.style.display = "inline-block"
-            /*progress.style.margin = "10%"*/
             progress.style.height = "80%"
             progress.style.width = (99 * (book.position / book.size)) + "%"
             progress.style.top = "10%"
             progress.style.left = "1%"
             progress.classList.add(this.CLASS_PROGRESS_BAR)
-            //progress.style.backgroundColor = "black"
 
             progressEnclosure.appendChild(progress)
             return progressEnclosure
@@ -546,10 +515,6 @@ class BookItem extends Component {
     async getCoverItem(book) {
         let imageEnclosure = document.createElement("span")
         imageEnclosure.classList.add(this.CLASS_COVER_ENCLOSURE)
-        /*imageEnclosure.style.overflow = 'hidden'
-        imageEnclosure.style.position = "relative"
-        imageEnclosure.style.display = 'block'
-        imageEnclosure.style.height = (8/5*30) + 'vw'*/
 
         let image = document.createElement("img")
         if (book.cover == null) {
@@ -635,34 +600,25 @@ class BookItem extends Component {
         context.fillStyle = textColor
         context.textAlign = "center"
 
-        // find correct font size
-        //let f = new FontFace("Merriweather", 'url("/Merriweather/Merriweather-Regular.ttf")')
-        //await f.load()
-
         let fontSize = width/rows[longestRow].length * 3
         context.font = fontSize + 'px "Merriweather"'
         while (context.measureText(rows[longestRow]).width > width - margin) {
             fontSize -= 1
-            // font-family: 'Merriweather', serif;
             context.font = fontSize + 'px "Merriweather"'
         }
 
         let rowHeight = 0
-        //let totalHeight = 0
         for (let i = 0; i < rows.length; i++) {
             let tm = context.measureText(rows[i])
-            //console.log(tm)
             let height = tm.actualBoundingBoxAscent + tm.actualBoundingBoxDescent
-            //totalHeight += height
             if (height > rowHeight) rowHeight = height
         }
-        //console.log(rowHeight)
         let rowSpacing = 10
         rowHeight = rowHeight + rowSpacing
         let totalHeight = rowHeight * rows.length
 
         for (let i = 0; i < rows.length; i++) {
-            let h = (height/2) - (totalHeight/2) + (i+1) * rowHeight// + rowHeight / 2
+            let h = (height/2) - (totalHeight/2) + (i+1) * rowHeight
             context.fillText(rows[i], width/2, h)
         }
         
@@ -748,8 +704,6 @@ class BookItem extends Component {
 
 class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
-    /*CLASS_BOOK_LIST = "book_list"
-    CLASS_BOOK_LIST_TITLE = "book_list_title"*/
 
     constructor(element, withCollections = false, searchFunction = null) {
         super(element)
@@ -763,7 +717,6 @@ class BookList extends Component {
 
     createTitle(collection) {
         let title = document.createElement("h1")
-        //title.classList.add(this.CLASS_BOOK_LIST_TITLE)
         if (this.searchFunction != undefined && this.searchFunction != null) {
             let items = BookItem.getCollectionItems(collection, this.searchFunction)
             for (let i of items) {
@@ -777,14 +730,6 @@ class BookList extends Component {
 
     createListElement() {
         let list = document.createElement('ul')
-        //list.classList.add(this.CLASS_BOOK_LIST)
-        //list.style.padding = '0'
-        //list.style.listStyleType = 'none'
-        //list.style.display = 'grid'
-        //list.style.gridTemplateColumns = '30vw 30vw 30vw'
-        //list.style.columnGap = '2.5vw'
-        //list.style.rowGap = '2.5vw'
-        //list.style.marginLeft = "2.5vw"
         return list
     }
 
@@ -828,8 +773,8 @@ class BookList extends Component {
 
         let bookListItem = document.createElement("li")
         parent.appendChild(bookListItem)
-        let bookItem = new BookItem(bookListItem, book, ! this.withCollections, this.searchFunction) //await this.getBookItem(book)
-        bookItem.load()
+        let bookItem = new BookItem(bookListItem, book, ! this.withCollections, this.searchFunction)
+        await bookItem.load()
     }
 
     async update(books) {
@@ -837,13 +782,7 @@ class BookList extends Component {
             this.addBook(book)
         }
     }
-
-    
 }
-
-
-
-
 
 class Search extends Component {
     static ORDER_LATEST_READ = "read"
@@ -872,9 +811,6 @@ class Search extends Component {
         let p = document.createElement("p")
         let button = document.createElement("a")
         button.innerHTML = "next"
-        //button.classList.add(this.CLASS_NEXT_BUTTON)
-        /*button.style.margin = "2.5vw"
-        button.style.display = "block"*/
         p.style.display = "none"
         button.onclick = () => {
             this.nextSearch()
@@ -915,17 +851,11 @@ class Search extends Component {
     }
 
     addBooksToResult(books) {
-        /*if (this.nextPage) {
-            this.nextPage.remove()
-            this.nextPage = null
-        }*/
         this.hideLoading()
         this.bookList.update(books)
         if (this.multipage) {
             if (books.length == this.pageSize) {
                 this.showNextButton()
-                /*this.nextPage = this.createNextButton()
-                this.element.appendChild(this.nextPage)*/
             }
         }
     }

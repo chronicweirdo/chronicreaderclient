@@ -139,7 +139,7 @@
             max-width: 450px;
         }
 
-        ul /*.book_list*/ {
+        ul {
             padding: 0;
             list-style-type: none;
             display: grid;
@@ -149,7 +149,7 @@
             margin-left: 2.5vw;
         }
 
-        h1, p /*.book_list_title*/ {
+        h1, p {
             font-size: 1.2em;
             margin: 2.5vw;
         }
@@ -161,21 +161,15 @@
             height: 48vw; /* (8/5*30) */
         }
 
-        /*.next_button {
-            margin: 2.5vw;
-            display: block;
-            display: none;
-        }*/
-
         @media (orientation: landscape) {
-            ul /*.book_list*/ {
+            ul {
                 grid-template-columns: repeat(6, 15vw);
                 column-gap: 1.4285vw;
                 row-gap: 1.4285vw;
                 margin-left: 1.4285vw;
             }
 
-            h1, p /*.book_list_title*/ {
+            h1, p {
                 margin: 1.4285vw;
             }
 
@@ -188,10 +182,6 @@
                 padding-left: 1.4285vw;
                 padding-right: 1.4285vw;
             }
-
-            /*.next_button {
-                margin: 1.4285vw;
-            }*/
         }
 
         .progress_enclosure {
@@ -224,7 +214,6 @@
         }
         #content {
             height: 100vh;
-            /*width: 100vw;*/
         }
     </style>
 </head>
