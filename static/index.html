@@ -26,11 +26,9 @@
                 new ColorSetting(null, "light theme background color", "#ffffff"),
                 new ColorSetting(null, "light theme text color", "#000000"),
                 new ColorSetting(null, "light theme highlight color", "#FFD700"),
-                new ColorSetting(null, "light theme highlight text color", "#000000"),
                 new ColorSetting(null, "dark theme background color", "#000000"),
                 new ColorSetting(null, "dark theme text color", "#ffffff"),
-                new ColorSetting(null, "dark theme highlight color", "#FFD700"),
-                new ColorSetting(null, "dark theme highlight text color", "#000000")
+                new ColorSetting(null, "dark theme highlight color", "#FFD700")
             ]
             new TabbedPage(document.getElementById("content")).load()
 
@@ -48,12 +46,12 @@
             --dark_theme_background_color: black;
             --dark_theme_text_color: white;
             --dark_theme_highlight_color: gold;
-            --dark_theme_highlight_text_color: black;
+
             --light_theme_background_color: white;
             --light_theme_text_color: black;
             --light_theme_highlight_color: gold;
-            --light_theme_highlight_text_color: black;
         }
+
         * {
             padding: 0;
             margin: 0;
@@ -62,31 +60,105 @@
         body {
             font-family: 'Merriweather', serif;
             font-size: 1.2rem;
-        }
-
-        * {
             background-color: var(--light_theme_background_color, white);
             color: var(--light_theme_text_color, black);
-            border-color: var(--light_theme_text_color, black);
         }
 
         .highlighted {
-            color: var(--light_theme_highlight_text_color, black);
-            border-color: var(--light_theme_highlight_text_color, black);
+            color: var(--light_theme_text_color, black);
             background-color: var(--light_theme_highlight_color, gold);
         }
 
-        .dark, .dark * {
+        .dark, .dark a {
             color: var(--dark_theme_text_color, white);
+            background-color: var(--dark_theme_background_color, black);
+        }
+
+        .menu {
+            margin-bottom: 2.5vw;
+            padding-left: 2.5vw;
+            padding-right: 2.5vw;
+        }
+
+        ul /*.book_list*/ {
+            padding: 0;
+            list-style-type: none;
+            display: grid;
+            grid-template-columns: 30vw 30vw 30vw;
+            column-gap: 2.5vw;
+            row-gap: 2.5vw;
+            margin-left: 2.5vw;
+        }
+
+        h1, p /*.book_list_title*/ {
+            font-size: 1.2em;
+            margin: 2.5vw;
+        }
+
+        .cover_enclosure {
+            overflow: hidden;
+            position: relative;
+            display: block;
+            height: 48vw; /* (8/5*30) */
+        }
+
+        /*.next_button {
+            margin: 2.5vw;
+            display: block;
+            display: none;
+        }*/
+
+        @media (orientation: landscape) {
+            ul /*.book_list*/ {
+                grid-template-columns: repeat(6, 15vw);
+                column-gap: 1.4285vw;
+                row-gap: 1.4285vw;
+                margin-left: 1.4285vw;
+            }
+
+            h1, p /*.book_list_title*/ {
+                margin: 1.4285vw;
+            }
+
+            .cover_enclosure {
+                height: 24vw; /* (8/5*15) */
+            }
+
+            .menu {
+                margin-bottom: 1.4285vw;
+                padding-left: 1.4285vw;
+                padding-right: 1.4285vw;
+            }
+
+            /*.next_button {
+                margin: 1.4285vw;
+            }*/
+        }
+
+        .dark .highlighted {
+            color: var(--dark_theme_text_color, black);
+            background-color: var(--dark_theme_highlight_color, gold);
+        }
+
+        .progress_enclosure {
+            border: 1px solid var(--light_theme_text_color, black);
+            background-color: var(--light_theme_background_color, white);
+        }
+
+        .dark .progress_enclosure {
             border-color: var(--dark_theme_text_color, white);
             background-color: var(--dark_theme_background_color, black);
         }
 
-        .dark .highlighted {
-            color: var(--light_theme_highlight_text_color, black);
-            border-color: var(--light_theme_highlight_text_color, black);
-            background-color: var(--light_theme_highlight_color, gold);
+        .progress_bar {
+            background-color: var(--light_theme_text_color, black);
         }
+
+        .dark .progress_bar {
+            background-color: var(--dark_theme_text_color, white);
+        }
+
+        
 
         a {
             color: black;

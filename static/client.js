@@ -33,6 +33,9 @@ class Component {
 }
 
 class TabbedPage extends Component {
+    CLASS_HIGHLIGHTED = "highlighted"
+    CLASS_MENU = "menu"
+    
     constructor(element) {
         super(element)
     }
@@ -44,19 +47,15 @@ class TabbedPage extends Component {
         button.style.display = "inline-block"
         button.style.padding = ".4em"
         button.style.cursor = "pointer"
-        /*button.style.color = "white"
-        button.style.backgroundColor = "black"*/
         return button
     }
 
     highlightButton(button) {
-        //button.style.backgroundColor = "gold"
-        button.classList.add("highlighted")
+        button.classList.add(this.CLASS_HIGHLIGHTED)
     }
 
     resetButton(button) {
-        //button.style.backgroundColor = "black"
-        button.classList.remove("highlighted")
+        button.classList.remove(this.CLASS_HIGHLIGHTED)
     }
 
     resetButtons() {
@@ -71,7 +70,8 @@ class TabbedPage extends Component {
         await super.load()
 
         let buttons = document.createElement("div")
-        buttons.style.marginBottom = "2.5vw"
+        buttons.classList.add(this.CLASS_MENU)
+        //buttons.style.marginBottom = "2.5vw"
         this.element.appendChild(buttons)
 
         this.content = document.createElement("div")
@@ -408,6 +408,7 @@ class LatestAddedTab extends Component {
 }
 
 class LibrarySearchTab extends Component {
+    CLASS_SEARCH_SECTION = "search_section"
     constructor(element) {
         super(element)
     }
@@ -428,14 +429,19 @@ class LibrarySearchTab extends Component {
     async load() {
         await super.load()
 
+        let searchSection = document.createElement("p")
+
         this.searchField = document.createElement("input")
         this.searchField.type = "text"
-        this.element.appendChild(this.searchField)
+        searchSection.appendChild(this.searchField)
+        //this.element.appendChild(this.searchField)
 
         this.searchButton = document.createElement("a")
         this.searchButton.innerHTML = "search"
         this.searchButton.onclick = () => this.search()
-        this.element.appendChild(this.searchButton)
+        searchSection.appendChild(this.searchButton)
+        //this.element.appendChild(this.searchButton)
+        this.element.appendChild(searchSection)
 
         this.searchList = document.createElement("div")
         this.element.appendChild(this.searchList)
@@ -445,6 +451,10 @@ class LibrarySearchTab extends Component {
 }
 
 class BookItem extends Component {
+    CLASS_PROGRESS_ENCLOSURE = "progress_enclosure"
+    CLASS_PROGRESS_BAR = "progress_bar"
+    CLASS_COVER_ENCLOSURE = "cover_enclosure"
+
     constructor(element, book, withCollection, searchFunction = null) {
         super(element)
         if (element.tagName != "LI") throw "book item must be applied to li"
@@ -462,8 +472,9 @@ class BookItem extends Component {
             progressEnclosure.style.bottom = "5%"
             progressEnclosure.style.left = "10%"
             progressEnclosure.style.display = "inline-block"
-            progressEnclosure.style.backgroundColor = "white"
-            progressEnclosure.style.border = "1px solid black"
+            //progressEnclosure.style.backgroundColor = "white"
+            progressEnclosure.classList.add(this.CLASS_PROGRESS_ENCLOSURE)
+            //progressEnclosure.style.border = "1px solid black"
 
             let progress = document.createElement("span")
             progress.style.position = "absolute"
@@ -473,7 +484,8 @@ class BookItem extends Component {
             progress.style.width = (99 * (book.position / book.size)) + "%"
             progress.style.top = "10%"
             progress.style.left = "1%"
-            progress.style.backgroundColor = "black"
+            progress.classList.add(this.CLASS_PROGRESS_BAR)
+            //progress.style.backgroundColor = "black"
 
             progressEnclosure.appendChild(progress)
             return progressEnclosure
@@ -485,10 +497,11 @@ class BookItem extends Component {
     
     async getCoverItem(book) {
         let imageEnclosure = document.createElement("span")
-        imageEnclosure.style.overflow = 'hidden'
+        imageEnclosure.classList.add(this.CLASS_COVER_ENCLOSURE)
+        /*imageEnclosure.style.overflow = 'hidden'
         imageEnclosure.style.position = "relative"
         imageEnclosure.style.display = 'block'
-        imageEnclosure.style.height = (8/5*30) + 'vw'
+        imageEnclosure.style.height = (8/5*30) + 'vw'*/
 
         let image = document.createElement("img")
         if (book.cover == null) {
@@ -617,7 +630,6 @@ class BookItem extends Component {
     }
 
     static getCollectionItems(collection, searchFunction) {
-        console.log(collection)
         if (collection == undefined || collection == null || collection.length == 0) return []
         if (searchFunction != undefined && searchFunction != null) {
             let collectionParts = collection.split("/").filter(e => e.length > 0)
@@ -688,6 +700,8 @@ class BookItem extends Component {
 
 class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
+    /*CLASS_BOOK_LIST = "book_list"
+    CLASS_BOOK_LIST_TITLE = "book_list_title"*/
 
     constructor(element, withCollections = false, searchFunction = null) {
         super(element)
@@ -701,6 +715,7 @@ class BookList extends Component {
 
     createTitle(collection) {
         let title = document.createElement("h1")
+        //title.classList.add(this.CLASS_BOOK_LIST_TITLE)
         if (this.searchFunction != undefined && this.searchFunction != null) {
             let items = BookItem.getCollectionItems(collection, this.searchFunction)
             for (let i of items) {
@@ -714,13 +729,14 @@ class BookList extends Component {
 
     createListElement() {
         let list = document.createElement('ul')
-        list.style.padding = '0'
-        list.style.listStyleType = 'none'
-        list.style.display = 'grid'
-        list.style.gridTemplateColumns = '30vw 30vw 30vw'
-        list.style.columnGap = '2.5vw'
-        list.style.rowGap = '2.5vw'
-        list.style.marginLeft = "2.5vw"
+        //list.classList.add(this.CLASS_BOOK_LIST)
+        //list.style.padding = '0'
+        //list.style.listStyleType = 'none'
+        //list.style.display = 'grid'
+        //list.style.gridTemplateColumns = '30vw 30vw 30vw'
+        //list.style.columnGap = '2.5vw'
+        //list.style.rowGap = '2.5vw'
+        //list.style.marginLeft = "2.5vw"
         return list
     }
 
@@ -739,8 +755,11 @@ class BookList extends Component {
         if (this.collections.has(collection)) {
             return this.collections.get(collection).list
         } else {
-            let collectionTitle = this.createTitle(collection)
-            this.element.appendChild(collectionTitle)
+            let collectionTitle = null
+            if (collection != null && collection.length > 0) {
+                let collectionTitle = this.createTitle(collection)
+                this.element.appendChild(collectionTitle)
+            }
             let collectionList = this.createListElement()
             this.element.appendChild(collectionList)
             this.collections.set(collection, {
@@ -782,6 +801,7 @@ class Search extends Component {
     static ORDER_LATEST_READ = "read"
     static ORDER_LATEST_ADDED = "added"
     static ORDER_TITLE = ""
+    CLASS_SEARCH_SECTION = "search_section"
     constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null) {
         super(element)
         this.term = term
@@ -801,15 +821,18 @@ class Search extends Component {
     }
 
     createNextButton() {
+        let p = document.createElement("p")
         let button = document.createElement("a")
         button.innerHTML = "next"
-        button.style.margin = "2.5vw"
-        button.style.display = "block"
-        button.style.display = "none"
+        //button.classList.add(this.CLASS_NEXT_BUTTON)
+        /*button.style.margin = "2.5vw"
+        button.style.display = "block"*/
+        p.style.display = "none"
         button.onclick = () => {
             this.nextSearch()
         }
-        return button
+        p.appendChild(button)
+        return p
     }
 
     createLoading() {
