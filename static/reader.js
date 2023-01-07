@@ -132,7 +132,7 @@ function createDivElement(parent, left, top, width, height, color) {
     element.style.left = left
     element.style.width = width
     element.style.height = height
-    element.style.backgroundColor = color
+    if (color != undefined && color != null) element.style.backgroundColor = color
     parent.appendChild(element)
     return element
 }
@@ -1479,26 +1479,28 @@ class Display {
         this.next.onclick = () => { this.goToNextView() }
         let displayToolsFunction = null
         if (this.settings.showTools) {
-            this.toolsLeft = createDivElement(this.element, 0, (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#ff00ff00")
+            this.toolsLeft = createDivElement(this.element, 0, (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", null)
             if (this.settings.displayControls) {
                 this.#addControlHoverActions(this.toolsLeft, this.getToolsSvg())
             }
-            this.toolsRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#00ffff00")
+            this.toolsRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", null)
             if (this.settings.displayControls) {
                 this.#addControlHoverActions(this.toolsRight, this.getToolsSvg())
             }
         
-            this.toolsBackgroundColor = "#ffffffee"
-            this.tools = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100-this.settings.leftMarginPercent*2) + "%", "100%", this.toolsBackgroundColor)
+            this.tools = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100-this.settings.leftMarginPercent*2) + "%", "100%", null)
+            this.tools.classList.add(Display.CLASS_TOOLS)
             this.tools.style.display = "none"
             this.tools.style.overflow = "scroll"
             this.tools.style.zIndex = 1000
 
-            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.settings.leftMarginPercent + "%", "100%", null)
+            this.toolsMinimizeLeft.classList.add(Display.CLASS_TOOLS)
             this.toolsMinimizeLeft.style.display = "none"
             this.toolsMinimizeLeft.style.zIndex = 1000
             
-            this.toolsMinimizeRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, this.settings.leftMarginPercent + "%", "100%", null)
+            this.toolsMinimizeRight.classList.add(Display.CLASS_TOOLS)
             this.toolsMinimizeRight.style.display = "none"
             this.toolsMinimizeRight.style.zIndex = 1000
 
@@ -1650,6 +1652,7 @@ class Display {
         toolsContents.appendChild(this.progressDisplay)
     }
 
+    static CLASS_TOOLS = "tools"
     async buildToolsUi() {
         let toolsContents = document.createElement("div")
         toolsContents.classList.add("ebookPage")
@@ -1798,7 +1801,9 @@ class ComicDisplay extends Display {
         this.#setTop(centerY - newSideTop)
 
         this.#setZoom(zoom)
-        this.#setZoomJump(zoom)
+        if (zoom > this.#getMinimumZoom()) {
+            this.#setZoomJump(zoom)
+        }
         if (withImageUpdate) this.#update()
     }
 
@@ -1910,6 +1915,7 @@ class ComicDisplay extends Display {
         }
     }
     #resetPan() {
+        this.#setPanPossible(true)
         if (this.#isEndOfRow() && this.#isEndOfColumn()) {
             this.swipeNextPossible = true
         } else {
@@ -1950,12 +1956,22 @@ class ComicDisplay extends Display {
                 this.#update()
                 return false
             }
-        } else {
+        } else if (this.#getPanPossible()) {
             this.#addLeft(x)
             this.#addTop(y)
             this.#update()
             return false
+        } else {
+            return false
         }
+    }
+
+    #getPanPossible() {
+        return this.panPossible
+    }
+
+    #setPanPossible(value) {
+        this.panPossible = value
     }
 
     #getFitComicToScreen() {
@@ -1971,6 +1987,7 @@ class ComicDisplay extends Display {
     }
     #setZoomJump(value) {
         this.zoomJump = value
+        this.#setFitComicToScreen(false)
     }
     #zoomJump(x, y) {
         if (this.#getFitComicToScreen()) {
@@ -2043,6 +2060,7 @@ class ComicDisplay extends Display {
     async nextPage() {
         let size = await this.book.getSize()
         if (this.getPosition() < size - 1) {
+            this.#setPanPossible(false)
             this.displayPageFor(this.getPosition() + 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
@@ -2056,6 +2074,7 @@ class ComicDisplay extends Display {
     async previousPage() {
         if (this.getPosition() > 0) {
             this.displayPageFor(this.getPosition() - 1).then(() => {
+                this.#setPanPossible(false)
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -3087,8 +3106,8 @@ class ChronicReader {
     }
 
     async #init() {
-        let response = await fetch(this.url)
         this.display = Display.factory(this.element, this.settings, this.extension)
+        let response = await fetch(this.url)
         let content = await response.blob()
 
         let archiveWrapper = ArchiveWrapper.factory(this.url, content, this.extension)

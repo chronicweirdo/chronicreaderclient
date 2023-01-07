@@ -3,7 +3,38 @@ importScripts('jszip.js')
 importScripts('libunrar.js')
 importScripts('reader.js')
 
+self.addEventListener('install', e => {
+    console.log("installing service worker")
+})
 
+self.addEventListener('fetch', e => {
+    var url = new URL(e.request.url)
+    console.log("pathname: " + url.pathname)
+
+    if (url.pathname.match(/\/upload/)) {
+        e.respondWith(handleUpload(e.request))
+    } else if (url.pathname.match(/\/books/)) {
+        e.respondWith(loadAllBooks())
+    } else if (url.pathname.match(/\/bookmeta/)) {
+        e.respondWith(loadBookMeta(e.request))
+    } else if (url.pathname.match(/\/book\//)) {
+        e.respondWith(loadBook(e.request))
+    } else if (url.pathname.match(/\/sync\//)) {
+        e.respondWith(syncProgress(e.request))
+    } else if (url.pathname.match(/\/search/)) {
+        e.respondWith(searchServer(e.request))
+    } else if (url.pathname.match(/\/login/)) {
+        e.respondWith(login(e.request))
+    } else if (url.pathname.match(/\/download/)) {
+        e.respondWith(handleDownload(e.request))
+    } else if (url.pathname.match(/\/delete/)) {
+        e.respondWith(handleDelete(e.request))
+    } else if (url.pathname.match(/\/verify/)) {
+        e.respondWith(handleVerify(e.request))
+    } else {
+        e.respondWith(fetch(e.request))
+    }
+})
 
 class Database {
     static DATABASE_NAME = "chronicreaderclient"
@@ -153,6 +184,17 @@ class Database {
             })
         })
     }
+
+    /* aparently need to resave the full object, so this will not work
+    databaseUpdate(table, key, value) {
+        return new Promise((resolve, reject) => {
+            this.getDb().then(db => {
+                let transaction = db.transaction([table, "readwrite"])
+                let objectStore = transaction.objectStore(table)
+                let dbRequest = objectStore.get(key)
+            })
+        })
+    }*/
     
     databaseLoadColumns(table, key, columns) {
         return new Promise((resolve, reject) => {
@@ -180,27 +222,6 @@ class Database {
             })
         })
     }
-    
-    /*databaseLoadDistinct(table, column) {
-        return new Promise((resolve, reject) => {
-            this.getDb().then(db => {
-                let transaction = db.transaction([table])
-                let objectStore = transaction.objectStore(table)
-                let cursorRequest = objectStore.openCursor()
-                let distinctValues = new Set()
-                cursorRequest.onsuccess = event => {
-                    let cursor = event.target.result
-                    if (cursor) {
-                        distinctValues.add(cursor.value[column])
-                        cursor.continue()
-                    } else {
-                        resolve(distinctValues)
-                    }
-                }
-                cursorRequest.onerror = event => reject()
-            })
-        })
-    }*/
 
     async loadToken() {
         let connections = await this.databaseLoadAll(Database.CONNECTION_TABLE)
@@ -231,7 +252,7 @@ class Database {
         return await this.databaseDelete(Database.FILE_TABLE, id)
     }
 
-    async saveBook(id, title, extension, collection, size, cover, bytes) {
+    async saveBook(id, title, extension, collection, size, cover, content) {
         let dbFile = {
             "id": id,
             "title": title,
@@ -239,7 +260,7 @@ class Database {
             "collection": collection,
             "size": size,
             "cover": cover,
-            "content": bytes
+            "content": content
         }
         let saveResult = await this.databaseSave(Database.FILE_TABLE, dbFile)
         if (saveResult != undefined && saveResult != null) {
@@ -284,38 +305,7 @@ class Database {
     }
 }
 
-self.addEventListener('install', e => {
-    console.log("installing service worker")
-})
 
-self.addEventListener('fetch', e => {
-    var url = new URL(e.request.url)
-    console.log("pathname: " + url.pathname)
-
-    if (url.pathname.match(/\/upload/)) {
-        e.respondWith(handleUpload(e.request))
-    } else if (url.pathname.match(/\/books/)) {
-        e.respondWith(loadAllBooks())
-    } else if (url.pathname.match(/\/bookmeta/)) {
-        e.respondWith(loadBookMeta(e.request))
-    } else if (url.pathname.match(/\/book\//)) {
-        e.respondWith(loadBook(e.request))
-    } else if (url.pathname.match(/\/sync\//)) {
-        e.respondWith(syncProgress(e.request))
-    } else if (url.pathname.match(/\/search/)) {
-        e.respondWith(searchServer(e.request))
-    } else if (url.pathname.match(/\/login/)) {
-        e.respondWith(login(e.request))
-    } else if (url.pathname.match(/\/download/)) {
-        e.respondWith(handleDownload(e.request))
-    } else if (url.pathname.match(/\/delete/)) {
-        e.respondWith(handleDelete(e.request))
-    } else if (url.pathname.match(/\/verify/)) {
-        e.respondWith(handleVerify(e.request))
-    } else {
-        e.respondWith(fetch(e.request))
-    }
-})
 
 function get200Response() {
     return new Response("", { "status" : 200 })
@@ -415,7 +405,6 @@ class Backend {
     }
 
     getAuthHeaders(contentType = null) {
-        //console.log(this.token)
         let headers = { 'Authorization': 'Bearer ' + this.token}
         if (contentType != null) {
             headers["Content-Type"] = contentType
@@ -476,13 +465,25 @@ class Backend {
             let response = await fetch(url, {headers: this.getAuthHeaders()})
             if (response.status == 200) {
                 let responseContent = await response.json()
-                return responseContent
+                return {
+                    server: this.server,
+                    code: 200,
+                    connected: responseContent
+                }
             } else {
-                return false
+                return {
+                    server: this.server,
+                    code: response.status,
+                    connected: false
+                }
             }
         } catch (error) {
             console.log(error)
-            return false
+            return {
+                server: this.server,
+                error: error.message,
+                connected: false
+            }
         }
     }
 
@@ -490,10 +491,15 @@ class Backend {
         try {
             let url = this.server + "/book/" + bookId
             let response = await fetch(url, {headers: this.getAuthHeaders()})
-            return response
+            if (response.status == 200) {
+                let responseJson = await response.json()
+                return responseJson
+            } else {
+                return null
+            }
         } catch (error) {
             console.log(error)
-            return get404Response()
+            return null
         }
     }
 
@@ -548,18 +554,42 @@ async function handleVerify(request) {
 }
 
 async function login(request) {
-    /*let form = await request.formData()
-    let server = form.get("server")
-    let username = form.get("username")
-    let password = form.get("password")*/
     let body = await request.json()
 
     let backend = new Backend(body.server, null)
     let loginResult = await backend.login(body.server, body.username, body.password)
     console.log("login result: " + loginResult)
 
-    //return Response.redirect("/", 302)
+    await updateLocalBooks()
+
     return getJsonResponse(loginResult)
+}
+
+async function updateLocalBooks() {
+    console.log("updating local books")
+
+    let db = new Database()
+    let backend = await Backend.factory()
+    let localBookMetas = await db.loadAllBookMetas()
+    for (let book of localBookMetas) {
+        console.log("updating local book " + book.title)
+        let backendMeta = await backend.getMeta(book.id)
+        if (backendMeta != null) {
+            console.log("backend meta")
+            console.log(backendMeta)
+            let localBook = await db.loadBook(book.id)
+            console.log("local book " + localBook.title + " collection " + localBook.collection)
+            await db.saveBook(
+                localBook.id, 
+                backendMeta.title, 
+                localBook.extension, 
+                backendMeta.collection, 
+                localBook.size, 
+                backendMeta.cover, 
+                localBook.content
+            )
+        }
+    }
 }
 
 async function handleDelete(request) {
@@ -585,11 +615,8 @@ async function handleDownload(request) {
 
     // download book from backend
     let backend = await Backend.factory()
-    let bookMetaResponse = await backend.getMeta(bookId)
-    console.log(bookMetaResponse)
-    if (bookMetaResponse.status == 200) {
-        let bookMeta = await bookMetaResponse.json()
-        console.log(bookMeta)
+    let bookMeta = await backend.getMeta(bookId)
+    if (bookMeta != null) {
         let contentResponse = await backend.getContent(bookId)
         console.log(contentResponse)
         if (contentResponse.status == 200) {
@@ -597,12 +624,12 @@ async function handleDownload(request) {
 
             let db = new Database()
             await db.saveBook(
-                bookMeta.id, 
-                bookMeta.title, 
-                bookMeta.extension, 
-                bookMeta.collection, 
-                bookMeta.size, 
-                bookMeta.cover, 
+                bookMeta.id,
+                bookMeta.title,
+                bookMeta.extension,
+                bookMeta.collection,
+                bookMeta.size,
+                bookMeta.cover,
                 bytes
             )
 
@@ -638,9 +665,8 @@ async function handleUpload(request) {
     let collection = null
     try {
         let backend = await Backend.factory()
-        let metaResponse = await backend.getMeta(hash)
-        if (metaResponse.status == 200) {
-            let meta = await metaResponse.json()
+        let meta = await backend.getMeta(hash)
+        if (meta != null) {
             collection = meta.collection
             title = meta.title
         }
@@ -780,9 +806,9 @@ async function loadBookMeta(request) {
     if (bookObject == null) {
         console.log("no meta in local db")
         let backend = await Backend.factory()
-        let metaResponse = await backend.getMeta(bookId)
-        if (metaResponse.status == 200) {
-            bookObject = await metaResponse.json()
+        let meta = await backend.getMeta(bookId)
+        if (meta != null) {
+            bookObject = meta
         }
     }
     if (bookObject != null) {

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, height=device-height, viewport-fit=cover">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, height=device-height">
     <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -11,843 +11,199 @@
     <link rel="manifest" href="manifest.json">
     <script src="serviceworkerinstall.js"></script>
     <link rel="stylesheet" type="text/css" href="fonts.css">
+    <script src="client.js"></script>
     <script>
-        function timeout(ms) {
-            return new Promise((resolve, reject) => {
-                window.setTimeout(function() {
-                    resolve()
-                }, ms)
-            })
-        }
-
-        class Component {
-            constructor(element) {
-                this.element = element
-            }
-            async load() {
-                this.element.innerHTML = ""
-            }
-
-            async update(data) {
-                console.log("update not implemented for " + this)
-            }
-        }
-
-        class TabbedPage extends Component {
-            constructor(element) {
-                super(element)
-            }
-
-            createButton(label, func) {
-                let button = document.createElement("a")
-                button.innerHTML = label
-                button.onclick = func
-                button.style.display = "inline-block"
-                button.style.padding = ".4em"
-                button.style.cursor = "pointer"
-                button.style.color = "white"
-                button.style.backgroundColor = "black"
-                return button
-            }
-
-            highlightButton(button) {
-                button.style.backgroundColor = "gold"
-            }
-
-            resetButton(button) {
-                button.style.backgroundColor = "black"
-            }
-
-            resetButtons() {
-                this.resetButton(this.onDeviceButton)
-                this.resetButton(this.latestReadButton)
-                this.resetButton(this.latestAddedButton)
-                this.resetButton(this.searchButton)
-                this.resetButton(this.settingsButton)
-            }
-
-            async load() {
-                super.load()
-
-                let buttons = document.createElement("div")
-                this.element.appendChild(buttons)
-
-                this.content = document.createElement("div")
-                this.element.appendChild(this.content)
-
-                let searchTab = new LibrarySearchTab(this.content)
-                let globalSearchFunction = (term) => {
-                    this.resetButtons()
-                    this.highlightButton(this.searchButton)
-                    searchTab.load().then(() => searchTab.search(term))
-                }
-                let onDeviceTab = new OnDeviceTab(this.content, globalSearchFunction)
-                let latestReadTab = new LatestReadTab(this.content, globalSearchFunction)
-                let latestAddedTab = new LatestAddedTab(this.content, globalSearchFunction)
-                let settingsTab = new SettingsTab(this.content)
-                
-
-                this.onDeviceButton = this.createButton("on device", () => {
-                    this.resetButtons()
-                    this.highlightButton(this.onDeviceButton)
-                    onDeviceTab.load()
-                })
-                buttons.appendChild(this.onDeviceButton)
-
-                this.latestReadButton = this.createButton("latest read", () => {
-                    this.resetButtons()
-                    this.highlightButton(this.latestReadButton)
-                    latestReadTab.load()
-                })
-                buttons.appendChild(this.latestReadButton)
-
-                this.latestAddedButton = this.createButton("latest added", () => {
-                    this.resetButtons()
-                    this.highlightButton(this.latestAddedButton)
-                    latestAddedTab.load()
-                })
-                buttons.appendChild(this.latestAddedButton)
-
-                this.searchButton = this.createButton("search", () => {
-                    this.resetButtons()
-                    this.highlightButton(this.searchButton)
-                    searchTab.load()
-                })
-                buttons.appendChild(this.searchButton)
-
-                this.settingsButton = this.createButton("settings", () => {
-                    this.resetButtons()
-                    this.highlightButton(this.settingsButton)
-                    settingsTab.load()
-                })
-                buttons.appendChild(this.settingsButton)
-
-                this.highlightButton(this.onDeviceButton)
-                onDeviceTab.load()
-            }
-        }
-
-        class ServerConnectionDisplay extends Component {
-            constructor(element) {
-                super(element)
-            }
-
-            async load() {
-                super.load()
-
-                let status = document.createElement("span")
-                status.style.display = "inline-block"
-                status.style.color = "white"
-                fetch("/verify")
-                .then(response => response.json())
-                .then(connected => {
-                    if (connected == true) {
-                        status.innerHTML = "connected"
-                        status.style.backgroundColor = "green"
-                    } else {
-                        status.innerHTML = "not connected"
-                        status.style.backgroundColor = "red"
-                    }
-                })
-
-                this.element.appendChild(status)
-            }
-        }
-
-        class FormComponent extends Component {
-            constructor(element) {
-                super(element)
-            }
-
-            label(text, forName) {
-                let l = document.createElement("label")
-                l.innerHTML = text + ":"
-                l.htmlFor = forName
-                l.style.display = 'inline-block'
-                l.style.width = "5em"
-                return l
-            }
-
-            input(name) {
-                let t = document.createElement("input")
-                t.type = "text"
-                t.name = name
-                return t
-            }
-
-            file(name) {
-                let t = document.createElement("input")
-                t.type = "file"
-                t.name = name
-                t.accept = ".cbz,.cbr,.epub"
-                return t
-            }
-
-            password(name) {
-                let t = document.createElement("input")
-                t.type = "password"
-                t.name = name
-                return t
-            }
-
-            p(elems) {
-                let p = document.createElement("p")
-                for (let e of elems) {
-                    p.appendChild(e)
-                }
-                return p
-            }
-
-            async load() {
-                super.load()
-            }
-        }
-
-        class UploadForm extends FormComponent {
-            constructor(element) {
-                super(element)
-            }
-
-            async load() {
-                super.load()
-
-                let fileLabel = this.label("filename", "filename")
-                let fileInput = this.file("filename")
-                this.element.appendChild(this.p([fileLabel, fileInput]))
-
-                let uploadResult = document.createElement("span")
-                uploadResult.style.color = "white"
-                uploadResult.style.marginLeft = "1em"
-                let button = document.createElement("a")
-                button.innerHTML = "upload"
-                button.onclick = () => {
-                    let file = fileInput.files[0]
-
-                    fetch("/upload", { 
-                        method: 'POST', 
-                        body: file,
-                        headers: {
-                            'Content-Type': 'application/octet-stream', 
-                            'filename': file.name
-                        }
-                    })
-                    .then(response => {
-                        if (response.status == 200) {
-                            return response.json()
-                        } else {
-                            return null
-                        }
-                    })
-                    .then(result => {
-                        if (result == true) {
-                            uploadResult.innerHTML = "file upload was successful"
-                            uploadResult.style.backgroundColor = "green"
-                        } else {
-                            uploadResult.innerHTML = "file upload failed"
-                            uploadResult.style.backgroundColor = "red"
-                        }
-                        timeout(5000).then(() => {
-                            uploadResult.innerHTML = ""
-                            uploadResult.style.backgroundColor = "transparent"
-                        })
-                    })
-                }
-                this.element.appendChild(this.p([button, uploadResult]))
-            }
-        }
-
-        class LoginForm extends FormComponent {
-            constructor(element) {
-                super(element)
-            }
-
-            async load() {
-                super.load()
-
-                let connectionDisplay = document.createElement("p")
-                this.element.appendChild(connectionDisplay)
-                let serverConnectionDisplay = new ServerConnectionDisplay(connectionDisplay)
-                serverConnectionDisplay.load()
-                
-                let serverLabel = this.label("server", "server")
-                let serverInput = this.input("server")
-                this.element.appendChild(this.p([serverLabel, serverInput]))
-
-                let usernameLabel = this.label("username", "username")
-                let usernameInput = this.input("username")
-                this.element.appendChild(this.p([usernameLabel, usernameInput]))
-
-                let passwordLabel = this.label("password", "password")
-                let passwordInput = this.password("password")
-                this.element.appendChild(this.p([passwordLabel, passwordInput]))
-
-                let loginResult = document.createElement("span")
-                loginResult.style.marginLeft = "1em"
-                loginResult.style.color = "white"
-                let button = document.createElement("a")
-                button.innerHTML = "submit"
-                button.onclick = () => {
-                    let body = JSON.stringify({
-                        server: serverInput.value,
-                        username: usernameInput.value, 
-                        password: passwordInput.value
-                    })
-                    fetch("/login", { 
-                        method: 'POST', 
-                        body: body,
-                        headers: { 'Content-Type': 'application/json'}
-                    })
-                    .then(response => {
-                        console.log(response)
-                        return response.json()
-                    })
-                    .then(result => {
-                        console.log(result)
-                        if (result == true) {
-                            loginResult.innerHTML = "login successful"
-                            loginResult.style.backgroundColor = "green"
-                        } else {
-                            loginResult.innerHTML = "login failed"
-                            loginResult.style.backgroundColor = "red"
-                        }
-                        serverConnectionDisplay.load()
-                        timeout(5000).then(() => {
-                            loginResult.innerHTML = ""
-                            loginResult.style.backgroundColor = "transparent"
-                        })
-                    })
-                }
-                this.element.appendChild(this.p([button, loginResult]))
-            }
-        }
-
-        class SettingsTab extends Component {
-            constructor(element) {
-                super(element)
-            }
-
-            async load() {
-                super.load()
-
-                let loginFormDiv = document.createElement("div")
-                this.element.appendChild(loginFormDiv)
-                let loginForm = new LoginForm(loginFormDiv)
-                await loginForm.load()
-
-                let uploadFormDiv = document.createElement("div")
-                this.element.appendChild(uploadFormDiv)
-                let uploadForm = new UploadForm(uploadFormDiv)
-                await uploadForm.load()
-            }
-        }
-
-        class OnDeviceTab extends Component {
-            constructor(element, searchFunction = null) {
-                super(element)
-                this.searchFunction = searchFunction
-            }
-
-            async load() {
-                super.load()
-
-                await fetch("/books")
-                    .then(response => response.json())
-                    .then((books) => {
-                        let list = new BookList(this.element, false, this.searchFunction)
-                        list.load().then(() => list.update(books))
-                        /*for (let book of books) {
-                            list.addBook(book)
-                        }*/
-                    })
-            }
-        }
-
-        class LatestReadTab extends Component {
-            constructor(element, searchFunction = null) {
-                super(element)
-                this.searchFunction = searchFunction
-            }
-
-            async load() {
-                super.load()
-                let search = new Search(this.element, "", 5, Search.ORDER_LATEST_READ, true, this.searchFunction)
-                await search.load()
-            }
-        }
-
-        class LatestAddedTab extends Component {
-            constructor(element, searchFunction = null) {
-                super(element)
-                this.searchFunction = searchFunction
-            }
-
-            async load() {
-                super.load()
-                let search = new Search(this.element, "", 5, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
-                await search.load()
-            }
-        }
-
-        class LibrarySearchTab extends Component {
-            constructor(element) {
-                super(element)
-            }
-
-            async search(term = null) {
-                console.log(this)
-                if (term == null) {
-                    term = this.searchField.value
-                } else {
-                    this.searchField.value = term
-                }
-                console.log("searching for: " + term)
-
-                let search = new Search(this.searchList, term, 5, Search.ORDER_TITLE, true, (term) => this.search(term))
-                await search.load()
-            }
-
-            async load() {
-                super.load()
-
-                this.searchField = document.createElement("input")
-                this.searchField.type = "text"
-                this.element.appendChild(this.searchField)
-
-                this.searchButton = document.createElement("a")
-                this.searchButton.innerHTML = "search"
-                this.searchButton.onclick = () => this.search()
-                this.element.appendChild(this.searchButton)
-
-                this.searchList = document.createElement("div")
-                this.element.appendChild(this.searchList)
-
-                await this.search()
-            }
-        }
-
-        class BookItem extends Component {
-            constructor(element, book, withCollection, searchFunction = null) {
-                super(element)
-                if (element.tagName != "LI") throw "book item must be applied to li"
-                this.book = book
-                this.withCollection = withCollection
-                this.searchFunction = searchFunction
-            }
-
-            getProgressItem(book) {
-                if (book.position) {
-                    let progressEnclosure = document.createElement("span")
-                    progressEnclosure.style.position = "relative"
-                    progressEnclosure.style.width = "80%"
-                    progressEnclosure.style.height = "5%"
-                    progressEnclosure.style.top = "-10%"
-                    progressEnclosure.style.left = "10%"
-                    progressEnclosure.style.display = "inline-block"
-                    progressEnclosure.style.backgroundColor = "white"
-                    progressEnclosure.style.border = "1px solid black"
-
-                    let progress = document.createElement("span")
-                    progress.style.position = "absolute"
-                    progress.style.display = "inline-block"
-                    /*progress.style.margin = "10%"*/
-                    progress.style.height = "80%"
-                    progress.style.width = (99 * (book.position / book.size)) + "%"
-                    progress.style.top = "10%"
-                    progress.style.left = "1%"
-                    progress.style.backgroundColor = "black"
-
-                    progressEnclosure.appendChild(progress)
-                    return progressEnclosure
-                } else {
-                    return null
-                }
-            }
-            
-            
-            async getCoverItem(book) {
-                let imageEnclosure = document.createElement("span")
-                imageEnclosure.style.overflow = 'hidden'
-                imageEnclosure.style.position = "relative"
-                imageEnclosure.style.display = 'block'
-                imageEnclosure.style.height = (8/5*30) + 'vw'
-
-                let image = document.createElement("img")
-                if (book.cover == null) {
-                    image.src = await this.createBookCover(book.id, book.title, 500, 800)
-                } else {
-                    image.src = book.cover
-                }
-                image.onload = () => {
-                    // center the image
-                    image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
-                    image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
-                }
-                image.style.height = '100%'
-                image.style.position = "relative"
-                imageEnclosure.appendChild(image)
-
-                let progressItem = this.getProgressItem(book)
-                if (progressItem != null) {
-                    imageEnclosure.appendChild(progressItem)
-                }
-
-                return imageEnclosure
-            }
-
-            getIdSeed(id) {
-                return parseInt(id, 16) / BookList.SEED_MAX
-            }
-
-            numToRgb(val) {
-                let maxVal = 1
-                let i = (val * 255 / maxVal)
-                let r = Math.round(Math.sin(0.024 * i + 0) * 127 + 128)
-                let g = Math.round(Math.sin(0.024 * i + 2) * 127 + 128)
-                let b = Math.round(Math.sin(0.024 * i + 4) * 127 + 128)
-                return [r, g, b]
-            }
-
-            computeLuminance(rgb) {
-                let R = rgb[0]
-                let G = rgb[1]
-                let B = rgb[2]
-                return Math.sqrt(0.299*R*R + 0.587*G*G + 0.114*B*B)
-            }
-
-            async createBookCover(id, title, width, height, element) {
-                let margin = width / 10
-                let words = title.split(/\s/g)
-                let rows = []
-                let row = ""
-                let words_on_row = 3
-                let longestRow = 0
-                for (let i = 0; i < words.length; i++) {
-                    if (i % words_on_row == 0) {
-                        if (row.length > 0) {
-                            rows.push(row)
-                            if (row.length > rows[longestRow].length) longestRow = rows.length - 1
-                        }
-                        row = words[i]
-                    } else {
-                        row += " " + words[i]
-                    }
-                }
-                if (row.length > 0) {
-                    rows.push(row)
-                    if (row.length > rows[longestRow].length) longestRow = rows.length - 1
-                }
-
-                const canvas = document.createElement('canvas')
-                canvas.width = width
-                canvas.height = height
-                const context = canvas.getContext('2d')
-                let colorSeed = this.getIdSeed(id)
-                let coverRgb = this.numToRgb(colorSeed)
-                let coverColor = `rgb(${coverRgb[0]},${coverRgb[1]},${coverRgb[2]})`
-                let luminance = this.computeLuminance(coverRgb)
-                let threshold = 140
-                let textColor = "#000000"
-                if (luminance < threshold) {
-                    textColor = "#ffffff"
-                }
-                context.fillStyle = coverColor
-                context.fillRect(0, 0, width, height)
-                context.fillStyle = textColor
-                context.textAlign = "center"
-
-                // find correct font size
-                //let f = new FontFace("Merriweather", 'url("/Merriweather/Merriweather-Regular.ttf")')
-                //await f.load()
-
-                let fontSize = width/rows[longestRow].length * 3
-                context.font = fontSize + 'px "Merriweather"'
-                while (context.measureText(rows[longestRow]).width > width - margin) {
-                    fontSize -= 1
-                    // font-family: 'Merriweather', serif;
-                    context.font = fontSize + 'px "Merriweather"'
-                }
-
-                let rowHeight = 0
-                //let totalHeight = 0
-                for (let i = 0; i < rows.length; i++) {
-                    let tm = context.measureText(rows[i])
-                    //console.log(tm)
-                    let height = tm.actualBoundingBoxAscent + tm.actualBoundingBoxDescent
-                    //totalHeight += height
-                    if (height > rowHeight) rowHeight = height
-                }
-                //console.log(rowHeight)
-                let rowSpacing = 10
-                rowHeight = rowHeight + rowSpacing
-                let totalHeight = rowHeight * rows.length
-
-                for (let i = 0; i < rows.length; i++) {
-                    let h = (height/2) - (totalHeight/2) + (i+1) * rowHeight// + rowHeight / 2
-                    context.fillText(rows[i], width/2, h)
-                }
-                
-                let base64 = canvas.toDataURL() 
-                
-                if (element) {
-                    let img = document.createElement('img')
-                    img.src = base64
-                    element.appendChild(img)
-                }
-
-                return base64
-            }
-
-            static getCollectionItems(collection, searchFunction) {
-                console.log(collection)
-                if (collection == undefined || collection == null || collection.length == 0) return []
-                if (searchFunction != undefined && searchFunction != null) {
-                    let collectionParts = collection.split("/").filter(e => e.length > 0)
-                    let cumulative = ""
-                    let items = []
-                    for (let part of collectionParts) {
-                        let partName = "/" + part
-                        let partSearch = cumulative + partName
-
-                        let collectionItem = document.createElement("a")
-                        collectionItem.innerHTML = partName
-                        collectionItem.onclick = () => searchFunction(partSearch)
-                        items.push(collectionItem)
-
-                        cumulative = partSearch
-                    }
-
-                    return items
-                } else {
-                    let collectionItem = document.createElement("span")
-                    collectionItem.innerHTML = collection
-                    return [collectionItem]
-                }
-            }
-
-            getBookLink() {
-                return "read.html?book=" + this.book.id
-            }
-
-            async load() {
-                super.load()
-
-                this.element.style.width = '100%'
-                this.element.style.overflow = 'hidden'
-
-                let itemLink = document.createElement("a")
-                itemLink.style.overflow = 'hidden'
-                itemLink.style.position = 'relative'
-                itemLink.href = this.getBookLink()
-                
-                itemLink.appendChild(await this.getCoverItem(this.book))
-                this.element.appendChild(itemLink)
-
-                if (this.withCollection == true) {
-                    let title = document.createElement("span")
-                    let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
-                    for (let i of items) {
-                        title.appendChild(i)
-                    }
-                    if (items.length > 0) {
-                        let slash = document.createElement("span")
-                        slash.innerHTML = "/"
-                        title.appendChild(slash)
-                    }
-                    let actualTitle = document.createElement("a")
-                    actualTitle.innerHTML = this.book.title
-                    actualTitle.href = this.getBookLink()
-                    title.appendChild(actualTitle)
-                    this.element.appendChild(title)
-                } else {
-                    let title = document.createElement("a")
-                    title.innerHTML = this.book.title
-                    title.href = this.getBookLink()
-                    this.element.appendChild(title)
-                }
-            }
-        }
-
-        class BookList extends Component {
-            static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
-            constructor(element, withCollections = false, searchFunction = null) {
-                super(element)
-                this.withCollections = withCollections
-                this.searchFunction = searchFunction
-            }
-
-            async load() {
-                super.load()
-            }
-
-            createTitle(collection) {
-                let title = document.createElement("h1")
-                if (this.searchFunction != undefined && this.searchFunction != null) {
-                    let items = BookItem.getCollectionItems(collection, this.searchFunction)
-                    for (let i of items) {
-                        title.appendChild(i)
-                    }
-                } else {
-                    title.innerHTML = collection
-                }
-                return title
-            }
-
-            createListElement() {
-                let list = document.createElement('ul')
-                list.style.padding = '0'
-                list.style.listStyleType = 'none'
-                list.style.display = 'grid'
-                list.style.gridTemplateColumns = '30vw 30vw 30vw'
-                list.style.columnGap = '2.5vw'
-                list.style.rowGap = '2.5vw'
-                return list
-            }
-
-            getListElement() {
-                if (this.listElement == undefined) {
-                    this.listElement = this.createListElement()
-                    this.element.appendChild(this.listElement)
-                }
-                return this.listElement
-            }
-
-            getCollectionElement(collection) {
-                if (this.collections == undefined) {
-                    this.collections = new Map()
-                }
-                if (this.collections.has(collection)) {
-                    return this.collections.get(collection).list
-                } else {
-                    let collectionTitle = this.createTitle(collection)
-                    this.element.appendChild(collectionTitle)
-                    let collectionList = this.createListElement()
-                    this.element.appendChild(collectionList)
-                    this.collections.set(collection, {
-                        title: collectionTitle,
-                        list: collectionList
-                    })
-                    return collectionList
-                }
-            }
-
-            async addBook(book) {
-                let parent = null
-                if (this.withCollections) {
-                    parent = this.getCollectionElement(book.collection)
-                } else {
-                    parent = this.getListElement()
-                }
-
-                let bookListItem = document.createElement("li")
-                parent.appendChild(bookListItem)
-                let bookItem = new BookItem(bookListItem, book, ! this.withCollections, this.searchFunction) //await this.getBookItem(book)
-                bookItem.load()
-            }
-
-            async update(books) {
-                for (let book of books) {
-                    this.addBook(book)
-                }
-            }
-
-            
-        }
-        
-        
-        
         window.onload = function() {
-            new TabbedPage(document.body).load()
-        }
+            let dayStartSetting = new TimeSetting(null, "day start", "07:00")
+            let dayEndSetting = new TimeSetting(null, "day end", "21:00")
+            let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting)
+            dayStartSetting.chainedSettings = [themeSetting]
+            dayEndSetting.chainedSettings = [themeSetting]
+            document.settings = [
+                dayStartSetting,
+                dayEndSetting,
+                themeSetting,
+                new ColorSetting(null, "light theme background color", "#ffffff"),
+                new ColorSetting(null, "light theme text color", "#000000"),
+                new ColorSetting(null, "light theme highlight color", "#FFD700"),
+                new ColorSetting(null, "light theme highlight text color", "#000000"),
+                new ColorSetting(null, "light theme error color", "#dc143c"),
+                new ColorSetting(null, "light theme error text color", "#FFFFFF"),
+                new ColorSetting(null, "light theme success color", "#008000"),
+                new ColorSetting(null, "light theme success text color", "#FFFFFF"),
 
-        class Search extends Component {
-            static ORDER_LATEST_READ = "read"
-            static ORDER_LATEST_ADDED = "added"
-            static ORDER_TITLE = ""
-            constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null) {
-                super(element)
-                this.term = term
-                this.pageSize = pageSize
-                this.order = order
-                this.multipage = multipage
-                this.collectionLinkFunction = collectionLinkFunction
-            }
+                new ColorSetting(null, "dark theme background color", "#000000"),
+                new ColorSetting(null, "dark theme text color", "#ffffff"),
+                new ColorSetting(null, "dark theme highlight color", "#FFD700"),
+                new ColorSetting(null, "dark theme highlight text color", "#000000"),
+                new ColorSetting(null, "dark theme error color", "#dc143c"),
+                new ColorSetting(null, "dark theme error text color", "#FFFFFF"),
+                new ColorSetting(null, "dark theme success color", "#008000"),
+                new ColorSetting(null, "dark theme success text color", "#FFFFFF")
+            ]
+            new TabbedPage(document.getElementById("content")).load()
 
-            getUrl() {
-                return "search?" + new URLSearchParams({
-                    term: this.term,
-                    page: this.page,
-                    pageSize: this.pageSize,
-                    order: this.order
-                }) 
-            }
-
-            addBooksToResult(books) {
-                if (this.nextPage) {
-                    this.nextPage.remove()
-                    this.nextPage = null
-                }
-                this.bookList.update(books)
-                if (this.multipage) {
-                    if (books.length == this.pageSize) {
-                        this.nextPage = document.createElement("a")
-                        this.nextPage.innerHTML = "next"
-                        this.nextPage.onclick = () => this.nextSearch()
-                        this.element.appendChild(this.nextPage)
-                    }
-                }
-            }
-
-            displaySearchError() {
-                if (this.nextPage) {
-                    this.nextPage.remove()
-                    this.nextPage = null
-                }
-                let errorMessage = document.createElement("p")
-                errorMessage.innerHTML = "there was an issue running the search"
-                errorMessage.style.backgroundColor = "red"
-                errorMessage.style.color = "white"
-                this.element.appendChild(errorMessage)
-            }
-
-            async runSearch() {
-                await fetch(this.getUrl())
-                    .then(response => {
-                        if (response.status == 200) {
-                            return response.json()
-                        } else {
-                            return null
-                        }
-                    })
-                    .then(searchResult => {
-                        if (searchResult != null) {
-                            this.addBooksToResult(searchResult)
-                        } else {
-                            this.displaySearchError()
-                        }
-                    })
-            }
-
-            async load() {
-                super.load()
-                let withCollectionSections = (this.order == Search.ORDER_TITLE)
-                this.bookList = new BookList(this.element, withCollectionSections, this.collectionLinkFunction)
-                await this.bookList.load()
-                this.page = 0
-                await this.runSearch()
-            }
-
-            async nextSearch() {
-                this.page = this.page + 1
-                await this.runSearch()
-            }
+            window.addEventListener("focus", () => {
+                themeSetting.apply()
+            }, false)
+            document.getElementById("content").addEventListener("click", () => {
+                themeSetting.apply()
+            }, false)
         }
     </script>
     
     <style>
+        :root {
+            /* dark theme */
+            --dark_theme_background_color: black;
+            --dark_theme_text_color: white;
+            --dark_theme_highlight_color: gold;
+            --dark_theme_highlight_text_color: black;
+            --dark_theme_error_color: red;
+            --dark_theme_error_text_color: white;
+            --dark_theme_success_color: greenyellow;
+            --dark_theme_success_text_color: white;
+
+            /* light theme */
+            --light_theme_background_color: white;
+            --light_theme_text_color: black;
+            --light_theme_highlight_color: gold;
+            --light_theme_highlight_text_color: black;
+            --light_theme_error_color: red;
+            --light_theme_error_text_color: white;
+            --light_theme_success_color: green;
+            --light_theme_success_text_color: white;
+        }
+
+        * {
+            padding: 0;
+            margin: 0;
+        }
+        
         body {
             font-family: 'Merriweather', serif;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            background-color: var(--light_theme_background_color);
+            color: var(--light_theme_text_color);
         }
+
+        a {
+            background-color: var(--light_theme_background_color);
+            color: var(--light_theme_text_color);
+        }
+
+        .dark, .dark a {
+            color: var(--dark_theme_text_color, white);
+            background-color: var(--dark_theme_background_color, black);
+        }
+
+        .highlighted {
+            color: var(--light_theme_highlight_text_color);
+            background-color: var(--light_theme_highlight_color);
+        }
+
+        .dark .highlighted {
+            color: var(--dark_theme_highlight_text_color);
+            background-color: var(--dark_theme_highlight_color);
+        }
+
+        .success {
+            color: var(--light_theme_success_text_color);
+            background-color: var(--light_theme_success_color);
+        }
+
+        .dark .success {
+            color: var(--dark_theme_success_text_color);
+            background-color: var(--dark_theme_success_color);
+        }
+
+        .error {
+            color: var(--light_theme_error_text_color);
+            background-color: var(--light_theme_error_color);
+        }
+
+        .dark .error {
+            color: var(--dark_theme_error_text_color);
+            background-color: var(--dark_theme_error_color);
+        }
+
+        
+
+        .menu {
+            margin-bottom: 2.5vw;
+            padding-left: 2.5vw;
+            padding-right: 2.5vw;
+        }
+
+        .setting, .form_row {
+            max-width: 450px;
+        }
+
+        ul {
+            padding: 0;
+            list-style-type: none;
+            display: grid;
+            grid-template-columns: 30vw 30vw 30vw;
+            column-gap: 2.5vw;
+            row-gap: 2.5vw;
+            margin-left: 2.5vw;
+        }
+
+        h1, p {
+            font-size: 1.2em;
+            margin: 2.5vw;
+        }
+
+        .cover_enclosure {
+            overflow: hidden;
+            position: relative;
+            display: block;
+            height: 48vw; /* (8/5*30) */
+        }
+
+        @media (orientation: landscape) {
+            ul {
+                grid-template-columns: repeat(6, 15vw);
+                column-gap: 1.4285vw;
+                row-gap: 1.4285vw;
+                margin-left: 1.4285vw;
+            }
+
+            h1, p {
+                margin: 1.4285vw;
+            }
+
+            .cover_enclosure {
+                height: 24vw; /* (8/5*15) */
+            }
+
+            .menu {
+                margin-bottom: 1.4285vw;
+                padding-left: 1.4285vw;
+                padding-right: 1.4285vw;
+            }
+        }
+
+        .progress_enclosure {
+            border: 1px solid var(--light_theme_text_color, black);
+            background-color: var(--light_theme_background_color, white);
+        }
+
+        .dark .progress_enclosure {
+            border-color: var(--dark_theme_text_color, white);
+            background-color: var(--dark_theme_background_color, black);
+        }
+
+        .progress_bar {
+            background-color: var(--light_theme_text_color, black);
+        }
+
+        .dark .progress_bar {
+            background-color: var(--dark_theme_text_color, white);
+        }
+
+        
+
         a {
             color: black;
             text-decoration: underline;
@@ -856,8 +212,12 @@
         input {
             font-size: 1.5rem;
         }
+        #content {
+            height: 100vh;
+        }
     </style>
 </head>
 <body>
+    <div id="content"></div>
 </body>
 </html>
