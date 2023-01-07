@@ -1801,7 +1801,9 @@ class ComicDisplay extends Display {
         this.#setTop(centerY - newSideTop)
 
         this.#setZoom(zoom)
-        this.#setZoomJump(zoom)
+        if (zoom > this.#getMinimumZoom()) {
+            this.#setZoomJump(zoom)
+        }
         if (withImageUpdate) this.#update()
     }
 
@@ -1913,6 +1915,7 @@ class ComicDisplay extends Display {
         }
     }
     #resetPan() {
+        this.#setPanPossible(true)
         if (this.#isEndOfRow() && this.#isEndOfColumn()) {
             this.swipeNextPossible = true
         } else {
@@ -1953,12 +1956,22 @@ class ComicDisplay extends Display {
                 this.#update()
                 return false
             }
-        } else {
+        } else if (this.#getPanPossible()) {
             this.#addLeft(x)
             this.#addTop(y)
             this.#update()
             return false
+        } else {
+            return false
         }
+    }
+
+    #getPanPossible() {
+        return this.panPossible
+    }
+
+    #setPanPossible(value) {
+        this.panPossible = value
     }
 
     #getFitComicToScreen() {
@@ -1974,6 +1987,7 @@ class ComicDisplay extends Display {
     }
     #setZoomJump(value) {
         this.zoomJump = value
+        this.#setFitComicToScreen(false)
     }
     #zoomJump(x, y) {
         if (this.#getFitComicToScreen()) {
@@ -2046,6 +2060,7 @@ class ComicDisplay extends Display {
     async nextPage() {
         let size = await this.book.getSize()
         if (this.getPosition() < size - 1) {
+            this.#setPanPossible(false)
             this.displayPageFor(this.getPosition() + 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
@@ -2059,6 +2074,7 @@ class ComicDisplay extends Display {
     async previousPage() {
         if (this.getPosition() > 0) {
             this.displayPageFor(this.getPosition() - 1).then(() => {
+                this.#setPanPossible(false)
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
