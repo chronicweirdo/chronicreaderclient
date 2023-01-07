@@ -1,3 +1,6 @@
+var CLASS_SUCCESS = "success"
+var CLASS_ERROR = "error"
+
 function timeout(ms) {
     return new Promise((resolve, reject) => {
         window.setTimeout(function() {
@@ -130,12 +133,15 @@ class TabbedPage extends Component {
 }
 
 class ServerConnectionDisplay extends Component {
+    /*CLASS_FORM_ROW = "form_row"*/
     constructor(element) {
         super(element)
     }
 
     async load() {
         await super.load()
+
+        /*this.element.classList.add(this.CLASS_FORM_ROW)*/
 
         let status = document.createElement("span")
         status.style.display = "inline-block"
@@ -144,9 +150,11 @@ class ServerConnectionDisplay extends Component {
         fetch("/verify")
         .then(response => response.json())
         .then(result => {
+            status.classList.remove(...status.classList)
             if (result && result != null && result.connected == true) {
                 status.innerHTML = "connected to " + result.server
-                status.style.backgroundColor = "green"
+                //status.style.backgroundColor = "green"
+                status.classList.add(CLASS_SUCCESS)
             } else {
                 let message = "not connected"
                 if (result && result != null && result.server != null && result.server.length > 0) {
@@ -158,7 +166,8 @@ class ServerConnectionDisplay extends Component {
                     message += " - server is unavailable"
                 }
                 status.innerHTML = message
-                status.style.backgroundColor = "red"
+                //status.style.backgroundColor = "red"
+                status.classList.add(CLASS_ERROR)
             }
         })
 
@@ -167,8 +176,16 @@ class ServerConnectionDisplay extends Component {
 }
 
 class FormComponent extends Component {
+    CLASS_FORM_ROW = "form_row"
     constructor(element) {
         super(element)
+    }
+
+    title(text) {
+        let h = document.createElement("h1")
+        h.innerHTML = text
+        h.classList.add(this.CLASS_FORM_ROW)
+        return h
     }
 
     label(text, forName) {
@@ -184,6 +201,7 @@ class FormComponent extends Component {
         let t = document.createElement("input")
         t.type = "text"
         t.name = name
+        t.style.maxWidth = "200px"
         return t
     }
 
@@ -199,13 +217,29 @@ class FormComponent extends Component {
         let t = document.createElement("input")
         t.type = "password"
         t.name = name
+        t.style.maxWidth = "200px"
         return t
     }
 
-    p(elems) {
+    p(left, right = null) {
         let p = document.createElement("p")
-        for (let e of elems) {
-            p.appendChild(e)
+
+        if (left != null) {
+            p.appendChild(left)
+        }
+        
+        if (right != null) {
+            right.style.justifySelf = "right"
+            p.appendChild(right)
+        } else if (left != null) {
+            left.style.gridColumn = "1/3"
+            left.style.justifySelf = "auto"
+        }
+        
+        p.classList.add(this.CLASS_FORM_ROW)
+        if (left != null) {
+            p.style.display = "grid"
+            p.style.gridTemplateColumns = "auto auto"
         }
         return p
     }
@@ -223,13 +257,16 @@ class UploadForm extends FormComponent {
     async load() {
         await super.load()
 
-        let fileLabel = this.label("filename", "filename")
+        this.element.appendChild(this.title("File Upload"))
+        /*let fileLabel = this.label("filename", "filename")
+        this.element.appendChild(this.p(fileLabel))*/
+
         let fileInput = this.file("filename")
-        this.element.appendChild(this.p([fileLabel, fileInput]))
+        this.element.appendChild(this.p(fileInput))
 
         let uploadResult = document.createElement("span")
-        uploadResult.style.color = "white"
-        uploadResult.style.marginLeft = "1em"
+        /*uploadResult.style.color = "white"
+        uploadResult.style.marginLeft = "1em"*/
         let button = document.createElement("a")
         button.innerHTML = "upload"
         button.onclick = () => {
@@ -264,7 +301,7 @@ class UploadForm extends FormComponent {
                 })
             })
         }
-        this.element.appendChild(this.p([button, uploadResult]))
+        this.element.appendChild(this.p(button, uploadResult))
     }
 }
 
@@ -276,25 +313,31 @@ class LoginForm extends FormComponent {
     async load() {
         await super.load()
 
-        let serverConnectionDisplay = await ServerConnectionDisplay.createInParent(this.element, "p")
+        this.element.appendChild(this.title("Server Connection"))
+
+        let serverConnectionElement = this.p(null)
+        let serverConnectionDisplay = new ServerConnectionDisplay(serverConnectionElement)
+        serverConnectionDisplay.load()
+        this.element.appendChild(serverConnectionElement)
         
         let serverLabel = this.label("server", "server")
         let serverInput = this.input("server")
-        this.element.appendChild(this.p([serverLabel, serverInput]))
+        this.element.appendChild(this.p(serverLabel, serverInput))
 
         let usernameLabel = this.label("username", "username")
         let usernameInput = this.input("username")
-        this.element.appendChild(this.p([usernameLabel, usernameInput]))
+        this.element.appendChild(this.p(usernameLabel, usernameInput))
 
         let passwordLabel = this.label("password", "password")
         let passwordInput = this.password("password")
-        this.element.appendChild(this.p([passwordLabel, passwordInput]))
+        this.element.appendChild(this.p(passwordLabel, passwordInput))
 
         let loginResult = document.createElement("span")
-        loginResult.style.marginLeft = "1em"
-        loginResult.style.color = "white"
+        //loginResult.style.marginLeft = "1em"
+        //loginResult.style.color = "white"
+
         let button = document.createElement("a")
-        button.innerHTML = "submit"
+        button.innerHTML = "login"
         button.onclick = () => {
             let body = JSON.stringify({
                 server: serverInput.value,
@@ -326,7 +369,7 @@ class LoginForm extends FormComponent {
                 })
             })
         }
-        this.element.appendChild(this.p([button, loginResult]))
+        this.element.appendChild(this.p(button, loginResult))
     }
 }
 
@@ -349,6 +392,10 @@ class SettingsTab extends Component {
         this.element.appendChild(uploadFormDiv)
         let uploadForm = new UploadForm(uploadFormDiv)
         await uploadForm.load()*/
+
+        let settingsTitle = document.createElement("h1")
+        settingsTitle.innerHTML = "Settings"
+        this.element.appendChild(settingsTitle)
 
         for (let setting of document.settings) {
             let p = document.createElement("p")
@@ -937,6 +984,7 @@ class Search extends Component {
 }
 
 class Setting extends Component {
+    CLASS_SETTING = "setting"
     constructor(element, name, defaultValue = null) {
         super(element)
         this.name = name
@@ -946,6 +994,10 @@ class Setting extends Component {
 
     async load() {
         await super.load()
+
+        this.element.classList.add(this.CLASS_SETTING)
+        this.element.style.display = "grid"
+        this.element.style.gridTemplateColumns = "auto auto"
     }
 
     getKey() {
@@ -988,6 +1040,7 @@ class ColorSetting extends Setting {
         this.element.appendChild(label)
 
         let input = document.createElement("input")
+        input.style.justifySelf = "right"
         input.type = "color"
         input.name = this.getKey()
         input.value = this.get()
@@ -1019,11 +1072,14 @@ class OptionsSliderSetting extends Setting {
         label.forName = this.getKey()
         this.element.appendChild(label)
 
-        let valueLabel = document.createElement("span")
+        let valueLabel = document.createElement("output")
+        valueLabel.style.justifySelf = "right"
         valueLabel.innerHTML = this.get()
         this.element.appendChild(valueLabel)
 
         let input = document.createElement("input")
+        input.style.gridColumn = "1/3"
+        input.style.justifySelf = "auto"
         input.type = "range"
         input.name = this.getKey()
         input.min = 0
@@ -1096,6 +1152,7 @@ class TimeSetting extends Setting {
         this.element.appendChild(label)
 
         let input = document.createElement("input")
+        input.style.justifySelf = "right"
         input.type = "time"
         input.name = this.getKey()
         input.value = this.get()

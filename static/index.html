@@ -69,6 +69,21 @@
             background-color: var(--light_theme_highlight_color, gold);
         }
 
+        .success {
+            color: white;
+            background-color: green;
+        }
+
+        .dark .success {
+            color: white;
+            background-color: green;
+        }
+
+        .error {
+            color: white;
+            background-color: red;
+        }
+
         .dark, .dark a {
             color: var(--dark_theme_text_color, white);
             background-color: var(--dark_theme_background_color, black);
@@ -78,6 +93,10 @@
             margin-bottom: 2.5vw;
             padding-left: 2.5vw;
             padding-right: 2.5vw;
+        }
+
+        .setting, .form_row {
+            max-width: 450px;
         }
 
         ul /*.book_list*/ {
