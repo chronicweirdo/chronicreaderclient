@@ -28,7 +28,7 @@
             if (callbackControl.dominantColor) {
                 console.log(callbackControl.dominantColor)
                 let color = "rgb(" + callbackControl.dominantColor[0] + "," + callbackControl.dominantColor[1] + "," + callbackControl.dominantColor[2] + ")" 
-                document.getElementById("page").style.backgroundColor = color
+                document.getElementById("content").style.backgroundColor = color
                 //let neg = negative(callbackControl.dominantColor)
                 //callbackControl.setControlsColor("rgb(" + neg[0] + "," + neg[1] + "," + neg[2] + ")")
             } /*else {
@@ -85,7 +85,10 @@
         function getTools(bookMeta) {
             let additionalTools = document.createElement("div")
 
-            
+            let textSizeParagraph = document.createElement("p")
+            document.textSizeSetting.element = textSizeParagraph
+            document.textSizeSetting.load()
+            additionalTools.appendChild(textSizeParagraph)
 
             let downloadLinkParagraph = document.createElement("p")
             document.downloadLink = document.createElement("a")
@@ -159,15 +162,24 @@
                     }
                     document.reader = new ChronicReader(
                         "book/" + bookId,
-                        document.getElementById("page"),
+                        document.getElementById("content"),
                         meta.extension,
                         {
-                            "textSize": 1,
                             "position": startPosition,
                             "displayControls": false,
                             "displayPageForCallback": displayPageCallback,
                             "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
                         }
+                    )
+                    document.textSizeSetting = new TextSizeSetting(
+                        null,
+                        "text size",
+                        0.5,
+                        2,
+                        0.1,
+                        1,
+                        document.getElementById("content"),
+                        () => document.reader.update()
                     )
                 })
         }
@@ -222,7 +234,7 @@
             background-color: var(--light_theme_highlight_color, gold);
         }
 
-        #page {
+        #content {
             width: 100%;
             height: 100%;
             position: absolute;
@@ -283,6 +295,6 @@
     </style>
 </head>
 <body>
-    <div id="page"></div>
+    <div id="content"></div>
 </body>
 </html>

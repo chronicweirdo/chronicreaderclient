@@ -2604,7 +2604,9 @@ class EbookDisplay extends Display {
     }
 
     update() {
-        this.displayPageFor(this.currentPage.start)
+        if (this.currentPage) {
+            this.displayPageFor(this.currentPage.start)
+        }
     }
 
     buildUi() {
