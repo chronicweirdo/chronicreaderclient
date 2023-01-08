@@ -10,6 +10,15 @@ function timeout(ms) {
     })
 }
 
+function setMeta(metaName, value) {
+    document.querySelector('meta[name="' + metaName + '"]').setAttribute("content", value);
+}
+
+function setStatusBarColor(color) {
+    setMeta('theme-color', color)
+    document.documentElement.style.setProperty('--status-bar-color', color)
+}
+
 class Component {
     static async create(tagName, ...args) {
         let element = document.createElement(tagName)
@@ -1093,10 +1102,12 @@ class OptionsSliderSetting extends Setting {
 }
 
 class ThemeSliderSetting extends OptionsSliderSetting {
-    constructor(element, dayStartSetting, dayEndSetting) {
+    constructor(element, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting) {
         super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
         this.dayStartSetting = dayStartSetting
         this.dayEndSetting = dayEndSetting
+        this.lightHighlightedColorSetting = lightHighlightedColorSetting
+        this.darkHighlightedColorSetting = darkHighlightedColorSetting
         this.apply()
     }
     
@@ -1105,17 +1116,22 @@ class ThemeSliderSetting extends OptionsSliderSetting {
     }
 
     apply() {
-        if (this.dayStartSetting != undefined && this.dayEndSetting != undefined) {
+        if (this.dayStartSetting != undefined && this.dayEndSetting != undefined
+            && this.lightHighlightedColorSetting != undefined && this.darkHighlightedColorSetting != undefined) {
             let value = this.get()
             if (value == "light") {
                 document.body.classList.remove("dark")
+                setStatusBarColor(this.lightHighlightedColorSetting.get())
             } else if (value == "dark") {
                 document.body.classList.add("dark")
+                setStatusBarColor(this.darkHighlightedColorSetting.get())
             } else if (value == "OS theme") {
                 if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
                     document.body.classList.add("dark")
+                    setStatusBarColor(this.darkHighlightedColorSetting.get())
                 } else {
                     document.body.classList.remove("dark")
+                    setStatusBarColor(this.lightHighlightedColorSetting.get())
                 }
             } else if (value == "time based") {
                 let dayStart = this.timeStringToDate(this.dayStartSetting.get())
@@ -1123,8 +1139,10 @@ class ThemeSliderSetting extends OptionsSliderSetting {
                 let now = new Date()
                 if (now < dayStart || dayEnd < now) {
                     document.body.classList.add("dark")
+                    setStatusBarColor(this.darkHighlightedColorSetting.get())
                 } else {
                     document.body.classList.remove("dark")
+                    setStatusBarColor(this.lightHighlightedColorSetting.get())
                 }
             }
             super.apply()
@@ -1222,9 +1240,13 @@ class ClearStorageControl extends ControlWithConfirmation {
 async function initializeSettings(contentElement) {
     let dayStartSetting = new TimeSetting(null, "day start", "07:00")
     let dayEndSetting = new TimeSetting(null, "day end", "21:00")
-    let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting)
+    let lightHighlightedColorSetting = new ColorSetting(null, "light theme highlight color", "#FFD700")
+    let darkHighlightedColorSetting = new ColorSetting(null, "dark theme highlight color", "#FFD700")
+    let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting)
     dayStartSetting.chainedSettings = [themeSetting]
     dayEndSetting.chainedSettings = [themeSetting]
+    lightHighlightedColorSetting.chainedSettings = [themeSetting]
+    darkHighlightedColorSetting.chainedSettings = [themeSetting]
     let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
     let settings = [
         textSizeSetting,
@@ -1233,7 +1255,7 @@ async function initializeSettings(contentElement) {
         themeSetting,
         new ColorSetting(null, "light theme background color", "#ffffff"),
         new ColorSetting(null, "light theme text color", "#000000"),
-        new ColorSetting(null, "light theme highlight color", "#FFD700"),
+        lightHighlightedColorSetting,
         new ColorSetting(null, "light theme highlight text color", "#000000"),
         new ColorSetting(null, "light theme error color", "#dc143c"),
         new ColorSetting(null, "light theme error text color", "#FFFFFF"),
@@ -1242,7 +1264,7 @@ async function initializeSettings(contentElement) {
 
         new ColorSetting(null, "dark theme background color", "#000000"),
         new ColorSetting(null, "dark theme text color", "#ffffff"),
-        new ColorSetting(null, "dark theme highlight color", "#FFD700"),
+        darkHighlightedColorSetting,
         new ColorSetting(null, "dark theme highlight text color", "#000000"),
         new ColorSetting(null, "dark theme error color", "#dc143c"),
         new ColorSetting(null, "dark theme error text color", "#FFFFFF"),

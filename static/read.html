@@ -22,13 +22,28 @@
             let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString()
             window.history.replaceState('', '', newUrl)
         }*/
+        function intToHex(i) {
+            let ri = Math.floor(i)
+            let h = ri.toString(16)
+            if (h.length < 2) {
+                h = "0" + h
+            }
+            return h
+        }
+
+        function getHexCode(rgb) {
+            return "#" + intToHex(rgb[0]) + intToHex(rgb[1]) + intToHex(rgb[2])
+        }
 
         function displayPageCallback(callbackControl) {
             document.themeSetting.apply()
             if (callbackControl.dominantColor) {
                 console.log(callbackControl.dominantColor)
-                let color = "rgb(" + callbackControl.dominantColor[0] + "," + callbackControl.dominantColor[1] + "," + callbackControl.dominantColor[2] + ")" 
+                let color = getHexCode(callbackControl.dominantColor)
+                console.log(color)
+                //"rgb(" + callbackControl.dominantColor[0] + "," + callbackControl.dominantColor[1] + "," + callbackControl.dominantColor[2] + ")" 
                 document.getElementById("content").style.backgroundColor = color
+                setStatusBarColor(color)
                 //let neg = negative(callbackControl.dominantColor)
                 //callbackControl.setControlsColor("rgb(" + neg[0] + "," + neg[1] + "," + neg[2] + ")")
             } /*else {
