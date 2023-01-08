@@ -141,7 +141,7 @@ class ServerConnectionDisplay extends Component {
 
         let status = document.createElement("span")
         status.style.display = "inline-block"
-        status.style.color = "white"
+        status.style.overflowWrap = "anywhere"
 
         fetch("/verify")
         .then(response => response.json())
