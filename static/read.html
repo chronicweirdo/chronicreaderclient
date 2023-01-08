@@ -186,14 +186,25 @@
     <link rel="stylesheet" type="text/css" href="fonts.css">
     <style>
         :root {
+            /* dark theme */
             --dark_theme_background_color: black;
             --dark_theme_text_color: white;
             --dark_theme_highlight_color: gold;
             --dark_theme_highlight_text_color: black;
+            --dark_theme_error_color: red;
+            --dark_theme_error_text_color: white;
+            --dark_theme_success_color: greenyellow;
+            --dark_theme_success_text_color: white;
+
+            /* light theme */
             --light_theme_background_color: white;
             --light_theme_text_color: black;
             --light_theme_highlight_color: gold;
             --light_theme_highlight_text_color: black;
+            --light_theme_error_color: red;
+            --light_theme_error_text_color: white;
+            --light_theme_success_color: green;
+            --light_theme_success_text_color: white;
         }
         /** {
             padding: 0;
@@ -287,6 +298,9 @@
         .highlighted {
             color: white;
             background-color: black;
+        }
+        ul {
+            padding-left: 1em;
         }
         /*img {
             max-width: 100%;
