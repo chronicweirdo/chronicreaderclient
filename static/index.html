@@ -201,9 +201,6 @@
         .dark .progress_bar {
             background-color: var(--dark_theme_text_color, white);
         }
-
-        
-
         a {
             color: black;
             text-decoration: underline;
@@ -213,7 +210,10 @@
             font-size: 1.5rem;
         }
         #content {
-            height: 100vh;
+            display: block;
+            overflow: auto;
+            /*margin-bottom: 5vh;*/
+            margin-bottom: env(safe-area-inset-bottom);
         }
     </style>
 </head>
