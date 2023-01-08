@@ -229,6 +229,7 @@ class Database {
             let connection = connections[0]
             return {
                 server: connection.id,
+                username: connection.username,
                 token: connection.token
             }
         }
@@ -362,12 +363,12 @@ function getArrayBufferSHA256(bytes) {
 
 class Backend {
     static async factory() {
-        let {server, token} = await Backend.loadToken()
-        return new Backend(server, token)
+        let {server, username, token} = await Backend.loadToken()
+        return new Backend(server, username, token)
     }
-    constructor(server, token) {
-        console.log("creating backend for " + server)
+    constructor(server, username, token) {
         this.server = server
+        this.username = username
         this.token = token
     }
     static async loadToken() {
@@ -467,12 +468,14 @@ class Backend {
                 let responseContent = await response.json()
                 return {
                     server: this.server,
+                    username: this.username,
                     code: 200,
                     connected: responseContent
                 }
             } else {
                 return {
                     server: this.server,
+                    username: this.username,
                     code: response.status,
                     connected: false
                 }
@@ -481,6 +484,7 @@ class Backend {
             console.log(error)
             return {
                 server: this.server,
+                username: this.username,
                 error: error.message,
                 connected: false
             }

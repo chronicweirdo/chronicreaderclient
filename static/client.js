@@ -148,7 +148,7 @@ class ServerConnectionDisplay extends Component {
         .then(result => {
             status.classList.remove(...status.classList)
             if (result && result != null && result.connected == true) {
-                status.innerHTML = "connected to " + result.server
+                status.innerHTML = "connected to " + result.server + " as " + result.username
                 status.classList.add(CLASS_SUCCESS)
             } else {
                 let message = "not connected"
