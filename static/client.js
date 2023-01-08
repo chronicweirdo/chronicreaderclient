@@ -1026,11 +1026,15 @@ class NumberSliderSetting extends Setting {
         input.value = this.get()
         this.element.appendChild(input)
         
+        input.oninput = () => {
+            valueLabel.innerHTML = input.value
+            valueLabel.classList.add(CLASS_HIGHLIGHTED)
+        }
         input.onchange = () => {
-            
             let value = input.value
             this.persist(value)
             valueLabel.innerHTML = value
+            valueLabel.classList.remove(CLASS_HIGHLIGHTED)
             this.apply()
         }
     }
@@ -1085,10 +1089,16 @@ class OptionsSliderSetting extends Setting {
         input.value = this.values.indexOf(this.get())
         this.element.appendChild(input)
         
+        input.oninput = () => {
+            let value = this.values[input.value]
+            valueLabel.innerHTML = value
+            valueLabel.classList.add(CLASS_HIGHLIGHTED)
+        }
         input.onchange = () => {
             let value = this.values[input.value]
             this.persist(value)
             valueLabel.innerHTML = value
+            valueLabel.classList.remove(CLASS_HIGHLIGHTED)
             this.apply()
         }
     }
