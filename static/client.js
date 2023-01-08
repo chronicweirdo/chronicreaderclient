@@ -43,30 +43,26 @@ class TabbedPage extends Component {
         super(element)
     }
 
-    createButton(label, func) {
+    createButton(label) {
         let button = document.createElement("a")
         button.innerHTML = label
-        button.onclick = func
+        button.onclick = (event) => this.displayTab(event.target)
         button.style.display = "inline-block"
         button.style.padding = ".4em"
         button.style.cursor = "pointer"
         return button
     }
 
-    highlightButton(button) {
-        button.classList.add(CLASS_HIGHLIGHTED)
-    }
-
-    resetButton(button) {
-        button.classList.remove(CLASS_HIGHLIGHTED)
-    }
-
-    resetButtons() {
-        this.resetButton(this.onDeviceButton)
-        this.resetButton(this.latestReadButton)
-        this.resetButton(this.latestAddedButton)
-        this.resetButton(this.searchButton)
-        this.resetButton(this.settingsButton)
+    async displayTab(button) {
+        for (let i in this.tabs) {
+            let t = this.tabs[i]
+            if (t.button == button) {
+                t.button.classList.add(CLASS_HIGHLIGHTED)
+                t.tab.load()
+            } else {
+                t.button.classList.remove(CLASS_HIGHLIGHTED)
+            }
+        }
     }
 
     async load() {
@@ -80,54 +76,39 @@ class TabbedPage extends Component {
         this.element.appendChild(this.content)
 
         let searchTab = new LibrarySearchTab(this.content)
+        let searchButton = this.createButton("search")
         let globalSearchFunction = (term) => {
-            this.resetButtons()
-            this.highlightButton(this.searchButton)
-            searchTab.load().then(() => searchTab.search(term))
+            this.displayTab(searchButton).then(() => searchTab.search(term))
         }
-        let onDeviceTab = new OnDeviceTab(this.content, globalSearchFunction)
-        let latestReadTab = new LatestReadTab(this.content, globalSearchFunction)
-        let latestAddedTab = new LatestAddedTab(this.content, globalSearchFunction)
-        let settingsTab = new SettingsTab(this.content)
+
+        this.tabs = [
+            {
+                tab: new OnDeviceTab(this.content, globalSearchFunction),
+                button: this.createButton("on device")
+            },
+            {
+                tab: new LatestReadTab(this.content, globalSearchFunction),
+                button: this.createButton("latest read")
+            },
+            {
+                tab: new LatestAddedTab(this.content, globalSearchFunction),
+                button: this.createButton("latest added")
+            },
+            {
+                tab: searchTab,
+                button: searchButton
+            },
+            {
+                tab: new SettingsTab(this.content),
+                button: this.createButton("settings")
+            }
+        ]
         
+        for (let t of this.tabs) {
+            buttons.appendChild(t.button)   
+        }
 
-        this.onDeviceButton = this.createButton("on device", () => {
-            this.resetButtons()
-            this.highlightButton(this.onDeviceButton)
-            onDeviceTab.load()
-        })
-        buttons.appendChild(this.onDeviceButton)
-
-        this.latestReadButton = this.createButton("latest read", () => {
-            this.resetButtons()
-            this.highlightButton(this.latestReadButton)
-            latestReadTab.load()
-        })
-        buttons.appendChild(this.latestReadButton)
-
-        this.latestAddedButton = this.createButton("latest added", () => {
-            this.resetButtons()
-            this.highlightButton(this.latestAddedButton)
-            latestAddedTab.load()
-        })
-        buttons.appendChild(this.latestAddedButton)
-
-        this.searchButton = this.createButton("search", () => {
-            this.resetButtons()
-            this.highlightButton(this.searchButton)
-            searchTab.load()
-        })
-        buttons.appendChild(this.searchButton)
-
-        this.settingsButton = this.createButton("settings", () => {
-            this.resetButtons()
-            this.highlightButton(this.settingsButton)
-            settingsTab.load()
-        })
-        buttons.appendChild(this.settingsButton)
-
-        this.highlightButton(this.onDeviceButton)
-        onDeviceTab.load()
+        this.displayTab(this.tabs[0].button)
     }
 }
 
