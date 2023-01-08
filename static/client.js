@@ -38,6 +38,7 @@ class Component {
 
 class TabbedPage extends Component {
     CLASS_MENU = "menu"
+    STORAGE_KEY = "tabbed_page_latest_tab"
     
     constructor(element) {
         super(element)
@@ -53,10 +54,24 @@ class TabbedPage extends Component {
         return button
     }
 
+    saveTabIndex(i) {
+        window.localStorage.setItem(this.STORAGE_KEY, JSON.stringify(i))
+    }
+
+    loadTabIndex() {
+        let savedValue = window.localStorage.getItem(this.STORAGE_KEY)
+        if (savedValue != undefined && savedValue != null) {
+            return JSON.parse(savedValue)
+        } else {
+            return 0
+        }
+    }
+
     async displayTab(button) {
         for (let i in this.tabs) {
             let t = this.tabs[i]
             if (t.button == button) {
+                this.saveTabIndex(i)
                 t.button.classList.add(CLASS_HIGHLIGHTED)
                 t.tab.load()
             } else {
@@ -108,7 +123,8 @@ class TabbedPage extends Component {
             buttons.appendChild(t.button)   
         }
 
-        this.displayTab(this.tabs[0].button)
+        let tabIndex = this.loadTabIndex()
+        this.displayTab(this.tabs[tabIndex].button)
     }
 }
 
