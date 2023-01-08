@@ -210,6 +210,69 @@
         input {
             font-size: 1.5rem;
         }
+        /* https://stackoverflow.com/questions/18389224/how-to-style-html5-range-input-to-have-different-color-before-and-after-slider */
+        
+        input[type="range"] {
+            background-color: var(--light_theme_background_color);
+        }
+        .dark input[type="range"] {
+            background-color: var(--dark_theme_background_color);
+        }
+        @media screen and (-webkit-min-device-pixel-ratio:0) {
+            input[type='range'] {
+                margin-top: 1em;
+                margin-bottom: 1em;
+                overflow: hidden;
+                -webkit-appearance: none;
+                background-color: var(--light_theme_text_color);
+            }
+
+            .dark input[type='range'] {
+                background-color: var(--dark_theme_text_color);
+            }
+
+            /*input[type='range']::-webkit-slider-runnable-track {
+                height: 10px;
+                -webkit-appearance: none;
+                color: var(--light_theme_text_color);
+            }*/
+
+            /*.dark input[type='range']::-webkit-slider-runnable-track {
+                color: var(--dark_theme_text_color);
+            }*/
+
+            
+            
+            input[type='range']::-webkit-slider-thumb {
+                width: 10px;
+                -webkit-appearance: none;
+                height: 10px;
+                cursor: ew-resize;
+                border: 1px solid var(--light_theme_text_color);
+                background: var(--light_theme_background_color);
+                box-shadow: -100vw 0 0 100vw var(--light_theme_highlight_color);
+            }
+
+            .dark input[type='range']::-webkit-slider-thumb {
+                border-color: var(--dark_theme_text_color);
+                background: var(--dark_theme_background_color);
+                box-shadow: -100vw 0 0 100vw var(--dark_theme_highlight_color);
+            }
+
+        }
+        input[type="range"]::-moz-range-progress {
+            background-color: var(--light_theme_highlight_color);
+        }
+        input[type="range"]::-moz-range-track {  
+            background-color: var(--light_theme_text_color)
+        }
+        
+        .dark input[type="range"]::-moz-range-progress {
+            background-color: var(--dark_theme_highlight_color);
+        }
+        .dark input[type="range"]::-moz-range-track {  
+            background-color: var(--dark_theme_text_color)
+        }
         #content {
             display: block;
             overflow: auto;
