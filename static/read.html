@@ -13,15 +13,6 @@
     <script src="reader.js"></script>
     <script src="client.js"></script>
     <script>
-        /*function updateUrl(display) {
-            let newPosition = display.position
-            let queryString = window.location.search
-            let urlParams = new URLSearchParams(queryString)
-            urlParams.delete("position")
-            urlParams.append("position", newPosition)
-            let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString()
-            window.history.replaceState('', '', newUrl)
-        }*/
         function intToHex(i) {
             let ri = Math.floor(i)
             let h = ri.toString(16)
@@ -38,17 +29,10 @@
         function displayPageCallback(callbackControl) {
             document.themeSetting.apply()
             if (callbackControl.dominantColor) {
-                console.log(callbackControl.dominantColor)
                 let color = getHexCode(callbackControl.dominantColor)
-                console.log(color)
-                //"rgb(" + callbackControl.dominantColor[0] + "," + callbackControl.dominantColor[1] + "," + callbackControl.dominantColor[2] + ")" 
                 document.getElementById("content").style.backgroundColor = color
                 setStatusBarColor(color)
-                //let neg = negative(callbackControl.dominantColor)
-                //callbackControl.setControlsColor("rgb(" + neg[0] + "," + neg[1] + "," + neg[2] + ")")
-            } /*else {
-                document.body.style.backgroundColor = "white"
-            }*/
+            }
             if (callbackControl.position) {
                 // sync progress with backend
                 let bookId = getBookId()
@@ -67,11 +51,6 @@
             
         }
         function getBookId() {
-            /*let queryString = window.location.search
-            console.log(queryString)
-            let urlParams = new URLSearchParams(queryString)
-            console.log(urlParams)
-            let bookId = urlParams.get("book")*/
             let params = new URLSearchParams(window.location.search)
             let bookId = params.get("book")
             return bookId
@@ -88,15 +67,6 @@
             }
             return url
         }
-        /*async function getCurrentPosition() {
-            let position = getUrlPosition()
-            if (position == undefined) {
-                positionResponse = await fetch(getSyncUrl())
-                position = await positionResponse.json()
-                console.log("loaded position: " + position)
-            }
-            return Number(position)
-        }*/
         function getTools(bookMeta) {
             let additionalTools = document.createElement("div")
 
