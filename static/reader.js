@@ -2567,6 +2567,7 @@ class EbookDisplay extends Display {
 
     setBook(book) {
         super.setBook(book)
+        this.setTextSize(this.settings.textSize)
         this.displayPageFor(this.getPosition()).then(() => {
             this.triggerComputationForAllPages()
         })
@@ -2609,7 +2610,7 @@ class EbookDisplay extends Display {
             })
     }
 
-    #setTextSize(value) {
+    setTextSize(value) {
         this.settings.textSize = value
         this.page.style.fontSize = this.settings.textSize + "em"
         this.shadowPage.style.fontSize = this.settings.textSize + "em"
@@ -2625,7 +2626,7 @@ class EbookDisplay extends Display {
         if (newTextSize > this.settings.maximumTextSize) {
             newTextSize = this.settings.maximumTextSize
         }
-        this.#setTextSize(newTextSize)
+        this.setTextSize(newTextSize)
     }
 
     zoomOut() {
@@ -2634,7 +2635,7 @@ class EbookDisplay extends Display {
         if (newTextSize < this.settings.minimumTextSize) {
             newTextSize = this.settings.minimumTextSize
         }
-        this.#setTextSize(newTextSize)
+        this.setTextSize(newTextSize)
     }
 
     setControlsColor(color) {
