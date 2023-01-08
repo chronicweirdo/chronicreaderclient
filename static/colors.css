@@ -1,4 +1,6 @@
 :root {
+    --status-bar-color: gold;
+
     /* dark theme */
     --dark_theme_background_color: black;
     --dark_theme_text_color: white;
@@ -21,6 +23,11 @@
 }
 
 body {
+    background-color: var(--status-bar-color);
+    color: var(--light_theme_text_color);
+}
+
+#content {
     background-color: var(--light_theme_background_color);
     color: var(--light_theme_text_color);
 }

@@ -82,7 +82,15 @@ class TabbedPage extends Component {
             if (t.button == button) {
                 this.saveTabIndex(i)
                 t.button.classList.add(CLASS_HIGHLIGHTED)
-                t.tab.load()
+                t.tab.load().then(() => {
+                    // todo: consider removing this and making body use the background color for the library page
+                    if (t.tab.element.offsetHeight + t.tab.element.offsetTop < window.innerHeight) {
+                        console.log("need to fix height")
+                        t.tab.element.style.height = (window.innerHeight - t.tab.element.offsetTop) + "px"
+                    } else {
+                        t.tab.element.style.removeProperty("height")
+                    }
+                })
             } else {
                 t.button.classList.remove(CLASS_HIGHLIGHTED)
             }
@@ -378,12 +386,12 @@ class SettingsTab extends Component {
             let p = document.createElement("p")
             this.element.appendChild(p)
             setting.element = p
-            setting.load()
+            await setting.load()
         }
 
         let clearStorageParagraph = document.createElement("p")
         let clearStorage = new ClearStorageControl(clearStorageParagraph)
-        clearStorage.load()
+        await clearStorage.load()
         this.element.appendChild(clearStorageParagraph)
     }
 }
