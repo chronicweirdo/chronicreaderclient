@@ -383,6 +383,11 @@ class SettingsTab extends Component {
             setting.element = p
             setting.load()
         }
+
+        let clearStorageParagraph = document.createElement("p")
+        let clearStorage = new ClearStorageControl(clearStorageParagraph)
+        clearStorage.load()
+        this.element.appendChild(clearStorageParagraph)
     }
 }
 
@@ -989,6 +994,70 @@ class ColorSetting extends Setting {
     }
 }
 
+class NumberSliderSetting extends Setting {
+    constructor(element, name, minimumValue, maximumValue, step, defaultValue) {
+        super(element, name, defaultValue)
+        this.minimumValue = minimumValue
+        this.maximumValue = maximumValue
+        this.step = step
+    }
+
+    async load() {
+        await super.load()
+
+        let label = document.createElement("label")
+        label.innerHTML = this.name
+        label.forName = this.getKey()
+        this.element.appendChild(label)
+
+        let valueLabel = document.createElement("output")
+        valueLabel.style.justifySelf = "right"
+        valueLabel.innerHTML = this.get()
+        this.element.appendChild(valueLabel)
+
+        let input = document.createElement("input")
+        input.style.gridColumn = "1/3"
+        input.style.justifySelf = "auto"
+        input.type = "range"
+        input.name = this.getKey()
+        input.min = this.minimumValue
+        input.max = this.maximumValue
+        input.step = this.step
+        input.value = this.get()
+        this.element.appendChild(input)
+        
+        input.oninput = () => {
+            valueLabel.innerHTML = input.value
+            valueLabel.classList.add(CLASS_HIGHLIGHTED)
+        }
+        input.onchange = () => {
+            let value = input.value
+            this.persist(value)
+            valueLabel.innerHTML = value
+            valueLabel.classList.remove(CLASS_HIGHLIGHTED)
+            this.apply()
+        }
+    }
+}
+
+class TextSizeSetting extends NumberSliderSetting {
+    constructor(element, name, minimumValue, maximumValue, step, defaultValue, controlledElement, applyCallback = null) {
+        super(element, name, minimumValue, maximumValue, step, defaultValue)
+        this.controlledElement = controlledElement
+        this.applyCallback = applyCallback
+        this.apply()
+    }
+
+    apply() {
+        if (this.controlledElement) {
+            this.controlledElement.style.fontSize = this.get() + "em"
+            if (this.applyCallback) {
+                timeout(1000).then(() => this.applyCallback())
+            }
+        }
+    }
+}
+
 class OptionsSliderSetting extends Setting {
     constructor(element, name, values, defaultValue) {
         super(element, name, defaultValue)
@@ -1020,10 +1089,16 @@ class OptionsSliderSetting extends Setting {
         input.value = this.values.indexOf(this.get())
         this.element.appendChild(input)
         
+        input.oninput = () => {
+            let value = this.values[input.value]
+            valueLabel.innerHTML = value
+            valueLabel.classList.add(CLASS_HIGHLIGHTED)
+        }
         input.onchange = () => {
             let value = this.values[input.value]
             this.persist(value)
             valueLabel.innerHTML = value
+            valueLabel.classList.remove(CLASS_HIGHLIGHTED)
             this.apply()
         }
     }
@@ -1097,5 +1172,61 @@ class TimeSetting extends Setting {
 
     apply() {
         super.apply()
+    }
+}
+
+class ControlWithConfirmation extends Component {
+    constructor(element, text, confirmation, timeout) {
+        super(element)
+        this.text = text
+        this.confirmation = confirmation
+        this.timeout = timeout
+    }
+
+    async load() {
+        await super.load()
+
+        let button = document.createElement("a")
+        console.log(this.text)
+        button.innerHTML = this.text
+        this.element.appendChild(button)
+
+        let confirmationButton = document.createElement("a")
+        confirmationButton.innerHTML = this.confirmation
+        confirmationButton.classList.add(CLASS_HIGHLIGHTED)
+        confirmationButton.style.display = "none"
+        this.element.appendChild(confirmationButton)
+
+        button.onclick = () => {
+            button.style.display = "none"
+            confirmationButton.style.display = "inline-block"
+            timeout(this.timeout).then(() => {
+                confirmationButton.style.display = "none"
+                button.style.display = "inline-block"
+            })
+        }
+        confirmationButton.onclick = () => {
+            this.execute()
+            confirmationButton.style.display = "none"
+            button.style.display = "inline-block"
+        }
+    }
+
+    execute() {
+        console.log("not implemented")
+    }
+}
+
+class ClearStorageControl extends ControlWithConfirmation {
+    constructor(element) {
+        super(element, "Clear storage", "Click if you are sure you want to clear storage", 5000)
+        console.log("created clear storage")
+    }
+    async load() {
+        await super.load()
+    }
+    execute() {
+        window.localStorage.clear()
+        window.location.reload()
     }
 }

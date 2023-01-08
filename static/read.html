@@ -28,7 +28,7 @@
             if (callbackControl.dominantColor) {
                 console.log(callbackControl.dominantColor)
                 let color = "rgb(" + callbackControl.dominantColor[0] + "," + callbackControl.dominantColor[1] + "," + callbackControl.dominantColor[2] + ")" 
-                document.getElementById("page").style.backgroundColor = color
+                document.getElementById("content").style.backgroundColor = color
                 //let neg = negative(callbackControl.dominantColor)
                 //callbackControl.setControlsColor("rgb(" + neg[0] + "," + neg[1] + "," + neg[2] + ")")
             } /*else {
@@ -83,15 +83,14 @@
             return Number(position)
         }*/
         function getTools(bookMeta) {
-            let p = document.createElement("p")
-            
-            let libraryLink = document.createElement("a")
-            libraryLink.innerHTML = "library"
-            let loc = window.location.pathname
-            let cutoff = loc.indexOf("read.html")
-            libraryLink.href = loc.substring(0, cutoff)
-            p.appendChild(libraryLink)
+            let additionalTools = document.createElement("div")
 
+            let textSizeParagraph = document.createElement("p")
+            document.textSizeSetting.element = textSizeParagraph
+            document.textSizeSetting.load()
+            additionalTools.appendChild(textSizeParagraph)
+
+            let downloadLinkParagraph = document.createElement("p")
             document.downloadLink = document.createElement("a")
             document.downloadLink.innerHTML = "download"
             document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
@@ -106,7 +105,7 @@
                         }
                     })
             }
-            p.appendChild(document.downloadLink)
+            downloadLinkParagraph.appendChild(document.downloadLink)
 
             document.deleteLink = document.createElement("a")
             document.deleteLink.innerHTML = "delete from local"
@@ -125,9 +124,24 @@
                     })
                     .catch(e => console.log(e))
             }
-            p.appendChild(document.deleteLink)
+            downloadLinkParagraph.appendChild(document.deleteLink)
 
-            return p
+            additionalTools.appendChild(downloadLinkParagraph)
+
+            let libraryLinkParagraph = document.createElement("p")
+            let libraryLink = document.createElement("a")
+            libraryLink.innerHTML = "library"
+            let loc = window.location.pathname
+            let cutoff = loc.indexOf("read.html")
+            libraryLink.href = loc.substring(0, cutoff)
+            libraryLinkParagraph.appendChild(libraryLink)
+
+            //libraryLinkParagraph.style.marginBottom = "5vh"
+            libraryLinkParagraph.style.marginBottom = "env(safe-area-inset-bottom)"
+
+            additionalTools.appendChild(libraryLinkParagraph)
+
+            return additionalTools
         }
         window.onload = function() {
             let dayStartSetting = new TimeSetting(null, "day start", "07:00")
@@ -148,7 +162,7 @@
                     }
                     document.reader = new ChronicReader(
                         "book/" + bookId,
-                        document.getElementById("page"),
+                        document.getElementById("content"),
                         meta.extension,
                         {
                             "position": startPosition,
@@ -156,6 +170,16 @@
                             "displayPageForCallback": displayPageCallback,
                             "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
                         }
+                    )
+                    document.textSizeSetting = new TextSizeSetting(
+                        null,
+                        "text size",
+                        0.5,
+                        2,
+                        0.1,
+                        1,
+                        document.getElementById("content"),
+                        () => document.reader.update()
                     )
                 })
         }
@@ -184,7 +208,7 @@
             border: 0;
             overflow: hidden;
             font-family: 'Merriweather', serif;
-            font-size: 1.5rem;
+            font-size: 1rem;
             color: var(--light_theme_text_color, black);
             background-color: var(--light_theme_background_color, white);
         }
@@ -210,7 +234,7 @@
             background-color: var(--light_theme_highlight_color, gold);
         }
 
-        #page {
+        #content {
             width: 100%;
             height: 100%;
             position: absolute;
@@ -271,6 +295,6 @@
     </style>
 </head>
 <body>
-    <div id="page"></div>
+    <div id="content"></div>
 </body>
 </html>

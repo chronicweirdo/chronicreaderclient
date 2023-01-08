@@ -20,6 +20,7 @@
             dayStartSetting.chainedSettings = [themeSetting]
             dayEndSetting.chainedSettings = [themeSetting]
             document.settings = [
+                new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, document.getElementById("content")),
                 dayStartSetting,
                 dayEndSetting,
                 themeSetting,
@@ -201,9 +202,6 @@
         .dark .progress_bar {
             background-color: var(--dark_theme_text_color, white);
         }
-
-        
-
         a {
             color: black;
             text-decoration: underline;
@@ -213,7 +211,10 @@
             font-size: 1.5rem;
         }
         #content {
-            height: 100vh;
+            display: block;
+            overflow: auto;
+            /*margin-bottom: 5vh;*/
+            margin-bottom: env(safe-area-inset-bottom);
         }
     </style>
 </head>
