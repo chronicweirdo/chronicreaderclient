@@ -131,44 +131,6 @@ class TabbedPage extends Component {
     }
 }
 
-class ServerConnectionDisplay extends Component {
-    constructor(element) {
-        super(element)
-    }
-
-    async load() {
-        await super.load()
-
-        let status = document.createElement("span")
-        status.style.display = "inline-block"
-        status.style.overflowWrap = "anywhere"
-
-        fetch("/verify")
-        .then(response => response.json())
-        .then(result => {
-            status.classList.remove(...status.classList)
-            if (result && result != null && result.connected == true) {
-                status.innerHTML = "connected to " + result.server + " as " + result.username
-                status.classList.add(CLASS_SUCCESS)
-            } else {
-                let message = "not connected"
-                if (result && result != null && result.server != null && result.server.length > 0) {
-                    message += " to " + result.server
-                }
-                if (result.code != undefined && result.code == 401) {
-                    message += " - try to log in again"
-                } else {
-                    message += " - server is unavailable"
-                }
-                status.innerHTML = message
-                status.classList.add(CLASS_ERROR)
-            }
-        })
-
-        this.element.appendChild(status)
-    }
-}
-
 class FormComponent extends Component {
     CLASS_FORM_ROW = "form_row"
     constructor(element) {
@@ -305,10 +267,10 @@ class LoginForm extends FormComponent {
 
         this.element.appendChild(this.title("Server Connection"))
 
-        let serverConnectionElement = this.p(null)
-        let serverConnectionDisplay = new ServerConnectionDisplay(serverConnectionElement)
-        serverConnectionDisplay.load()
-        this.element.appendChild(serverConnectionElement)
+        let serverConnection = this.p(null)
+        serverConnection.style.display = "inline-block"
+        serverConnection.style.overflowWrap = "anywhere"
+        this.element.appendChild(serverConnection)
         
         let serverLabel = this.label("server", "server")
         let serverInput = this.input("server")
@@ -323,6 +285,33 @@ class LoginForm extends FormComponent {
         this.element.appendChild(this.p(passwordLabel, passwordInput))
 
         let loginResult = document.createElement("span")
+
+        let verifyConnection = () => {
+            fetch("/verify")
+            .then(response => response.json())
+            .then(result => {
+                serverConnection.classList.remove(...serverConnection.classList)
+                if (result && result != null && result.connected == true) {
+                    serverConnection.innerHTML = "connected"
+                    serverConnection.classList.add(CLASS_SUCCESS)
+                } else {
+                    let message = "not connected"
+                    if (result.code != undefined && result.code == 401) {
+                        message += " - try to log in again"
+                    } else {
+                        message += " - server is unavailable"
+                    }
+                    serverConnection.innerHTML = message
+                    serverConnection.classList.add(CLASS_ERROR)
+                }
+                if (result && result != null && result.server) {
+                    serverInput.value = result.server
+                }
+                if (result && result != null && result.username) {
+                    usernameInput.value = result.username
+                }
+            })
+        }
 
         let button = document.createElement("a")
         button.innerHTML = "login"
@@ -351,13 +340,15 @@ class LoginForm extends FormComponent {
                     loginResult.innerHTML = "login failed"
                     loginResult.classList.add(CLASS_ERROR)
                 }
-                serverConnectionDisplay.load()
+                verifyConnection()
                 timeout(5000).then(() => {
                     loginResult.innerHTML = ""
                 })
             })
         }
         this.element.appendChild(this.p(button, loginResult))
+
+        verifyConnection()
     }
 }
 
