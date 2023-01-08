@@ -1221,3 +1221,40 @@ class ClearStorageControl extends ControlWithConfirmation {
         window.location.reload()
     }
 }
+
+async function initializeSettings(contentElement) {
+    let dayStartSetting = new TimeSetting(null, "day start", "07:00")
+    let dayEndSetting = new TimeSetting(null, "day end", "21:00")
+    let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting)
+    dayStartSetting.chainedSettings = [themeSetting]
+    dayEndSetting.chainedSettings = [themeSetting]
+    let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
+    let settings = [
+        textSizeSetting,
+        dayStartSetting,
+        dayEndSetting,
+        themeSetting,
+        new ColorSetting(null, "light theme background color", "#ffffff"),
+        new ColorSetting(null, "light theme text color", "#000000"),
+        new ColorSetting(null, "light theme highlight color", "#FFD700"),
+        new ColorSetting(null, "light theme highlight text color", "#000000"),
+        new ColorSetting(null, "light theme error color", "#dc143c"),
+        new ColorSetting(null, "light theme error text color", "#FFFFFF"),
+        new ColorSetting(null, "light theme success color", "#008000"),
+        new ColorSetting(null, "light theme success text color", "#FFFFFF"),
+
+        new ColorSetting(null, "dark theme background color", "#000000"),
+        new ColorSetting(null, "dark theme text color", "#ffffff"),
+        new ColorSetting(null, "dark theme highlight color", "#FFD700"),
+        new ColorSetting(null, "dark theme highlight text color", "#000000"),
+        new ColorSetting(null, "dark theme error color", "#dc143c"),
+        new ColorSetting(null, "dark theme error text color", "#FFFFFF"),
+        new ColorSetting(null, "dark theme success color", "#008000"),
+        new ColorSetting(null, "dark theme success text color", "#FFFFFF")
+    ]
+    return {
+        themeSetting: themeSetting,
+        textSizeSetting: textSizeSetting,
+        allSettings: settings
+    }
+}
