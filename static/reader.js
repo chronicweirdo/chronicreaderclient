@@ -1653,9 +1653,10 @@ class Display {
     }
 
     static CLASS_TOOLS = "tools"
+    static CLASS_TOOLS_CONTENTS = "toolsContents"
     async buildToolsUi() {
         let toolsContents = document.createElement("div")
-        toolsContents.classList.add("ebookPage")
+        toolsContents.classList.add(Display.CLASS_TOOLS_CONTENTS)
         toolsContents.style.position = "absolute"
         toolsContents.style.top = 0
         toolsContents.style.left = 0
