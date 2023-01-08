@@ -383,6 +383,11 @@ class SettingsTab extends Component {
             setting.element = p
             setting.load()
         }
+
+        let clearStorageParagraph = document.createElement("p")
+        let clearStorage = new ClearStorageControl(clearStorageParagraph)
+        clearStorage.load()
+        this.element.appendChild(clearStorageParagraph)
     }
 }
 
@@ -1157,5 +1162,61 @@ class TimeSetting extends Setting {
 
     apply() {
         super.apply()
+    }
+}
+
+class ControlWithConfirmation extends Component {
+    constructor(element, text, confirmation, timeout) {
+        super(element)
+        this.text = text
+        this.confirmation = confirmation
+        this.timeout = timeout
+    }
+
+    async load() {
+        await super.load()
+
+        let button = document.createElement("a")
+        console.log(this.text)
+        button.innerHTML = this.text
+        this.element.appendChild(button)
+
+        let confirmationButton = document.createElement("a")
+        confirmationButton.innerHTML = this.confirmation
+        confirmationButton.classList.add(CLASS_HIGHLIGHTED)
+        confirmationButton.style.display = "none"
+        this.element.appendChild(confirmationButton)
+
+        button.onclick = () => {
+            button.style.display = "none"
+            confirmationButton.style.display = "inline-block"
+            timeout(this.timeout).then(() => {
+                confirmationButton.style.display = "none"
+                button.style.display = "inline-block"
+            })
+        }
+        confirmationButton.onclick = () => {
+            this.execute()
+            confirmationButton.style.display = "none"
+            button.style.display = "inline-block"
+        }
+    }
+
+    execute() {
+        console.log("not implemented")
+    }
+}
+
+class ClearStorageControl extends ControlWithConfirmation {
+    constructor(element) {
+        super(element, "Clear storage", "Click if you are sure you want to clear storage", 5000)
+        console.log("created clear storage")
+    }
+    async load() {
+        await super.load()
+    }
+    execute() {
+        window.localStorage.clear()
+        window.location.reload()
     }
 }
