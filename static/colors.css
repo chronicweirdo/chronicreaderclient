@@ -1,0 +1,105 @@
+:root {
+    --status-bar-color: gold;
+
+    /* dark theme */
+    --dark_theme_background_color: black;
+    --dark_theme_text_color: white;
+    --dark_theme_highlight_color: gold;
+    --dark_theme_highlight_text_color: black;
+    --dark_theme_error_color: red;
+    --dark_theme_error_text_color: white;
+    --dark_theme_success_color: greenyellow;
+    --dark_theme_success_text_color: white;
+
+    /* light theme */
+    --light_theme_background_color: white;
+    --light_theme_text_color: black;
+    --light_theme_highlight_color: gold;
+    --light_theme_highlight_text_color: black;
+    --light_theme_error_color: red;
+    --light_theme_error_text_color: white;
+    --light_theme_success_color: green;
+    --light_theme_success_text_color: white;
+}
+
+body {
+    background-color: var(--status-bar-color);
+    color: var(--light_theme_text_color);
+}
+
+#content {
+    background-color: var(--light_theme_background_color);
+    color: var(--light_theme_text_color);
+}
+
+a {
+    background-color: var(--light_theme_background_color);
+    color: var(--light_theme_text_color);
+}
+
+.dark, .dark a {
+    color: var(--dark_theme_text_color, white);
+    background-color: var(--dark_theme_background_color, black);
+}
+
+.highlighted {
+    color: var(--light_theme_highlight_text_color);
+    background-color: var(--light_theme_highlight_color);
+}
+
+.dark .highlighted {
+    color: var(--dark_theme_highlight_text_color);
+    background-color: var(--dark_theme_highlight_color);
+}
+
+.success {
+    color: var(--light_theme_success_text_color);
+    background-color: var(--light_theme_success_color);
+}
+
+.dark .success {
+    color: var(--dark_theme_success_text_color);
+    background-color: var(--dark_theme_success_color);
+}
+
+.error {
+    color: var(--light_theme_error_text_color);
+    background-color: var(--light_theme_error_color);
+}
+
+.dark .error {
+    color: var(--dark_theme_error_text_color);
+    background-color: var(--dark_theme_error_color);
+}
+
+.progress_enclosure {
+    border: 1px solid var(--light_theme_text_color, black);
+    background-color: var(--light_theme_background_color, white);
+}
+
+.dark .progress_enclosure {
+    border-color: var(--dark_theme_text_color, white);
+    background-color: var(--dark_theme_background_color, black);
+}
+
+.progress_bar {
+    background-color: var(--light_theme_text_color, black);
+}
+
+.dark .progress_bar {
+    background-color: var(--dark_theme_text_color, white);
+}
+
+.tools {
+    background-color: var(--light_theme_background_color, white);
+}
+.dark .tools {
+    background-color: var(--dark_theme_background_color, black);
+}
+
+table, th, td {
+    border-color: var(--light_theme_text_color);
+}
+.dark table, .dark th, .dark td {
+    border-color: var(--dark_theme_text_color);
+}

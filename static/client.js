@@ -10,6 +10,15 @@ function timeout(ms) {
     })
 }
 
+function setMeta(metaName, value) {
+    document.querySelector('meta[name="' + metaName + '"]').setAttribute("content", value);
+}
+
+function setStatusBarColor(color) {
+    setMeta('theme-color', color)
+    document.documentElement.style.setProperty('--status-bar-color', color)
+}
+
 class Component {
     static async create(tagName, ...args) {
         let element = document.createElement(tagName)
@@ -38,35 +47,54 @@ class Component {
 
 class TabbedPage extends Component {
     CLASS_MENU = "menu"
+    STORAGE_KEY = "tabbed_page_latest_tab"
     
     constructor(element) {
         super(element)
     }
 
-    createButton(label, func) {
+    createButton(label) {
         let button = document.createElement("a")
         button.innerHTML = label
-        button.onclick = func
+        button.onclick = (event) => this.displayTab(event.target)
         button.style.display = "inline-block"
         button.style.padding = ".4em"
         button.style.cursor = "pointer"
         return button
     }
 
-    highlightButton(button) {
-        button.classList.add(CLASS_HIGHLIGHTED)
+    saveTabIndex(i) {
+        window.localStorage.setItem(this.STORAGE_KEY, JSON.stringify(i))
     }
 
-    resetButton(button) {
-        button.classList.remove(CLASS_HIGHLIGHTED)
+    loadTabIndex() {
+        let savedValue = window.localStorage.getItem(this.STORAGE_KEY)
+        if (savedValue != undefined && savedValue != null) {
+            return JSON.parse(savedValue)
+        } else {
+            return 0
+        }
     }
 
-    resetButtons() {
-        this.resetButton(this.onDeviceButton)
-        this.resetButton(this.latestReadButton)
-        this.resetButton(this.latestAddedButton)
-        this.resetButton(this.searchButton)
-        this.resetButton(this.settingsButton)
+    async displayTab(button) {
+        for (let i in this.tabs) {
+            let t = this.tabs[i]
+            if (t.button == button) {
+                this.saveTabIndex(i)
+                t.button.classList.add(CLASS_HIGHLIGHTED)
+                t.tab.load().then(() => {
+                    // todo: consider removing this and making body use the background color for the library page
+                    if (t.tab.element.offsetHeight + t.tab.element.offsetTop < window.innerHeight) {
+                        console.log("need to fix height")
+                        t.tab.element.style.height = (window.innerHeight - t.tab.element.offsetTop) + "px"
+                    } else {
+                        t.tab.element.style.removeProperty("height")
+                    }
+                })
+            } else {
+                t.button.classList.remove(CLASS_HIGHLIGHTED)
+            }
+        }
     }
 
     async load() {
@@ -80,92 +108,40 @@ class TabbedPage extends Component {
         this.element.appendChild(this.content)
 
         let searchTab = new LibrarySearchTab(this.content)
+        let searchButton = this.createButton("search")
         let globalSearchFunction = (term) => {
-            this.resetButtons()
-            this.highlightButton(this.searchButton)
-            searchTab.load().then(() => searchTab.search(term))
+            this.displayTab(searchButton).then(() => searchTab.search(term))
         }
-        let onDeviceTab = new OnDeviceTab(this.content, globalSearchFunction)
-        let latestReadTab = new LatestReadTab(this.content, globalSearchFunction)
-        let latestAddedTab = new LatestAddedTab(this.content, globalSearchFunction)
-        let settingsTab = new SettingsTab(this.content)
-        
 
-        this.onDeviceButton = this.createButton("on device", () => {
-            this.resetButtons()
-            this.highlightButton(this.onDeviceButton)
-            onDeviceTab.load()
-        })
-        buttons.appendChild(this.onDeviceButton)
-
-        this.latestReadButton = this.createButton("latest read", () => {
-            this.resetButtons()
-            this.highlightButton(this.latestReadButton)
-            latestReadTab.load()
-        })
-        buttons.appendChild(this.latestReadButton)
-
-        this.latestAddedButton = this.createButton("latest added", () => {
-            this.resetButtons()
-            this.highlightButton(this.latestAddedButton)
-            latestAddedTab.load()
-        })
-        buttons.appendChild(this.latestAddedButton)
-
-        this.searchButton = this.createButton("search", () => {
-            this.resetButtons()
-            this.highlightButton(this.searchButton)
-            searchTab.load()
-        })
-        buttons.appendChild(this.searchButton)
-
-        this.settingsButton = this.createButton("settings", () => {
-            this.resetButtons()
-            this.highlightButton(this.settingsButton)
-            settingsTab.load()
-        })
-        buttons.appendChild(this.settingsButton)
-
-        this.highlightButton(this.onDeviceButton)
-        onDeviceTab.load()
-    }
-}
-
-class ServerConnectionDisplay extends Component {
-    constructor(element) {
-        super(element)
-    }
-
-    async load() {
-        await super.load()
-
-        let status = document.createElement("span")
-        status.style.display = "inline-block"
-        status.style.color = "white"
-
-        fetch("/verify")
-        .then(response => response.json())
-        .then(result => {
-            status.classList.remove(...status.classList)
-            if (result && result != null && result.connected == true) {
-                status.innerHTML = "connected to " + result.server
-                status.classList.add(CLASS_SUCCESS)
-            } else {
-                let message = "not connected"
-                if (result && result != null && result.server != null && result.server.length > 0) {
-                    message += " to " + result.server
-                }
-                if (result.code != undefined && result.code == 401) {
-                    message += " - try to log in again"
-                } else {
-                    message += " - server is unavailable"
-                }
-                status.innerHTML = message
-                status.classList.add(CLASS_ERROR)
+        this.tabs = [
+            {
+                tab: new OnDeviceTab(this.content, globalSearchFunction),
+                button: this.createButton("on device")
+            },
+            {
+                tab: new LatestReadTab(this.content, globalSearchFunction),
+                button: this.createButton("latest read")
+            },
+            {
+                tab: new LatestAddedTab(this.content, globalSearchFunction),
+                button: this.createButton("latest added")
+            },
+            {
+                tab: searchTab,
+                button: searchButton
+            },
+            {
+                tab: new SettingsTab(this.content),
+                button: this.createButton("settings")
             }
-        })
+        ]
+        
+        for (let t of this.tabs) {
+            buttons.appendChild(t.button)   
+        }
 
-        this.element.appendChild(status)
+        let tabIndex = this.loadTabIndex()
+        this.displayTab(this.tabs[tabIndex].button)
     }
 }
 
@@ -305,10 +281,10 @@ class LoginForm extends FormComponent {
 
         this.element.appendChild(this.title("Server Connection"))
 
-        let serverConnectionElement = this.p(null)
-        let serverConnectionDisplay = new ServerConnectionDisplay(serverConnectionElement)
-        serverConnectionDisplay.load()
-        this.element.appendChild(serverConnectionElement)
+        let serverConnection = this.p(null)
+        serverConnection.style.display = "inline-block"
+        serverConnection.style.overflowWrap = "anywhere"
+        this.element.appendChild(serverConnection)
         
         let serverLabel = this.label("server", "server")
         let serverInput = this.input("server")
@@ -323,6 +299,33 @@ class LoginForm extends FormComponent {
         this.element.appendChild(this.p(passwordLabel, passwordInput))
 
         let loginResult = document.createElement("span")
+
+        let verifyConnection = () => {
+            fetch("/verify")
+            .then(response => response.json())
+            .then(result => {
+                serverConnection.classList.remove(...serverConnection.classList)
+                if (result && result != null && result.connected == true) {
+                    serverConnection.innerHTML = "connected"
+                    serverConnection.classList.add(CLASS_SUCCESS)
+                } else {
+                    let message = "not connected"
+                    if (result.code != undefined && result.code == 401) {
+                        message += " - try to log in again"
+                    } else {
+                        message += " - server is unavailable"
+                    }
+                    serverConnection.innerHTML = message
+                    serverConnection.classList.add(CLASS_ERROR)
+                }
+                if (result && result != null && result.server) {
+                    serverInput.value = result.server
+                }
+                if (result && result != null && result.username) {
+                    usernameInput.value = result.username
+                }
+            })
+        }
 
         let button = document.createElement("a")
         button.innerHTML = "login"
@@ -351,13 +354,15 @@ class LoginForm extends FormComponent {
                     loginResult.innerHTML = "login failed"
                     loginResult.classList.add(CLASS_ERROR)
                 }
-                serverConnectionDisplay.load()
+                verifyConnection()
                 timeout(5000).then(() => {
                     loginResult.innerHTML = ""
                 })
             })
         }
         this.element.appendChild(this.p(button, loginResult))
+
+        verifyConnection()
     }
 }
 
@@ -381,12 +386,12 @@ class SettingsTab extends Component {
             let p = document.createElement("p")
             this.element.appendChild(p)
             setting.element = p
-            setting.load()
+            await setting.load()
         }
 
         let clearStorageParagraph = document.createElement("p")
         let clearStorage = new ClearStorageControl(clearStorageParagraph)
-        clearStorage.load()
+        await clearStorage.load()
         this.element.appendChild(clearStorageParagraph)
     }
 }
@@ -1105,10 +1110,12 @@ class OptionsSliderSetting extends Setting {
 }
 
 class ThemeSliderSetting extends OptionsSliderSetting {
-    constructor(element, dayStartSetting, dayEndSetting) {
+    constructor(element, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting) {
         super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
         this.dayStartSetting = dayStartSetting
         this.dayEndSetting = dayEndSetting
+        this.lightHighlightedColorSetting = lightHighlightedColorSetting
+        this.darkHighlightedColorSetting = darkHighlightedColorSetting
         this.apply()
     }
     
@@ -1117,17 +1124,22 @@ class ThemeSliderSetting extends OptionsSliderSetting {
     }
 
     apply() {
-        if (this.dayStartSetting != undefined && this.dayEndSetting != undefined) {
+        if (this.dayStartSetting != undefined && this.dayEndSetting != undefined
+            && this.lightHighlightedColorSetting != undefined && this.darkHighlightedColorSetting != undefined) {
             let value = this.get()
             if (value == "light") {
                 document.body.classList.remove("dark")
+                setStatusBarColor(this.lightHighlightedColorSetting.get())
             } else if (value == "dark") {
                 document.body.classList.add("dark")
+                setStatusBarColor(this.darkHighlightedColorSetting.get())
             } else if (value == "OS theme") {
                 if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
                     document.body.classList.add("dark")
+                    setStatusBarColor(this.darkHighlightedColorSetting.get())
                 } else {
                     document.body.classList.remove("dark")
+                    setStatusBarColor(this.lightHighlightedColorSetting.get())
                 }
             } else if (value == "time based") {
                 let dayStart = this.timeStringToDate(this.dayStartSetting.get())
@@ -1135,8 +1147,10 @@ class ThemeSliderSetting extends OptionsSliderSetting {
                 let now = new Date()
                 if (now < dayStart || dayEnd < now) {
                     document.body.classList.add("dark")
+                    setStatusBarColor(this.darkHighlightedColorSetting.get())
                 } else {
                     document.body.classList.remove("dark")
+                    setStatusBarColor(this.lightHighlightedColorSetting.get())
                 }
             }
             super.apply()
@@ -1228,5 +1242,46 @@ class ClearStorageControl extends ControlWithConfirmation {
     execute() {
         window.localStorage.clear()
         window.location.reload()
+    }
+}
+
+async function initializeSettings(contentElement) {
+    let dayStartSetting = new TimeSetting(null, "day start", "07:00")
+    let dayEndSetting = new TimeSetting(null, "day end", "21:00")
+    let lightHighlightedColorSetting = new ColorSetting(null, "light theme highlight color", "#FFD700")
+    let darkHighlightedColorSetting = new ColorSetting(null, "dark theme highlight color", "#FFD700")
+    let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting)
+    dayStartSetting.chainedSettings = [themeSetting]
+    dayEndSetting.chainedSettings = [themeSetting]
+    lightHighlightedColorSetting.chainedSettings = [themeSetting]
+    darkHighlightedColorSetting.chainedSettings = [themeSetting]
+    let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
+    let settings = [
+        textSizeSetting,
+        dayStartSetting,
+        dayEndSetting,
+        themeSetting,
+        new ColorSetting(null, "light theme background color", "#ffffff"),
+        new ColorSetting(null, "light theme text color", "#000000"),
+        lightHighlightedColorSetting,
+        new ColorSetting(null, "light theme highlight text color", "#000000"),
+        new ColorSetting(null, "light theme error color", "#dc143c"),
+        new ColorSetting(null, "light theme error text color", "#FFFFFF"),
+        new ColorSetting(null, "light theme success color", "#008000"),
+        new ColorSetting(null, "light theme success text color", "#FFFFFF"),
+
+        new ColorSetting(null, "dark theme background color", "#000000"),
+        new ColorSetting(null, "dark theme text color", "#ffffff"),
+        darkHighlightedColorSetting,
+        new ColorSetting(null, "dark theme highlight text color", "#000000"),
+        new ColorSetting(null, "dark theme error color", "#dc143c"),
+        new ColorSetting(null, "dark theme error text color", "#FFFFFF"),
+        new ColorSetting(null, "dark theme success color", "#008000"),
+        new ColorSetting(null, "dark theme success text color", "#FFFFFF")
+    ]
+    return {
+        themeSetting: themeSetting,
+        textSizeSetting: textSizeSetting,
+        allSettings: settings
     }
 }
