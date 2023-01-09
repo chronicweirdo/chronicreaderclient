@@ -75,7 +75,11 @@ ChronicReader.initDisplay = async (url, element, extension = null, settings = {}
     let display = Display.factory(element, settings, extension)
     
     let archiveWrapper = null
-    if (bookSize != null & bookSize < 100000000) {
+    let maxDownloadSize = 100 * 1000000
+    if (document.downloadSizeSetting) {
+        maxDownloadSize = document.downloadSizeSetting.get() * 1000000
+    }
+    if (bookSize != null & bookSize < maxDownloadSize) {
         let response = await fetch(url, { timeout: 60000 })
         let content = await response.blob()
         console.log("loading locally")
