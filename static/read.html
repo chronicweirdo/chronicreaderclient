@@ -128,6 +128,33 @@
 
             return additionalTools
         }
+        async function initBook(meta) {
+            console.log(meta)
+            let startPosition = getUrlPosition()
+            if (! startPosition) {
+                startPosition = Number(meta.position)
+            }
+            let url = "book/" + meta.id
+            let element = document.getElementById("content")
+            let extension = meta.extension
+            let settings = {
+                "position": startPosition,
+                "displayControls": false,
+                "displayPageForCallback": displayPageCallback,
+                "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
+            }
+            document.display = await ChronicReader.initDisplay(url, element, extension, settings)
+            document.textSizeSetting = new TextSizeSetting(
+                null,
+                "text size",
+                0.5,
+                2,
+                0.1,
+                1,
+                document.getElementById("content"),
+                () => { if (document.display) document.display.update() }
+            )
+        }
         async function prepareUi() {
             let contentElement = document.getElementById("content")
             let settingsResult = await initializeSettings(contentElement)
@@ -140,34 +167,7 @@
             let bookId = getBookId()
             fetch("bookmeta/" + bookId)
                 .then(response => response.json())
-                .then(meta => {
-                    console.log(meta)
-                    let startPosition = getUrlPosition()
-                    if (! startPosition) {
-                        startPosition = Number(meta.position)
-                    }
-                    document.reader = new ChronicReader(
-                        "book/" + bookId,
-                        document.getElementById("content"),
-                        meta.extension,
-                        {
-                            "position": startPosition,
-                            "displayControls": false,
-                            "displayPageForCallback": displayPageCallback,
-                            "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
-                        }
-                    )
-                    document.textSizeSetting = new TextSizeSetting(
-                        null,
-                        "text size",
-                        0.5,
-                        2,
-                        0.1,
-                        1,
-                        document.getElementById("content"),
-                        () => document.reader.update()
-                    )
-                })
+                .then(meta => initBook(meta))
         }
         window.onload = function() {
             prepareUi()            

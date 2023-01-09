@@ -114,6 +114,7 @@ class Database {
                     if (event.target.result) {
                         if (columns != null) {
                             let obj = {}
+                            obj["id"] = event.target.result["id"]
                             for (let c = 0; c < columns.length; c++) {
                                 obj[columns[c]] = event.target.result[columns[c]]
                             }

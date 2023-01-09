@@ -3032,49 +3032,25 @@ class PageCache {
 }
 
 class ChronicReader {
-    constructor(url, element, extension = null, settings = {}) {
-        this.url = url
-        this.element = element
+    static async initDisplay(url, element, extension = null, settings = {}) {
         if (extension == null) {
-            this.extension = getFileExtension(this.url)
-        } else {
-            this.extension = extension
+            extension = getFileExtension(url)
         }
-        this.settings = settings
-        this.#init()
-        chronicReaderInstance = this
-    }
-
-    destroy() {
-        if (this.type == "book") {
-            console.log("attempting stopping computation")
-            this.display.stopped = true
-        }
-    }
-
-    async #init() {
-        this.display = Display.factory(this.element, this.settings, this.extension)
+        console.log("url " + url + " extension " + extension)
+    
+        let display = Display.factory(element, settings, extension)
+        
         //let id = this.url.substring("book/".length)
-        let response = await fetch(this.url)
+        let response = await fetch(url)
         let content = await response.blob()
-
-        let archiveWrapper = ArchiveWrapper.factory(content, this.extension)
+    
+        let archiveWrapper = ArchiveWrapper.factory(content, extension)
         //let archiveWrapper = new RemoteArchive(this.url, "archive", id)
-        let bookWrapper = BookWrapper.factory(this.url, archiveWrapper, this.extension)
+        let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)
         if (bookWrapper) {
-            this.display.setBook(bookWrapper)
+            display.setBook(bookWrapper)
         }
-    }
 
-    displayPageFor(position) {
-        if (this.display) {
-            this.display.displayPageFor(position)
-        }
-    }
-
-    update() {
-        if (this.display) {
-            this.display.update()
-        }
+        return display
     }
 }
