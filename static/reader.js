@@ -775,22 +775,18 @@ class EbookNode {
 
 class ArchiveWrapper {
 
-    static factory(url, bytes, extension) {
+    static factory(bytes, extension) {
         if (extension == "epub" || extension == "cbz") {
-            return new ZipWrapper(url, bytes)
+            return new ZipWrapper(bytes)
         } else if (extension == "cbr") {
-            return new RarWrapper(url, bytes)
+            return new RarWrapper(bytes)
         } else {
             return null
         }
     }
 
-    constructor(url, bytes) {
-        this.url = url
+    constructor(bytes) {
         this.data = bytes
-    }
-    getUrl() {
-        return this.url
     }
     async getFiles() {
         throw NOT_IMPLEMENTED_EXCEPTION
@@ -804,8 +800,8 @@ class ArchiveWrapper {
 }
 
 class ZipWrapper extends ArchiveWrapper {
-    constructor(url, bytes) {
-        super(url, bytes)
+    constructor(bytes) {
+        super(bytes)
     }
     async #getZip() {
         if (this.zip == undefined) {
@@ -838,11 +834,8 @@ class ZipWrapper extends ArchiveWrapper {
 }
 
 class RarWrapper extends ArchiveWrapper {
-    constructor(url, bytes) {
-        super(url, bytes)
-    }
-    getUrl() {
-        return this.url
+    constructor(bytes) {
+        super(bytes)
     }
     async #getRar() {
         if (this.rar == undefined) {
@@ -933,22 +926,19 @@ class RarWrapper extends ArchiveWrapper {
 
 class BookWrapper {
 
-    static factory(archive, extension) {
+    static factory(id, archive, extension) {
         if (extension == "epub") {
-            return new EbookWrapper(archive)
+            return new EbookWrapper(id, archive)
         } else if (extension == "cbz" || extension == "cbr") {
-            return new ComicWrapper(archive)
+            return new ComicWrapper(id, archive)
         } else {
             return null
         }
     }
 
-    constructor(archive) {
+    constructor(id, archive) {
+        this.id = id
         this.archive = archive
-    }
-
-    getUrl() {
-        return this.archive.getUrl()
     }
 
     async getSize() {
@@ -978,8 +968,8 @@ comic wrapper
 */
 
 class ComicWrapper extends BookWrapper {
-    constructor(archive) {
-        super(archive)
+    constructor(id, archive) {
+        super(id, archive)
     }
 
     async getSize() {
@@ -2199,8 +2189,8 @@ ebook wrapper
 */
 
 class EbookWrapper extends BookWrapper {
-    constructor(archive) {
-        super(archive)
+    constructor(id, archive) {
+        super(id, archive)
     }
 
     async getNodes() {
@@ -2759,7 +2749,7 @@ class EbookDisplay extends Display {
     }
 
     #getPageSizeKey() {
-        let url = this.book.getUrl()
+        let url = this.book.id
         let el = this.page
         let fontSize = window.getComputedStyle(el, null).getPropertyValue('font-size')
         return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
@@ -3042,47 +3032,25 @@ class PageCache {
 }
 
 class ChronicReader {
-    constructor(url, element, extension = null, settings = {}) {
-        this.url = url
-        this.element = element
+    static async initDisplay(url, element, extension = null, settings = {}) {
         if (extension == null) {
-            this.extension = getFileExtension(this.url)
-        } else {
-            this.extension = extension
+            extension = getFileExtension(url)
         }
-        this.settings = settings
-        this.#init()
-        chronicReaderInstance = this
-    }
-
-    destroy() {
-        if (this.type == "book") {
-            console.log("attempting stopping computation")
-            this.display.stopped = true
-        }
-    }
-
-    async #init() {
-        this.display = Display.factory(this.element, this.settings, this.extension)
-        let response = await fetch(this.url)
+        console.log("url " + url + " extension " + extension)
+    
+        let display = Display.factory(element, settings, extension)
+        
+        //let id = this.url.substring("book/".length)
+        let response = await fetch(url)
         let content = await response.blob()
-
-        let archiveWrapper = ArchiveWrapper.factory(this.url, content, this.extension)
-        let bookWrapper = BookWrapper.factory(archiveWrapper, this.extension)
+    
+        let archiveWrapper = ArchiveWrapper.factory(content, extension)
+        //let archiveWrapper = new RemoteArchive(this.url, "archive", id)
+        let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)
         if (bookWrapper) {
-            this.display.setBook(bookWrapper)
+            display.setBook(bookWrapper)
         }
-    }
 
-    displayPageFor(position) {
-        if (this.display) {
-            this.display.displayPageFor(position)
-        }
-    }
-
-    update() {
-        if (this.display) {
-            this.display.update()
-        }
+        return display
     }
 }

@@ -2,6 +2,7 @@ importScripts('crypto-js.js')
 importScripts('jszip.js')
 importScripts('libunrar.js')
 importScripts('reader.js')
+importScripts('readerextensions.js')
 
 self.addEventListener('install', e => {
     console.log("installing service worker")
@@ -31,6 +32,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(handleDelete(e.request))
     } else if (url.pathname.match(/\/verify/)) {
         e.respondWith(handleVerify(e.request))
+    } else if (url.pathname.match(/\/archive\//)) {
+        e.respondWith(handleArchive(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -111,6 +114,7 @@ class Database {
                     if (event.target.result) {
                         if (columns != null) {
                             let obj = {}
+                            obj["id"] = event.target.result["id"]
                             for (let c = 0; c < columns.length; c++) {
                                 obj[columns[c]] = event.target.result[columns[c]]
                             }
@@ -334,6 +338,15 @@ function getJsonResponse(json) {
     })
 }
 
+function getTextResponse(text) {
+    const hdrs = new Headers()
+    hdrs.append('Content-Type', 'text/plain')
+    return new Response(text, {
+        status: 200,
+        headers: hdrs
+    })
+}
+
 function buf2hex(buffer) { // buffer is an ArrayBuffer
     return [...new Uint8Array(buffer)]
         .map(x => x.toString(16).padStart(2, '0'))
@@ -549,6 +562,10 @@ class Backend {
             return false
         }
     }
+
+    getRemoteArchive(bookId) {
+        return new RemoteArchive(this.server + "/archive", bookId, this.getAuthHeaders())
+    }
 }
 
 async function handleVerify(request) {
@@ -702,6 +719,37 @@ async function loadAllBooks() {
         }
     }
     return getJsonResponse(databaseBooks)
+}
+
+async function handleArchive(request) {
+    let url = new URL(request.url)
+    let pathParts = url.pathname.split("/")
+    let relevantPathParts = []
+    for (let i in pathParts) {
+        if (pathParts.length - i <= 2) {
+            relevantPathParts.push(pathParts[i])
+        }
+    }
+    console.log("relevant path parts: " + relevantPathParts)
+    let [bookId, method] = relevantPathParts
+    console.log("book id: " + bookId)
+    console.log("method: " + method)
+    let filename = url.searchParams.get("filename")
+    console.log("filename: " + filename)
+    
+    let backend = await Backend.factory()
+    let remoteArchive = backend.getRemoteArchive(bookId)
+    if (method == "files") {
+        let files = await remoteArchive.getFiles()
+        return getJsonResponse(files)
+    } else if (method == "base64") {
+        let base64 = await remoteArchive.getBase64FileContents(filename)
+        return getTextResponse(base64)
+    } else if (method == "text") {
+        let text = await remoteArchive.getTextFileContents(filename)
+        return getTextResponse(text)
+    }
+    return get404Response()
 }
 
 async function searchServer(request) {

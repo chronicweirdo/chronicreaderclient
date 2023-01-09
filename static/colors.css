@@ -32,6 +32,11 @@ body {
     color: var(--light_theme_text_color);
 }
 
+.dark #content {
+    background-color: var(--dark_theme_background_color);
+    color: var(--dark_theme_text_color);
+}
+
 a {
     background-color: var(--light_theme_background_color);
     color: var(--light_theme_text_color);
