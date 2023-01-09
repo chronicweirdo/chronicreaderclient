@@ -666,11 +666,13 @@ async function handleUpload(request) {
     let title = filename.substring(0, filename.length - extension.length - 1)
     let bytes = await request.arrayBuffer()
 
+    let hash = getArrayBufferSHA256(bytes)
+
     let cover = null
     let size = null
     try {
-        let archive = ArchiveWrapper.factory(filename, new Blob([bytes]), extension)
-        let book = BookWrapper.factory(archive, extension)
+        let archive = ArchiveWrapper.factory(new Blob([bytes]), extension)
+        let book = BookWrapper.factory(hash, archive, extension)
         cover = await book.getCover()
         size = await book.getSize()
     } catch(error) {
@@ -680,7 +682,7 @@ async function handleUpload(request) {
 
     // https://stackoverflow.com/questions/67549348/how-to-create-sha256-hash-from-byte-array-in-javascript
     // compute bytes hash for id
-    let hash = getArrayBufferSHA256(bytes)
+    
 
     // try to get information from server
     let collection = null
