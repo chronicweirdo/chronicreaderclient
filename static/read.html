@@ -143,7 +143,7 @@
                 "displayPageForCallback": displayPageCallback,
                 "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
             }
-            document.display = await ChronicReader.initDisplay(url, element, extension, settings)
+            document.display = await ChronicReader.initDisplay(url, element, extension, settings, meta.filesize)
             document.textSizeSetting = new TextSizeSetting(
                 null,
                 "text size",
