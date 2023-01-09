@@ -564,7 +564,7 @@ class Backend {
     }
 
     getRemoteArchive(bookId) {
-        return new RemoteArchive(null, this.server + "/archive", bookId, this.getAuthHeaders())
+        return new RemoteArchive(this.server + "/archive", bookId, this.getAuthHeaders())
     }
 }
 

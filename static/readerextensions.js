@@ -2,15 +2,11 @@ class RemoteArchive extends ArchiveWrapper {
     FILES_API_URL = "files"
     CONTENTS_BASE64_API_URL = "base64"
     CONTENTS_TEXT_API_URL = "text"
-    constructor(url, baseApiUrl, id, headers = null) {
-        super(url, null)
+    constructor(baseApiUrl, id, headers = null) {
+        super(null)
         this.baseApiUrl = baseApiUrl
         this.id = id
         this.headers = headers
-    }
-
-    getUrl() {
-        return this.url
     }
 
     async fetchWithHeaders(url) {
@@ -68,4 +64,33 @@ class RemoteArchive extends ArchiveWrapper {
         }
         return this.text[filename]
     }
+}
+
+ChronicReader.initDisplay = async (url, element, extension = null, settings = {}) => {
+    console.log("OVERWRITTEN")
+    if (extension == null) {
+        extension = getFileExtension(url)
+    }
+
+    let display = Display.factory(element, settings, extension)
+    
+    let archiveWrapper = null
+    try {
+        let response = await fetch(url, { timeout: 60000 })
+        let content = await response.blob()
+        console.log("loading locally")
+        archiveWrapper = ArchiveWrapper.factory(content, extension)
+    } catch (error) {
+        console.log(error)
+        console.log("loading remotely")
+        let id = url.substring("book/".length)
+        archiveWrapper = new RemoteArchive("archive", id)
+    }
+
+    let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)
+    if (bookWrapper) {
+        display.setBook(bookWrapper)
+    }
+
+    return display
 }
