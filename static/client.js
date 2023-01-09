@@ -1000,11 +1000,20 @@ class ColorSetting extends Setting {
 }
 
 class NumberSliderSetting extends Setting {
-    constructor(element, name, minimumValue, maximumValue, step, defaultValue) {
+    constructor(element, name, minimumValue, maximumValue, step, defaultValue, unitOfMeasure = null) {
         super(element, name, defaultValue)
         this.minimumValue = minimumValue
         this.maximumValue = maximumValue
         this.step = step
+        this.unitOfMeasure = unitOfMeasure
+    }
+
+    getUnitOfMeasure() {
+        if (this.unitOfMeasure && this.unitOfMeasure != null) {
+            return this.unitOfMeasure
+        } else {
+            return ""
+        }
     }
 
     async load() {
@@ -1017,7 +1026,7 @@ class NumberSliderSetting extends Setting {
 
         let valueLabel = document.createElement("output")
         valueLabel.style.justifySelf = "right"
-        valueLabel.innerHTML = this.get()
+        valueLabel.innerHTML = this.get() + this.getUnitOfMeasure()
         this.element.appendChild(valueLabel)
 
         let input = document.createElement("input")
@@ -1032,16 +1041,22 @@ class NumberSliderSetting extends Setting {
         this.element.appendChild(input)
         
         input.oninput = () => {
-            valueLabel.innerHTML = input.value
-            valueLabel.classList.add(CLASS_HIGHLIGHTED)
+            let originalValue = this.get()
+            valueLabel.innerHTML = input.value + this.getUnitOfMeasure()
+            if (input.value != originalValue) {
+                valueLabel.classList.add(CLASS_HIGHLIGHTED)
+            } else {
+                valueLabel.classList.remove(CLASS_HIGHLIGHTED)
+            }
         }
         input.onchange = () => {
             let value = input.value
             this.persist(value)
-            valueLabel.innerHTML = value
+            valueLabel.innerHTML = value + this.getUnitOfMeasure()
             valueLabel.classList.remove(CLASS_HIGHLIGHTED)
             this.apply()
         }
+        
     }
 }
 
@@ -1095,9 +1110,14 @@ class OptionsSliderSetting extends Setting {
         this.element.appendChild(input)
         
         input.oninput = () => {
+            let originalValue = this.get()
             let value = this.values[input.value]
             valueLabel.innerHTML = value
-            valueLabel.classList.add(CLASS_HIGHLIGHTED)
+            if (value != originalValue) {
+                valueLabel.classList.add(CLASS_HIGHLIGHTED)
+            } else {
+                valueLabel.classList.remove(CLASS_HIGHLIGHTED)
+            }
         }
         input.onchange = () => {
             let value = this.values[input.value]
@@ -1256,11 +1276,13 @@ async function initializeSettings(contentElement) {
     lightHighlightedColorSetting.chainedSettings = [themeSetting]
     darkHighlightedColorSetting.chainedSettings = [themeSetting]
     let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
+    let downloadSizeSetting = new NumberSliderSetting(null, "maximum download size", 50, 200, 10, 100, " MB")
     let settings = [
         textSizeSetting,
         dayStartSetting,
         dayEndSetting,
         themeSetting,
+        downloadSizeSetting,
         new ColorSetting(null, "light theme background color", "#ffffff"),
         new ColorSetting(null, "light theme text color", "#000000"),
         lightHighlightedColorSetting,
@@ -1282,6 +1304,7 @@ async function initializeSettings(contentElement) {
     return {
         themeSetting: themeSetting,
         textSizeSetting: textSizeSetting,
+        downloadSizeSetting: downloadSizeSetting,
         allSettings: settings
     }
 }
