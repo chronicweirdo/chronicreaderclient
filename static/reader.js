@@ -3064,10 +3064,12 @@ class ChronicReader {
 
     async #init() {
         this.display = Display.factory(this.element, this.settings, this.extension)
+        //let id = this.url.substring("book/".length)
         let response = await fetch(this.url)
         let content = await response.blob()
 
         let archiveWrapper = ArchiveWrapper.factory(this.url, content, this.extension)
+        //let archiveWrapper = new RemoteArchive(this.url, "archive", id)
         let bookWrapper = BookWrapper.factory(archiveWrapper, this.extension)
         if (bookWrapper) {
             this.display.setBook(bookWrapper)
