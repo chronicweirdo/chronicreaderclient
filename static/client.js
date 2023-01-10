@@ -131,6 +131,10 @@ class TabbedPage extends Component {
                 button: searchButton
             },
             {
+                tab: new CollectionsTab(this.content, globalSearchFunction),
+                button: this.createButton("collections")
+            },
+            {
                 tab: new SettingsTab(this.content),
                 button: this.createButton("settings")
             }
@@ -478,6 +482,43 @@ class LibrarySearchTab extends Component {
         this.element.appendChild(this.searchList)
 
         await this.search()
+    }
+}
+
+class CollectionsTab extends Component {
+    constructor(element, searchFunction = null) {
+        super(element)
+        this.searchFunction = searchFunction
+    }
+
+    createCollectionTree(node) {
+        let el = document.createElement("ul")
+        el.style.display = "block"
+        let label = document.createElement("a")
+        label.innerHTML = node.label
+        if (this.searchFunction) {
+            label.onclick = () => this.searchFunction(node.label)
+        }
+        el.appendChild(label)
+        if (node.children) {
+            for (let c in node.children) {
+                let li = document.createElement("li")
+                li.appendChild(this.createCollectionTree(node.children[c]))
+                el.appendChild(li)
+            }
+        }
+        return el
+    }
+
+    async load() {
+        await super.load()
+
+        let collectionsResponse = await fetch("/collections")
+        if (collectionsResponse.status == 200) {
+            let collections = await collectionsResponse.json()
+            console.log(collections)
+            this.element.appendChild(this.createCollectionTree(collections))
+        }
     }
 }
 

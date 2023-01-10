@@ -32,8 +32,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(handleDelete(e.request))
     } else if (url.pathname.match(/\/verify/)) {
         e.respondWith(handleVerify(e.request))
-    } else if (url.pathname.match(/\/archive\//)) {
-        e.respondWith(handleArchive(e.request))
+    } else if (url.pathname.match(/\/collections/)) {
+        e.respondWith(handleCollections(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -500,6 +500,21 @@ class Backend {
         }
     }
 
+    async loadCollections() {
+        try {
+            let response = await fetch(this.server + "/collections", { headers: this.getAuthHeaders() })
+            if (response.status == 200) {
+                let result = await response.json()
+                return result
+            } else {
+                return null
+            }
+        } catch (error) {
+            console.log(error)
+            return null
+        }
+    }
+
     async getContent(bookId, files = null, filename = null) {
         try {
             let url = this.server + "/content/" + bookId
@@ -614,6 +629,12 @@ class Backend {
 async function handleVerify(request) {
     let backend = await Backend.factory()
     let result = await backend.verifyConnection()
+    return getJsonResponse(result)
+}
+
+async function handleCollections(request) {
+    let backend = await Backend.factory()
+    let result = await backend.loadCollections()
     return getJsonResponse(result)
 }
 
