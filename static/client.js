@@ -53,10 +53,13 @@ class TabbedPage extends Component {
         super(element)
     }
 
-    createButton(label) {
+    createButton(label, additionalAction = null) {
         let button = document.createElement("a")
         button.innerHTML = label
         button.onclick = (event) => this.displayTab(event.target)
+            .then(() => {
+                if (additionalAction) additionalAction()
+            })
         button.style.display = "inline-block"
         button.style.padding = ".4em"
         button.style.cursor = "pointer"
@@ -108,7 +111,8 @@ class TabbedPage extends Component {
         this.element.appendChild(this.content)
 
         let searchTab = new LibrarySearchTab(this.content)
-        let searchButton = this.createButton("search")
+        let initialSearch = () => searchTab.search()
+        let searchButton = this.createButton("search", initialSearch)
         let globalSearchFunction = (term) => {
             this.displayTab(searchButton).then(() => searchTab.search(term))
         }
@@ -145,7 +149,9 @@ class TabbedPage extends Component {
         }
 
         let tabIndex = this.loadTabIndex()
-        this.displayTab(this.tabs[tabIndex].button)
+        this.displayTab(this.tabs[tabIndex].button).then(() => {
+            if (this.tabs[tabIndex].button == searchButton) initialSearch()
+        })
     }
 }
 
@@ -480,8 +486,6 @@ class LibrarySearchTab extends Component {
 
         this.searchList = document.createElement("div")
         this.element.appendChild(this.searchList)
-
-        await this.search()
     }
 }
 
