@@ -775,10 +775,10 @@ class EbookNode {
 
 class ArchiveWrapper {
 
-    static factory(bytes, extension) {
-        if (extension == "epub" || extension == "cbz") {
+    static factory(type, bytes = null) {
+        if ((type == "zip" || type == "epub" || type == "cbz") && bytes != null) {
             return new ZipWrapper(bytes)
-        } else if (extension == "cbr") {
+        } else if ((type == "rar" || type == "cbz") && bytes != null) {
             return new RarWrapper(bytes)
         } else {
             return null
@@ -789,6 +789,9 @@ class ArchiveWrapper {
         this.data = bytes
     }
     async getFiles() {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getFileContents(filename) {
         throw NOT_IMPLEMENTED_EXCEPTION
     }
     async getBase64FileContents(filename) {
@@ -822,8 +825,15 @@ class ZipWrapper extends ArchiveWrapper {
     async #getFileContents(filename, filekind) {
         let zip = await this.#getZip()
         let entry = zip.files[filename]
-        let contents = await entry.async(filekind)
-        return contents
+        if (entry) {
+            let contents = await entry.async(filekind)
+            return contents
+        } else {
+            return null
+        }
+    }
+    async getFileContents(filename) {
+        return this.#getFileContents(filename, "binarystring")
     }
     async getBase64FileContents(filename) {
         return this.#getFileContents(filename, "base64")
@@ -868,11 +878,10 @@ class RarWrapper extends ArchiveWrapper {
         return files.map(f => f.fullFileName).sort()
     }
 
-    #toBase64(dataArr) {
+    #toByteArray(dataArr) {
         var encoder = new TextEncoder("ascii");
-        var decoder = new TextDecoder("ascii");
         var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
-    
+
         var padding = dataArr.byteLength % 3;
         var len = dataArr.byteLength - padding;
         padding = padding > 0 ? (3 - padding) : 0;
@@ -899,6 +908,14 @@ class RarWrapper extends ArchiveWrapper {
             output[outputCtr++] = base64Table[64];
             output[outputCtr++] = base64Table[64];
         }
+
+        return output
+    }
+
+    #toBase64(dataArr) {
+        var decoder = new TextDecoder("ascii");
+        
+        let output = this.#toByteArray(dataArr)
         
         var ret = decoder.decode(output);
         output = null;
@@ -906,17 +923,24 @@ class RarWrapper extends ArchiveWrapper {
         return ret;
     }
 
-    async getBase64FileContents(filename) {
+    async #getFileContents(filename) {
         let rar = await this.#getRar()
         let files = this.#getFilesRecursive(rar)
         let file = files.find(f => f.fullFileName == filename)
         if (file != undefined) {
             let fileContent = file.fileContent
-            var b64encoded = this.#toBase64(fileContent)
-            return b64encoded
+            return fileContent
         } else {
             return null
         }
+    }
+
+    async getFileContents(filename) {
+        return await this.#getFileContents(filename)
+    }
+
+    async getBase64FileContents(filename) {
+        return this.#toBase64(await this.#getFileContents(filename))
     }
 
     async getTextFileContents(filename) {
@@ -3032,11 +3056,17 @@ class PageCache {
 }
 
 class ChronicReader {
+    static getArchiveType(extension) {
+        if (extension == "epub" || extension == "cbz") return "zip"
+        else if (extension == "cbr") return "rar"
+        else return ""
+    }
     static async initDisplay(url, element, extension = null, settings = {}) {
         if (extension == null) {
             extension = getFileExtension(url)
         }
         console.log("url " + url + " extension " + extension)
+        let archiveType = ChronicReader.getArchiveType(extension)
     
         let display = Display.factory(element, settings, extension)
         
@@ -3044,7 +3074,7 @@ class ChronicReader {
         let response = await fetch(url)
         let content = await response.blob()
     
-        let archiveWrapper = ArchiveWrapper.factory(content, extension)
+        let archiveWrapper = ArchiveWrapper.factory(archiveType, content)
         //let archiveWrapper = new RemoteArchive(this.url, "archive", id)
         let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)
         if (bookWrapper) {

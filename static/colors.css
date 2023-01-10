@@ -23,8 +23,13 @@
 }
 
 body {
-    background-color: var(--status-bar-color);
+    background-color: var(--light_theme_background_color);
     color: var(--light_theme_text_color);
+}
+
+body.dark {
+    background-color: var(--dark_theme_background_color);
+    color: var(--dark_theme_text_color);
 }
 
 #content {

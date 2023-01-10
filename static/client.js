@@ -53,10 +53,13 @@ class TabbedPage extends Component {
         super(element)
     }
 
-    createButton(label) {
+    createButton(label, additionalAction = null) {
         let button = document.createElement("a")
         button.innerHTML = label
         button.onclick = (event) => this.displayTab(event.target)
+            .then(() => {
+                if (additionalAction) additionalAction()
+            })
         button.style.display = "inline-block"
         button.style.padding = ".4em"
         button.style.cursor = "pointer"
@@ -82,15 +85,7 @@ class TabbedPage extends Component {
             if (t.button == button) {
                 this.saveTabIndex(i)
                 t.button.classList.add(CLASS_HIGHLIGHTED)
-                t.tab.load().then(() => {
-                    // todo: consider removing this and making body use the background color for the library page
-                    if (t.tab.element.offsetHeight + t.tab.element.offsetTop < window.innerHeight) {
-                        console.log("need to fix height")
-                        t.tab.element.style.height = (window.innerHeight - t.tab.element.offsetTop) + "px"
-                    } else {
-                        t.tab.element.style.removeProperty("height")
-                    }
-                })
+                t.tab.load()
             } else {
                 t.button.classList.remove(CLASS_HIGHLIGHTED)
             }
@@ -108,7 +103,8 @@ class TabbedPage extends Component {
         this.element.appendChild(this.content)
 
         let searchTab = new LibrarySearchTab(this.content)
-        let searchButton = this.createButton("search")
+        let initialSearch = () => searchTab.search()
+        let searchButton = this.createButton("search", initialSearch)
         let globalSearchFunction = (term) => {
             this.displayTab(searchButton).then(() => searchTab.search(term))
         }
@@ -131,6 +127,10 @@ class TabbedPage extends Component {
                 button: searchButton
             },
             {
+                tab: new CollectionsTab(this.content, globalSearchFunction),
+                button: this.createButton("collections")
+            },
+            {
                 tab: new SettingsTab(this.content),
                 button: this.createButton("settings")
             }
@@ -141,7 +141,9 @@ class TabbedPage extends Component {
         }
 
         let tabIndex = this.loadTabIndex()
-        this.displayTab(this.tabs[tabIndex].button)
+        this.displayTab(this.tabs[tabIndex].button).then(() => {
+            if (this.tabs[tabIndex].button == searchButton) initialSearch()
+        })
     }
 }
 
@@ -422,7 +424,7 @@ class LatestReadTab extends Component {
 
     async load() {
         await super.load()
-        let search = new Search(this.element, "", 6, Search.ORDER_LATEST_READ, true, this.searchFunction)
+        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_READ, true, this.searchFunction)
         await search.load()
     }
 }
@@ -435,7 +437,7 @@ class LatestAddedTab extends Component {
 
     async load() {
         await super.load()
-        let search = new Search(this.element, "", 6, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
+        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
         await search.load()
     }
 }
@@ -455,7 +457,7 @@ class LibrarySearchTab extends Component {
         }
         console.log("searching for: " + term)
 
-        let search = new Search(this.searchList, term, 6, Search.ORDER_TITLE, true, (term) => this.search(term))
+        let search = new Search(this.searchList, term, 12, Search.ORDER_TITLE, true, (term) => this.search(term))
         await search.load()
     }
 
@@ -476,8 +478,90 @@ class LibrarySearchTab extends Component {
 
         this.searchList = document.createElement("div")
         this.element.appendChild(this.searchList)
+    }
+}
 
-        await this.search()
+class CollectionsTab extends Component {
+    COLLECTIONS_TREE_CLASS = "collections_tree"
+    constructor(element, searchFunction = null) {
+        super(element)
+        this.searchFunction = searchFunction
+    }
+
+    createCollectionTree(node, root = false) {
+        let result = []
+        /**/
+
+        let pip = document.createElement("span")
+        if (node.children) {
+            if (root) {
+                pip.innerHTML = "-"
+            } else {
+                pip.innerHTML = "+"
+            }
+            pip.style.cursor = "pointer"
+        } else {
+            pip.innerHTML = "-"
+        }
+        //el.appendChild(pip)
+        result.push(pip)
+
+        let label = document.createElement("a")
+        label.innerHTML = node.label
+        if (this.searchFunction) {
+            label.onclick = () => this.searchFunction(node.label)
+        }
+        //el.appendChild(label)
+        result.push(label)
+
+        let list = document.createElement("ul")
+        if (root) {
+            list.style.display = "block"
+        } else {
+            list.style.display = "none"
+        }
+        list.style.listStyleType = "none"
+
+        pip.onclick = () => {
+            if (list.style.display == "none") {
+                list.style.display = "block"
+                pip.innerHTML = "-"
+            } else {
+                list.style.display = "none"
+                pip.innerHTML = "+"
+            }
+        }
+
+        if (node.children) {
+            for (let c in node.children) {
+                let li = document.createElement("li")
+                let liComponents = this.createCollectionTree(node.children[c])
+                for (let c of liComponents) {
+                    li.appendChild(c)
+                }
+                list.appendChild(li)
+            }
+        }
+        result.push(list)
+        //return el
+        return result
+    }
+
+    async load() {
+        await super.load()
+
+        let collectionsResponse = await fetch("/collections")
+        if (collectionsResponse.status == 200) {
+            let collections = await collectionsResponse.json()
+            console.log(collections)
+            let div = document.createElement("div")
+            div.classList.add(this.COLLECTIONS_TREE_CLASS)
+            this.element.appendChild(div)
+            let els = this.createCollectionTree(collections, true)
+            for (let e of els) {
+                div.appendChild(e)
+            }
+        }
     }
 }
 

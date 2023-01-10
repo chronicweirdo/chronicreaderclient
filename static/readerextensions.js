@@ -1,11 +1,20 @@
+ArchiveWrapper.originalFactory = ArchiveWrapper.factory
+ArchiveWrapper.EXTERNAL = "external"
+ArchiveWrapper.factory = function(type, content) {
+    if (type == "external") {
+        return new RemoteArchive(content)
+    } else {
+        return ArchiveWrapper.originalFactory(type, content)
+    }
+}
+
 class RemoteArchive extends ArchiveWrapper {
-    FILES_API_URL = "files"
-    CONTENTS_BASE64_API_URL = "base64"
-    CONTENTS_TEXT_API_URL = "text"
-    constructor(baseApiUrl, id, headers = null) {
+    FILES_ATTRIBUTE = "files"
+    FILENAME_ATTRIBUTE = "filename"
+    
+    constructor(url, headers = null) {
         super(null)
-        this.baseApiUrl = baseApiUrl
-        this.id = id
+        this.url = url
         this.headers = headers
     }
 
@@ -19,8 +28,10 @@ class RemoteArchive extends ArchiveWrapper {
 
     async getFiles() {
         if (this.files == undefined) {
-            console.log("retrieving archive files")
-            let response = await this.fetchWithHeaders(this.baseApiUrl + "/" + this.id + "/" + this.FILES_API_URL)
+            let params = new URLSearchParams()
+            params.append(this.FILES_ATTRIBUTE, null)
+            let fetchFilesUrl = this.url + "?" + params
+            let response = await this.fetchWithHeaders(fetchFilesUrl)
             if (response && response.status == 200) {
                 let result = await response.json()
                 this.files = result
@@ -31,38 +42,46 @@ class RemoteArchive extends ArchiveWrapper {
         return this.files
     }
 
-    async getBase64FileContents(filename) {
-        if (this.base64 == undefined || this.base64[filename] == undefined) {
+    async getFileContents(filename) {
+        if (this.contents == undefined || this.contents[filename] == undefined) {
+            let params = new URLSearchParams()
+            params.append(this.FILENAME_ATTRIBUTE, filename)
             let response = await this.fetchWithHeaders(
-                this.baseApiUrl + "/" + this.id + "/" + this.CONTENTS_BASE64_API_URL
-                + "?" + new URLSearchParams({ filename: filename })
+                this.url + "?" + params
             )
-            if (this.base64 == undefined) this.base64 = {}
+            if (this.contents == undefined) this.contents = {}
             if (response && response.status == 200) {
-                let result = await response.text()
-                this.base64[filename] = result
+                let result = await response.arrayBuffer()
+                this.contents[filename] = result
             } else {
-                this.base64[filename] = null
+                this.contents[filename] = null
             }
         }
-        return this.base64[filename]
+        return this.contents[filename]
+    }
+
+    _arrayBufferToBase64( buffer ) {
+        var binary = '';
+        var bytes = new Uint8Array( buffer );
+        var len = bytes.byteLength;
+        for (var i = 0; i < len; i++) {
+            binary += String.fromCharCode( bytes[ i ] );
+        }
+        return window.btoa( binary );
+    }
+
+
+    async getBase64FileContents(filename) {
+        let contents = await this.getFileContents(filename)
+        let b64 = this._arrayBufferToBase64(contents)
+        return b64
     }
 
     async getTextFileContents(filename) {
-        if (this.text == undefined || this.text[filename] == undefined) {
-            let response = await this.fetchWithHeaders(
-                this.baseApiUrl + "/" + this.id + "/" + this.CONTENTS_TEXT_API_URL
-                + "?" + new URLSearchParams({ filename: filename })
-            )
-            if (this.text == undefined) this.text = {}
-            if (response && response.status == 200) {
-                let result = await response.text()
-                this.text[filename] = result
-            } else {
-                this.text[filename] = null
-            }
-        }
-        return this.text[filename]
+        let contents = await this.getFileContents(filename)
+        let dec = new TextDecoder("utf-8")
+        let text = dec.decode(new Uint8Array(contents))
+        return text
     }
 }
 
@@ -71,7 +90,6 @@ ChronicReader.initDisplay = async (url, element, extension = null, settings = {}
     if (extension == null) {
         extension = getFileExtension(url)
     }
-
     let display = Display.factory(element, settings, extension)
     
     let archiveWrapper = null
@@ -83,11 +101,10 @@ ChronicReader.initDisplay = async (url, element, extension = null, settings = {}
         let response = await fetch(url, { timeout: 60000 })
         let content = await response.blob()
         console.log("loading locally")
-        archiveWrapper = ArchiveWrapper.factory(content, extension)
+        archiveWrapper = ArchiveWrapper.factory(extension, content)
     } else {
         console.log("loading remotely")
-        let id = url.substring("book/".length)
-        archiveWrapper = new RemoteArchive("archive", id)
+        archiveWrapper = ArchiveWrapper.factory(ArchiveWrapper.EXTERNAL, url)
     }
 
     let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)
