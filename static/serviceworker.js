@@ -629,22 +629,21 @@ async function login(request) {
 }
 
 async function updateLocalBooks() {
-
     let db = new Database()
     let backend = await Backend.factory()
-    let localBookMetas = await db.loadAllBookMetas()
+    let localBookMetas = await db.loadAllMetas()
     for (let book of localBookMetas) {
         let backendMeta = await backend.getMeta(book.id)
         if (backendMeta != null) {
             let localBook = await db.loadBook(book.id)
-            await db.saveBook(
+            await db.saveMeta(
                 localBook.id, 
-                backendMeta.title, 
+                backendMeta.title,
                 localBook.extension, 
                 backendMeta.collection, 
-                localBook.size, 
-                backendMeta.cover, 
-                localBook.content
+                localBook.size,
+                backendMeta.filesize,
+                backendMeta.cover
             )
         }
     }
@@ -729,8 +728,7 @@ async function handleUpload(request) {
     let cover = null
     let size = null
     try {
-        let archiveType = ChronicReader.getArchiveType(extension)
-        let archive = ArchiveWrapper.factory(archiveType, new Blob([bytes]))
+        let archive = ArchiveWrapper.factory(extension, new Blob([bytes]))
         let book = BookWrapper.factory(hash, archive, extension)
         cover = await book.getCover()
         size = await book.getSize()
@@ -753,17 +751,18 @@ async function handleUpload(request) {
     }
 
     let db = new Database()
-    let savedValue = await db.saveBook(
+    let savedContent = await db.saveContent(hash, bytes)
+    let savedValue = await db.saveMeta(
         hash, 
         title, 
         extension, 
         collection,
         size,
-        cover,
-        bytes
+        bytes.byteLength,
+        cover
     )
 
-    return getJsonResponse(savedValue)
+    return getJsonResponse(savedContent && savedValue)
 }
 
 async function loadAllBooks() {

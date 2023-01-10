@@ -776,9 +776,9 @@ class EbookNode {
 class ArchiveWrapper {
 
     static factory(type, bytes = null) {
-        if (type == "zip" && bytes != null) {
+        if ((type == "zip" || type == "epub" || type == "cbz") && bytes != null) {
             return new ZipWrapper(bytes)
-        } else if (type == "rar" && bytes != null) {
+        } else if ((type == "rar" || type == "cbz") && bytes != null) {
             return new RarWrapper(bytes)
         } else {
             return null
