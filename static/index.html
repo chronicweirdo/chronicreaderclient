@@ -75,6 +75,30 @@
             height: 48vw; /* (8/5*30) */
         }
 
+        a {
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        input {
+            font-size: 1.5rem;
+        }
+        #content {
+            display: block;
+            overflow: auto;
+            padding-bottom: 1em;
+        }
+
+        .collections_tree {
+            margin: 2.5vw;
+        }
+        .collections_tree li {
+            margin-left: 2.5vw;
+            margin-top: .5em;
+        }
+        .collections_tree span {
+            margin-right: 1em;
+        }
+
         @media (orientation: landscape) {
             ul {
                 grid-template-columns: repeat(6, 15vw);
@@ -96,19 +120,13 @@
                 padding-left: 1.4285vw;
                 padding-right: 1.4285vw;
             }
-        }
 
-        a {
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        input {
-            font-size: 1.5rem;
-        }
-        #content {
-            display: block;
-            overflow: auto;
-            padding-bottom: 1em;
+            .collections_tree {
+                margin: 1.4285vw;
+            }
+            .collections_tree li {
+                margin-left: 1.4285vw;
+            }
         }
     </style>
 </head>

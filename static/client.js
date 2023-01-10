@@ -490,28 +490,69 @@ class LibrarySearchTab extends Component {
 }
 
 class CollectionsTab extends Component {
+    COLLECTIONS_TREE_CLASS = "collections_tree"
     constructor(element, searchFunction = null) {
         super(element)
         this.searchFunction = searchFunction
     }
 
-    createCollectionTree(node) {
-        let el = document.createElement("ul")
-        el.style.display = "block"
+    createCollectionTree(node, root = false) {
+        let result = []
+        /**/
+
+        let pip = document.createElement("span")
+        if (node.children) {
+            if (root) {
+                pip.innerHTML = "-"
+            } else {
+                pip.innerHTML = "+"
+            }
+            pip.style.cursor = "pointer"
+        } else {
+            pip.innerHTML = "-"
+        }
+        //el.appendChild(pip)
+        result.push(pip)
+
         let label = document.createElement("a")
         label.innerHTML = node.label
         if (this.searchFunction) {
             label.onclick = () => this.searchFunction(node.label)
         }
-        el.appendChild(label)
+        //el.appendChild(label)
+        result.push(label)
+
+        let list = document.createElement("ul")
+        if (root) {
+            list.style.display = "block"
+        } else {
+            list.style.display = "none"
+        }
+        list.style.listStyleType = "none"
+
+        pip.onclick = () => {
+            if (list.style.display == "none") {
+                list.style.display = "block"
+                pip.innerHTML = "-"
+            } else {
+                list.style.display = "none"
+                pip.innerHTML = "+"
+            }
+        }
+
         if (node.children) {
             for (let c in node.children) {
                 let li = document.createElement("li")
-                li.appendChild(this.createCollectionTree(node.children[c]))
-                el.appendChild(li)
+                let liComponents = this.createCollectionTree(node.children[c])
+                for (let c of liComponents) {
+                    li.appendChild(c)
+                }
+                list.appendChild(li)
             }
         }
-        return el
+        result.push(list)
+        //return el
+        return result
     }
 
     async load() {
@@ -521,7 +562,13 @@ class CollectionsTab extends Component {
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
             console.log(collections)
-            this.element.appendChild(this.createCollectionTree(collections))
+            let div = document.createElement("div")
+            div.classList.add(this.COLLECTIONS_TREE_CLASS)
+            this.element.appendChild(div)
+            let els = this.createCollectionTree(collections, true)
+            for (let e of els) {
+                div.appendChild(e)
+            }
         }
     }
 }
