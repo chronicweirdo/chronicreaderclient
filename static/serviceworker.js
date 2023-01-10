@@ -19,7 +19,7 @@ self.addEventListener('fetch', e => {
     } else if (url.pathname.match(/\/bookmeta/)) {
         e.respondWith(loadBookMeta(e.request))
     } else if (url.pathname.match(/\/book\//)) {
-        e.respondWith(loadBook(e.request))
+        e.respondWith(loadContent(e.request))
     } else if (url.pathname.match(/\/sync\//)) {
         e.respondWith(syncProgress(e.request))
     } else if (url.pathname.match(/\/search/)) {
@@ -462,9 +462,15 @@ class Backend {
         }
     }
 
-    async getContent(bookId) {
+    async getContent(bookId, files = null, filename = null) {
         try {
             let url = this.server + "/content/" + bookId
+            if (files) {
+                url += "?" + new URLSearchParams({"files": null})
+            } else if (filename) {
+                url += "?" + new URLSearchParams({"filename": filename})
+            }
+            console.log("load content url: " + url)
             let response = await fetch(url, {headers: this.getAuthHeaders()})
             return response
         } catch (error) {
@@ -671,7 +677,8 @@ async function handleUpload(request) {
     let cover = null
     let size = null
     try {
-        let archive = ArchiveWrapper.factory(new Blob([bytes]), extension)
+        let archiveType = ChronicReader.getArchiveType(extension)
+        let archive = ArchiveWrapper.factory(archiveType, new Blob([bytes]))
         let book = BookWrapper.factory(hash, archive, extension)
         cover = await book.getCover()
         size = await book.getSize()
@@ -723,6 +730,7 @@ async function loadAllBooks() {
     return getJsonResponse(databaseBooks)
 }
 
+// todo: remove exceptional archive handling, now handled by content
 async function handleArchive(request) {
     let url = new URL(request.url)
     let pathParts = url.pathname.split("/")
@@ -875,26 +883,37 @@ async function loadBookMeta(request) {
     }
 }
 
-async function loadBook(request) {
+async function loadContent(request) {
     let url = new URL(request.url)
     let pathParts = url.pathname.split("/")
     let bookId = pathParts[pathParts.length - 1]
+    let files = url.searchParams.get("files")
+    let filename = url.searchParams.get("filename")
 
-    // check locally for book
-    let db = new Database()
-    let bookObject = await db.loadBook(bookId)
-    if (bookObject) {
-        console.log(bookObject)
-        console.log(typeof bookObject.content)
-        const hdrs = new Headers()
-        //hdrs.append('Content-Type', bookObject.contentType)
-        return new Response(bookObject.content, {
-            status: 200,
-            headers: hdrs
-        })
-    } else {
-        // check for book on server
+    if (files) {
         let backend = await Backend.factory()
-        return await backend.getContent(bookId)
+        return await backend.getContent(bookId, files = true)
+    } else if (filename) {
+        console.log("loading archive " + bookId + " file " + filename) 
+        let backend = await Backend.factory()
+        return await backend.getContent(bookId, null, filename)
+    } else {
+        // check locally for book
+        let db = new Database()
+        let bookObject = await db.loadBook(bookId)
+        if (bookObject) {
+            console.log(bookObject)
+            console.log(typeof bookObject.content)
+            const hdrs = new Headers()
+            //hdrs.append('Content-Type', bookObject.contentType)
+            return new Response(bookObject.content, {
+                status: 200,
+                headers: hdrs
+            })
+        } else {
+            // check for book on server
+            let backend = await Backend.factory()
+            return await backend.getContent(bookId)
+        }
     }
 }
