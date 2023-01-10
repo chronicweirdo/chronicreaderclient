@@ -34,7 +34,7 @@
                 document.getElementById("content").style.backgroundColor = color
                 setStatusBarColor(color)
             }
-            if (callbackControl.position) {
+            if (callbackControl.position != undefined && callbackControl.position != null) {
                 // sync progress with backend
                 let bookId = getBookId()
                 fetch("sync/" + bookId + "?position=" + callbackControl.position).then(response => {
