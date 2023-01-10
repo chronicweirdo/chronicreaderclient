@@ -42,10 +42,12 @@ self.addEventListener('fetch', e => {
 class Database {
     static DATABASE_NAME = "chronicreaderclient"
     static DATABASE_VERSION = "3"
-    static FILE_TABLE = 'files'
+    //static FILE_TABLE = 'files'
     static PROGRESS_TABLE = 'progress'
     static CONNECTION_TABLE = 'connection'
-    static BOOK_META = ["title", "extension", "collection", "size", "cover"]
+    //static BOOK_META = ["title", "extension", "collection", "size", "cover"]
+    static META_TABLE = "meta"
+    static CONTENT_TABLE = "content"
 
     constructor() {
 
@@ -67,9 +69,12 @@ class Database {
                     console.log("upgrading database")
                     console.log(event)
                     let localDb = event.target.result
-                    let imagesStore = localDb.createObjectStore(Database.FILE_TABLE, {keyPath: 'id'})
+                    // todo: delete
+                    //let imagesStore = localDb.createObjectStore(Database.FILE_TABLE, {keyPath: 'id'})
                     let progressStore = localDb.createObjectStore(Database.PROGRESS_TABLE, {keyPath: 'id'})
                     let connectionStore = localDb.createObjectStore(Database.CONNECTION_TABLE, {keyPath: 'id'})
+                    let metaStore = localDb.createObjectStore(Database.META_TABLE, {keyPath: 'id'})
+                    let contentStore = localDb.createObjectStore(Database.CONTENT_TABLE, {keyPath: 'id'})
                     console.log("upgraded")
                     resolve(localDb)
                 } catch (error) {
@@ -254,10 +259,83 @@ class Database {
     }
 
     async deleteBook(id) {
-        return await this.databaseDelete(Database.FILE_TABLE, id)
+        //return await this.databaseDelete(Database.FILE_TABLE, id)
+        // delete content
+        try {
+            let contentIds = await this.#loadAllContentForId(id)
+            console.log("content ids that must be removed: " + contentIds)
+            for (let contentId of contentIds) {
+                await this.databaseDelete(Database.CONTENT_TABLE, contentId)
+            }
+            await this.databaseDelete(Database.META_TABLE, id)
+            return true
+        } catch (err) {
+            console.log(err)
+            return false
+        }
     }
 
-    async saveBook(id, title, extension, collection, size, cover, content) {
+    async saveMeta(id, title, extension, collection, size, filesize, cover) {
+        let dbMeta = {
+            id: id,
+            title: title,
+            extension: extension,
+            collection: collection,
+            size: size,
+            filesize: filesize,
+            cover: cover
+        }
+        let saveResult = await this.databaseSave(Database.META_TABLE, dbMeta)
+        if (saveResult != undefined && saveResult != null) {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    static CONTENT_TYPE_FULL = "full"
+    static CONTENT_TYPE_LIST = "list"
+    static CONTENT_TYPE_FILE = "file"
+    #getContentId(id, type, filename) {
+        if (type == Database.CONTENT_TYPE_FULL) {
+            return id
+        } else if (type == Database.CONTENT_TYPE_LIST) {
+            return id + "/*"
+        } else if (type == Database.CONTENT_TYPE_FILE && filename != null) {
+            return id + "/" + filename
+        } else {
+            return null
+        }
+    }
+    async #saveContentInternal(id, content, type = Database.CONTENT_TYPE_FULL, filename = null) {
+        if (filename != null) {
+            type = Database.CONTENT_TYPE_FILE
+        }
+        let contentId = this.#getContentId(id, type, filename)
+        if (contentId == null) return false
+        let contentEntry = {
+            id: contentId,
+            content: content
+        }
+        let saveResult = await this.databaseSave(Database.CONTENT_TABLE, contentEntry)
+        if (saveResult != undefined && saveResult != null) {
+            return true
+        } else {
+            return false
+        }
+    }
+    async saveContent(id, content) {
+        return this.#saveContentInternal(id, content)
+    }
+    async saveFileListContent(id, content) {
+        return this.#saveContentInternal(id, content, Database.CONTENT_TYPE_LIST)
+    }
+    async saveFileContent(id, filename, content) {
+        return this.#saveContentInternal(id, content, Database.CONTENT_TYPE_FILE, filename)
+    }
+
+    // todo: remove
+    /*async saveBook(id, title, extension, collection, size, cover, content) {
         let dbFile = {
             "id": id,
             "title": title,
@@ -273,7 +351,7 @@ class Database {
         } else {
             return false
         }
-    }
+    }*/
 
     async saveProgress(bookId, updated, progress) {
         return await this.databaseSave(Database.PROGRESS_TABLE, {
@@ -287,26 +365,70 @@ class Database {
         return await this.databaseLoad(Database.PROGRESS_TABLE, bookId)
     }
 
-    async loadBookMeta(bookId) {
+    // todo: remove
+    /*async loadBookMeta(bookId) {
         let book = await this.databaseLoad(Database.FILE_TABLE, bookId, Database.BOOK_META)
         if (book) {
             book.local = true
         }
         return book
+    }*/
+
+    async loadMeta(id) {
+        let bookMeta = await this.databaseLoad(Database.META_TABLE, id)
+        if (bookMeta) {
+            bookMeta.local = true
+        }
+        return bookMeta
     }
 
-    async loadBook(bookId) {
+    // todo: remove
+    /*async loadBook(bookId) {
         let book = await this.databaseLoad(Database.FILE_TABLE, bookId)
         if (book) {
             book.local = true
         }
         return book
+    }*/
+
+    async #loadAllContentForId(id) {
+        let content = await this.databaseLoadColumns(Database.CONTENT_TABLE, "id", [])
+        let contentIds = content.map(o => o.id).filter(oid => oid.startsWith(id))
+        return contentIds
+    }
+    async #loadContentInternal(id, type, filename = null) {
+        let contentId = this.#getContentId(id, type, filename)
+        console.log("computed content id: " + contentId)
+        if (contentId) {
+            let content = await this.databaseLoad(Database.CONTENT_TABLE, contentId)
+            return content
+        } else {
+            return null
+        }
     }
 
-    async loadAllBookMetas() {
+    async loadContent(id) {
+        return this.#loadContentInternal(id, Database.CONTENT_TYPE_FULL)
+    }
+
+    async loadContentList(id) {
+        return this.#loadContentInternal(id, Database.CONTENT_TYPE_LIST)
+    }
+
+    async loadContentFile(id, filename) {
+        return this.#loadContentInternal(id, Database.CONTENT_TYPE_FILE, filename)
+    }
+
+    // todo: remove
+    /*async loadAllBookMetas() {
         let books = await this.databaseLoadColumns(Database.FILE_TABLE, "id", Database.BOOK_META)
         console.log(books)
         return Array.from(books)
+    }*/
+
+    async loadAllMetas() {
+        let metas = await this.databaseLoadAll(Database.META_TABLE)
+        return Array.from(metas)
     }
 }
 
@@ -639,28 +761,47 @@ async function handleDownload(request) {
     let pathParts = url.pathname.split("/")
     let bookId = pathParts[pathParts.length - 1]
     console.log("downloading " + bookId)
+    let chunked = url.searchParams.get("chunked") != null
 
-    // download book from backend
+    // get meta from backend
     let backend = await Backend.factory()
     let bookMeta = await backend.getMeta(bookId)
     if (bookMeta != null) {
-        let contentResponse = await backend.getContent(bookId)
-        console.log(contentResponse)
-        if (contentResponse.status == 200) {
-            let bytes = await contentResponse.arrayBuffer()
+        // save meta to db
+        let db = new Database()
+        db.saveMeta(bookMeta.id, bookMeta.title, bookMeta.extension, bookMeta.collection, bookMeta.size, bookMeta.filesize, bookMeta.cover)
+        if (chunked || bookMeta.chunked) {
+            console.log("downloading book in chunks")
+            // download chunk files
+            let filesResponse = await backend.getContent(bookMeta.id, true)
+            if (filesResponse.status == 200) {
+                let filesBytes = await filesResponse.arrayBuffer()
+                db.saveFileListContent(bookMeta.id, filesBytes)
+                let dec = new TextDecoder("utf-8")
+                let text = dec.decode(new Uint8Array(filesBytes))
+                let files = JSON.parse(text)
+                console.log("downloading archive files " + files)
+                for (let filename of files) {
+                    let fileResponse = await backend.getContent(bookMeta.id, null, filename)
+                    if (fileResponse.status == 200) {
+                        let fileBytes = await fileResponse.arrayBuffer()
+                        db.saveFileContent(bookMeta.id, filename, fileBytes)
+                    }
+                }
+                return getJsonResponse(true)
+            }
+        } else {
+            // todo: we should either get from backend or compute here a "chunked" flag for the meta
+            // todo: if chunked, we should initialize a remote archive and download all files in part
+            // todo: separate book meta and book content tables in indexed db
+            let contentResponse = await backend.getContent(bookMeta.id)
+            if (contentResponse.status == 200) {
+                let bytes = await contentResponse.arrayBuffer()
 
-            let db = new Database()
-            await db.saveBook(
-                bookMeta.id,
-                bookMeta.title,
-                bookMeta.extension,
-                bookMeta.collection,
-                bookMeta.size,
-                bookMeta.cover,
-                bytes
-            )
-
-            return getJsonResponse(true)
+                // todo: save meta and content separately
+                await db.saveContent(bookMeta.id, bytes)
+                return getJsonResponse(true)
+            }
         }
     }
     return getJsonResponse(false)
@@ -720,7 +861,7 @@ async function handleUpload(request) {
 
 async function loadAllBooks() {
     let db = new Database()
-    let databaseBooks = await db.loadAllBookMetas()
+    let databaseBooks = await db.loadAllMetas()
     for (let book of databaseBooks) {
         let progress = await db.loadProgress(book.id)
         if (progress) {
@@ -731,7 +872,7 @@ async function loadAllBooks() {
 }
 
 // todo: remove exceptional archive handling, now handled by content
-async function handleArchive(request) {
+/*async function handleArchive(request) {
     let url = new URL(request.url)
     let pathParts = url.pathname.split("/")
     let relevantPathParts = []
@@ -760,7 +901,7 @@ async function handleArchive(request) {
         return getTextResponse(text)
     }
     return get404Response()
-}
+}*/
 
 async function searchServer(request) {
     console.log("searching on server")
@@ -862,7 +1003,7 @@ async function loadBookMeta(request) {
     let bookId = pathParts[pathParts.length - 1]
 
     let db = new Database()
-    let bookObject = await db.loadBookMeta(bookId)
+    let bookObject = await db.loadMeta(bookId)
     console.log("book object for meta")
     console.log(bookObject)
     if (bookObject == null) {
@@ -889,28 +1030,48 @@ async function loadContent(request) {
     let bookId = pathParts[pathParts.length - 1]
     let files = url.searchParams.get("files")
     let filename = url.searchParams.get("filename")
+    console.log("book id: " + bookId)
+    console.log("files: " + files)
+    console.log("filename: " + filename)
 
     if (files) {
-        let backend = await Backend.factory()
-        return await backend.getContent(bookId, files = true)
+        // todo: implement try to get from db first
+        let db = new Database()
+        console.log("trying to load file list from database")
+        let filesContent = await db.loadContentList(bookId)
+        if (filesContent) {
+            console.log("file list in database")
+            return new Response(filesContent.content, { status: 200 })
+        } else {
+            console.log("trying to load file list from backend")
+            let backend = await Backend.factory()
+            return await backend.getContent(bookId, files = true)
+        }
     } else if (filename) {
+        // todo: implement try to fet from db first
         console.log("loading archive " + bookId + " file " + filename) 
-        let backend = await Backend.factory()
-        return await backend.getContent(bookId, null, filename)
+        let db = new Database()
+        console.log("trying to load file contents from database")
+        let fileContent = await db.loadContentFile(bookId, filename)
+        if (fileContent) {
+            console.log("file in dabase")
+            return new Response(fileContent.content, { status: 200 })
+        } else {
+            console.log("trying to load file contents from backend")
+            let backend = await Backend.factory()
+            return await backend.getContent(bookId, null, filename)
+        }
     } else {
+        console.log("loading entire file content")
         // check locally for book
         let db = new Database()
-        let bookObject = await db.loadBook(bookId)
+        //let bookObject = await db.loadBook(bookId)
+        let bookObject = await db.loadContent(bookId)
         if (bookObject) {
-            console.log(bookObject)
-            console.log(typeof bookObject.content)
-            const hdrs = new Headers()
-            //hdrs.append('Content-Type', bookObject.contentType)
-            return new Response(bookObject.content, {
-                status: 200,
-                headers: hdrs
-            })
+            console.log("entire file content in database")
+            return new Response(bookObject.content, { status: 200 })
         } else {
+            console.log("entire file content missing from database")
             // check for book on server
             let backend = await Backend.factory()
             return await backend.getContent(bookId)

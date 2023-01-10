@@ -80,8 +80,18 @@
             document.downloadLink = document.createElement("a")
             document.downloadLink.innerHTML = "download"
             document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
+
+            let bookDownloadUrl = "download/" + getBookId()    
+            let maxDownloadSize = 100 * 1000000
+            if (document.downloadSizeSetting) {
+                maxDownloadSize = document.downloadSizeSetting.get() * 1000000
+            }
+            if (bookMeta.filesize > maxDownloadSize) {
+                bookDownloadUrl += "?chunked"
+            }
+
             document.downloadLink.onclick = () => {
-                fetch("download/" + getBookId())
+                fetch(bookDownloadUrl)
                     .then(response => response.json())
                     .then(result => {
                         console.log("downloaded book to device: " + result)

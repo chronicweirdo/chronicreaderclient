@@ -422,7 +422,7 @@ class LatestReadTab extends Component {
 
     async load() {
         await super.load()
-        let search = new Search(this.element, "", 6, Search.ORDER_LATEST_READ, true, this.searchFunction)
+        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_READ, true, this.searchFunction)
         await search.load()
     }
 }
@@ -435,7 +435,7 @@ class LatestAddedTab extends Component {
 
     async load() {
         await super.load()
-        let search = new Search(this.element, "", 6, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
+        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
         await search.load()
     }
 }
@@ -455,7 +455,7 @@ class LibrarySearchTab extends Component {
         }
         console.log("searching for: " + term)
 
-        let search = new Search(this.searchList, term, 6, Search.ORDER_TITLE, true, (term) => this.search(term))
+        let search = new Search(this.searchList, term, 12, Search.ORDER_TITLE, true, (term) => this.search(term))
         await search.load()
     }
 
