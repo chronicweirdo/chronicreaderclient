@@ -597,10 +597,11 @@ class BookItem extends Component {
     CLASS_PROGRESS_BAR = "progress_bar"
     CLASS_COVER_ENCLOSURE = "cover_enclosure"
 
-    constructor(element, book, withCollection, searchFunction = null) {
+    constructor(element, book, withTitle, withCollection, searchFunction = null) {
         super(element)
         if (element.tagName != "LI") throw "book item must be applied to li"
         this.book = book
+        this.withTitle = withTitle
         this.withCollection = withCollection
         this.searchFunction = searchFunction
     }
@@ -798,31 +799,33 @@ class BookItem extends Component {
         itemLink.appendChild(await this.getCoverItem(this.book))
         this.element.appendChild(itemLink)
 
-        if (this.withCollection == true) {
-            let title = document.createElement("span")
-            title.style.overflowWrap = "anywhere"
-            title.style.fontSize = ".8em"
-            let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
-            for (let i of items) {
-                title.appendChild(i)
+        if (this.withTitle) {
+            if (this.withCollection == true) {
+                let title = document.createElement("span")
+                title.style.overflowWrap = "anywhere"
+                title.style.fontSize = ".8em"
+                let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
+                for (let i of items) {
+                    title.appendChild(i)
+                }
+                if (items.length > 0) {
+                    let slash = document.createElement("span")
+                    slash.innerHTML = "/"
+                    title.appendChild(slash)
+                }
+                let actualTitle = document.createElement("a")
+                actualTitle.innerHTML = this.book.title
+                actualTitle.href = this.getBookLink()
+                title.appendChild(actualTitle)
+                this.element.appendChild(title)
+            } else {
+                let title = document.createElement("a")
+                title.style.overflowWrap = "anywhere"
+                title.style.fontSize = ".8em"
+                title.innerHTML = this.book.title
+                title.href = this.getBookLink()
+                this.element.appendChild(title)
             }
-            if (items.length > 0) {
-                let slash = document.createElement("span")
-                slash.innerHTML = "/"
-                title.appendChild(slash)
-            }
-            let actualTitle = document.createElement("a")
-            actualTitle.innerHTML = this.book.title
-            actualTitle.href = this.getBookLink()
-            title.appendChild(actualTitle)
-            this.element.appendChild(title)
-        } else {
-            let title = document.createElement("a")
-            title.style.overflowWrap = "anywhere"
-            title.style.fontSize = ".8em"
-            title.innerHTML = this.book.title
-            title.href = this.getBookLink()
-            this.element.appendChild(title)
         }
     }
 }
@@ -831,8 +834,9 @@ class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
     CLASS_BOOK_LIST = "book_list"
 
-    constructor(element, withCollections = false, searchFunction = null) {
+    constructor(element, withTitles = true, withCollections = false, searchFunction = null) {
         super(element)
+        this.withTitles = withTitles
         this.withCollections = withCollections
         this.searchFunction = searchFunction
     }
@@ -900,7 +904,7 @@ class BookList extends Component {
 
         let bookListItem = document.createElement("li")
         parent.appendChild(bookListItem)
-        let bookItem = new BookItem(bookListItem, book, ! this.withCollections, this.searchFunction)
+        let bookItem = new BookItem(bookListItem, book, this.withTitles, ! this.withCollections, this.searchFunction)
         await bookItem.load()
     }
 
@@ -1021,7 +1025,8 @@ class Search extends Component {
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
-        this.bookList = new BookList(bookListDiv, withCollectionSections, this.collectionLinkFunction)
+        let withTitles = document.showTitlesSetting.get()
+        this.bookList = new BookList(bookListDiv, withTitles, withCollectionSections, this.collectionLinkFunction)
         await this.bookList.load()
 
         this.nextButton = this.createNextButton()
@@ -1295,6 +1300,42 @@ class ThemeSliderSetting extends OptionsSliderSetting {
     }
 }
 
+class CheckSetting extends Setting {
+    constructor(element, name, defaultValue) {
+        super(element, name, defaultValue)
+    }
+
+    async load() {
+        await super.load()
+
+        let label = document.createElement("label")
+        label.innerHTML = this.name
+        label.forName = this.getKey()
+        this.element.appendChild(label)
+
+        let input = document.createElement("input")
+        input.style.justifySelf = "right"
+        input.style.height = "1em"
+        input.style.width = "1em"
+        input.type = "checkbox"
+        input.name = this.getKey()
+        //input.value = this.get()
+        console.log("check value " + this.get())
+        console.log(typeof this.get())
+        input.checked = this.get()
+        this.element.appendChild(input)
+
+        input.onchange = () => {
+            this.persist(input.checked)
+            this.apply()
+        }
+    }
+
+    apply() {
+        super.apply()
+    }
+}
+
 class TimeSetting extends Setting {
     constructor(element, name, defaultValue) {
         super(element, name, defaultValue)
@@ -1394,7 +1435,9 @@ async function initializeSettings(contentElement) {
     darkHighlightedColorSetting.chainedSettings = [themeSetting]
     let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
     let downloadSizeSetting = new NumberSliderSetting(null, "maximum download size", 50, 200, 10, 100, " MB")
+    let showTitlesSetting = new CheckSetting(null, "show titles", true)
     let settings = [
+        showTitlesSetting,
         textSizeSetting,
         dayStartSetting,
         dayEndSetting,
@@ -1422,6 +1465,7 @@ async function initializeSettings(contentElement) {
         themeSetting: themeSetting,
         textSizeSetting: textSizeSetting,
         downloadSizeSetting: downloadSizeSetting,
+        showTitlesSetting: showTitlesSetting,
         allSettings: settings
     }
 }
