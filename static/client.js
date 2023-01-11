@@ -10,6 +10,22 @@ function timeout(ms) {
     })
 }
 
+function idTimeout(id, ms) {
+    if (document.timeoutId == undefined) document.timeoutId = {}
+    let triggeredTimestamp = Date.now()
+    document.timeoutId[id] = triggeredTimestamp
+    return new Promise((resolve, reject) => {
+        window.setTimeout(() => {
+            if (document.timeoutId[id] === triggeredTimestamp) {
+                resolve()
+            } else {
+                console.log("not executing trigger " + id + " " + triggeredTimestamp)
+                reject()
+            }
+        }, ms)
+    })
+}
+
 function setMeta(metaName, value) {
     document.querySelector('meta[name="' + metaName + '"]').setAttribute("content", value);
 }
@@ -465,15 +481,26 @@ class LibrarySearchTab extends Component {
         await super.load()
 
         let searchSection = document.createElement("p")
+        searchSection.style.textAlign = "center"
 
         this.searchField = document.createElement("input")
         this.searchField.type = "text"
+        this.searchField.style.width = "92vw"
+        this.searchField.addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault()
+                this.search()
+            } else {
+                idTimeout("searchField", 1500).then(() => this.search()).catch(() => {})
+            }
+        })
         searchSection.appendChild(this.searchField)
+        this.searchField.focus()
 
-        this.searchButton = document.createElement("a")
+        /*this.searchButton = document.createElement("a")
         this.searchButton.innerHTML = "search"
         this.searchButton.onclick = () => this.search()
-        searchSection.appendChild(this.searchButton)
+        searchSection.appendChild(this.searchButton)*/
         this.element.appendChild(searchSection)
 
         this.searchList = document.createElement("div")
