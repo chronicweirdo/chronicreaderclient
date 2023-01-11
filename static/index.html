@@ -17,6 +17,7 @@
             let contentElement = document.getElementById("content")
             let settingsResult = await initializeSettings(contentElement)
             document.settings = settingsResult.allSettings
+            document.showTitlesSetting = settingsResult.showTitlesSetting
             new TabbedPage(contentElement).load()
 
             window.addEventListener("focus", () => {
@@ -53,7 +54,7 @@
             max-width: 450px;
         }
 
-        ul {
+        ul.book_list {
             padding: 0;
             list-style-type: none;
             display: grid;
@@ -80,7 +81,7 @@
             cursor: pointer;
         }
         input {
-            font-size: 1.5rem;
+            font-size: 1em;
         }
         #content {
             display: block;
@@ -100,7 +101,7 @@
         }
 
         @media (orientation: landscape) {
-            ul {
+            ul.book_list {
                 grid-template-columns: repeat(6, 15vw);
                 column-gap: 1.4285vw;
                 row-gap: 1.4285vw;

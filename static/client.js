@@ -10,6 +10,22 @@ function timeout(ms) {
     })
 }
 
+function idTimeout(id, ms) {
+    if (document.timeoutId == undefined) document.timeoutId = {}
+    let triggeredTimestamp = Date.now()
+    document.timeoutId[id] = triggeredTimestamp
+    return new Promise((resolve, reject) => {
+        window.setTimeout(() => {
+            if (document.timeoutId[id] === triggeredTimestamp) {
+                resolve()
+            } else {
+                console.log("not executing trigger " + id + " " + triggeredTimestamp)
+                reject()
+            }
+        }, ms)
+    })
+}
+
 function setMeta(metaName, value) {
     document.querySelector('meta[name="' + metaName + '"]').setAttribute("content", value);
 }
@@ -465,15 +481,26 @@ class LibrarySearchTab extends Component {
         await super.load()
 
         let searchSection = document.createElement("p")
+        searchSection.style.textAlign = "center"
 
         this.searchField = document.createElement("input")
         this.searchField.type = "text"
+        this.searchField.style.width = "92vw"
+        this.searchField.addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault()
+                this.search()
+            } else {
+                idTimeout("searchField", 1500).then(() => this.search()).catch(() => {})
+            }
+        })
         searchSection.appendChild(this.searchField)
+        this.searchField.focus()
 
-        this.searchButton = document.createElement("a")
+        /*this.searchButton = document.createElement("a")
         this.searchButton.innerHTML = "search"
         this.searchButton.onclick = () => this.search()
-        searchSection.appendChild(this.searchButton)
+        searchSection.appendChild(this.searchButton)*/
         this.element.appendChild(searchSection)
 
         this.searchList = document.createElement("div")
@@ -489,31 +516,6 @@ class CollectionsTab extends Component {
     }
 
     createCollectionTree(node, root = false) {
-        let result = []
-        /**/
-
-        let pip = document.createElement("span")
-        if (node.children) {
-            if (root) {
-                pip.innerHTML = "-"
-            } else {
-                pip.innerHTML = "+"
-            }
-            pip.style.cursor = "pointer"
-        } else {
-            pip.innerHTML = "-"
-        }
-        //el.appendChild(pip)
-        result.push(pip)
-
-        let label = document.createElement("a")
-        label.innerHTML = node.label
-        if (this.searchFunction) {
-            label.onclick = () => this.searchFunction(node.label)
-        }
-        //el.appendChild(label)
-        result.push(label)
-
         let list = document.createElement("ul")
         if (root) {
             list.style.display = "block"
@@ -522,29 +524,46 @@ class CollectionsTab extends Component {
         }
         list.style.listStyleType = "none"
 
-        pip.onclick = () => {
-            if (list.style.display == "none") {
-                list.style.display = "block"
-                pip.innerHTML = "-"
-            } else {
-                list.style.display = "none"
-                pip.innerHTML = "+"
-            }
-        }
-
         if (node.children) {
-            for (let c in node.children) {
+            for (let i in node.children) {
+                let c = node.children[i]
                 let li = document.createElement("li")
-                let liComponents = this.createCollectionTree(node.children[c])
-                for (let c of liComponents) {
-                    li.appendChild(c)
+
+                let pip = document.createElement("span")
+                if (c.children) {
+                    pip.innerHTML = "+"
+                    pip.style.cursor = "pointer"
+                } else {
+                    pip.innerHTML = "-"
                 }
+                li.appendChild(pip)
+
+                let label = document.createElement("a")
+                label.innerHTML = c.label
+                if (this.searchFunction) {
+                    label.onclick = () => this.searchFunction(c.label)
+                }
+                li.appendChild(label)
+
+                if (c.children) {
+                    let childrenList = this.createCollectionTree(c)
+                    li.appendChild(childrenList)
+
+                    pip.onclick = () => {
+                        if (childrenList.style.display == "none") {
+                            childrenList.style.display = "block"
+                            pip.innerHTML = "-"
+                        } else {
+                            childrenList.style.display = "none"
+                            pip.innerHTML = "+"
+                        }
+                    }
+                }
+                
                 list.appendChild(li)
             }
         }
-        result.push(list)
-        //return el
-        return result
+        return list
     }
 
     async load() {
@@ -553,14 +572,8 @@ class CollectionsTab extends Component {
         let collectionsResponse = await fetch("/collections")
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
-            console.log(collections)
-            let div = document.createElement("div")
-            div.classList.add(this.COLLECTIONS_TREE_CLASS)
-            this.element.appendChild(div)
-            let els = this.createCollectionTree(collections, true)
-            for (let e of els) {
-                div.appendChild(e)
-            }
+            this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
+            this.element.appendChild(this.createCollectionTree(collections, true))
         }
     }
 }
@@ -570,10 +583,11 @@ class BookItem extends Component {
     CLASS_PROGRESS_BAR = "progress_bar"
     CLASS_COVER_ENCLOSURE = "cover_enclosure"
 
-    constructor(element, book, withCollection, searchFunction = null) {
+    constructor(element, book, withTitle, withCollection, searchFunction = null) {
         super(element)
         if (element.tagName != "LI") throw "book item must be applied to li"
         this.book = book
+        this.withTitle = withTitle
         this.withCollection = withCollection
         this.searchFunction = searchFunction
     }
@@ -771,36 +785,44 @@ class BookItem extends Component {
         itemLink.appendChild(await this.getCoverItem(this.book))
         this.element.appendChild(itemLink)
 
-        if (this.withCollection == true) {
-            let title = document.createElement("span")
-            let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
-            for (let i of items) {
-                title.appendChild(i)
+        if (this.withTitle) {
+            if (this.withCollection == true) {
+                let title = document.createElement("span")
+                title.style.overflowWrap = "anywhere"
+                title.style.fontSize = ".8em"
+                let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
+                for (let i of items) {
+                    title.appendChild(i)
+                }
+                if (items.length > 0) {
+                    let slash = document.createElement("span")
+                    slash.innerHTML = "/"
+                    title.appendChild(slash)
+                }
+                let actualTitle = document.createElement("a")
+                actualTitle.innerHTML = this.book.title
+                actualTitle.href = this.getBookLink()
+                title.appendChild(actualTitle)
+                this.element.appendChild(title)
+            } else {
+                let title = document.createElement("a")
+                title.style.overflowWrap = "anywhere"
+                title.style.fontSize = ".8em"
+                title.innerHTML = this.book.title
+                title.href = this.getBookLink()
+                this.element.appendChild(title)
             }
-            if (items.length > 0) {
-                let slash = document.createElement("span")
-                slash.innerHTML = "/"
-                title.appendChild(slash)
-            }
-            let actualTitle = document.createElement("a")
-            actualTitle.innerHTML = this.book.title
-            actualTitle.href = this.getBookLink()
-            title.appendChild(actualTitle)
-            this.element.appendChild(title)
-        } else {
-            let title = document.createElement("a")
-            title.innerHTML = this.book.title
-            title.href = this.getBookLink()
-            this.element.appendChild(title)
         }
     }
 }
 
 class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
+    CLASS_BOOK_LIST = "book_list"
 
-    constructor(element, withCollections = false, searchFunction = null) {
+    constructor(element, withTitles = true, withCollections = false, searchFunction = null) {
         super(element)
+        this.withTitles = withTitles
         this.withCollections = withCollections
         this.searchFunction = searchFunction
     }
@@ -824,6 +846,7 @@ class BookList extends Component {
 
     createListElement() {
         let list = document.createElement('ul')
+        list.classList.add(this.CLASS_BOOK_LIST)
         return list
     }
 
@@ -867,7 +890,7 @@ class BookList extends Component {
 
         let bookListItem = document.createElement("li")
         parent.appendChild(bookListItem)
-        let bookItem = new BookItem(bookListItem, book, ! this.withCollections, this.searchFunction)
+        let bookItem = new BookItem(bookListItem, book, this.withTitles, ! this.withCollections, this.searchFunction)
         await bookItem.load()
     }
 
@@ -916,8 +939,8 @@ class Search extends Component {
     createLoading() {
         let p = document.createElement("p")
         p.innerHTML = "Loading..."
-        p.style.margin = "2.5vw"
         p.style.display = "none"
+        p.style.textAlign = "center"
         return p
     }
 
@@ -959,8 +982,8 @@ class Search extends Component {
         errorMessage.innerHTML = "there was an issue running the search"
         errorMessage.style.backgroundColor = "red"
         errorMessage.style.color = "white"
-        errorMessage.style.margin = "2.5vw"
         errorMessage.style.display = "none"
+        errorMessage.style.padding = "0.4em"
         return errorMessage
     }
 
@@ -988,7 +1011,8 @@ class Search extends Component {
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
-        this.bookList = new BookList(bookListDiv, withCollectionSections, this.collectionLinkFunction)
+        let withTitles = document.showTitlesSetting.get()
+        this.bookList = new BookList(bookListDiv, withTitles, withCollectionSections, this.collectionLinkFunction)
         await this.bookList.load()
 
         this.nextButton = this.createNextButton()
@@ -1262,6 +1286,42 @@ class ThemeSliderSetting extends OptionsSliderSetting {
     }
 }
 
+class CheckSetting extends Setting {
+    constructor(element, name, defaultValue) {
+        super(element, name, defaultValue)
+    }
+
+    async load() {
+        await super.load()
+
+        let label = document.createElement("label")
+        label.innerHTML = this.name
+        label.forName = this.getKey()
+        this.element.appendChild(label)
+
+        let input = document.createElement("input")
+        input.style.justifySelf = "right"
+        input.style.height = "1em"
+        input.style.width = "1em"
+        input.type = "checkbox"
+        input.name = this.getKey()
+        //input.value = this.get()
+        console.log("check value " + this.get())
+        console.log(typeof this.get())
+        input.checked = this.get()
+        this.element.appendChild(input)
+
+        input.onchange = () => {
+            this.persist(input.checked)
+            this.apply()
+        }
+    }
+
+    apply() {
+        super.apply()
+    }
+}
+
 class TimeSetting extends Setting {
     constructor(element, name, defaultValue) {
         super(element, name, defaultValue)
@@ -1361,7 +1421,9 @@ async function initializeSettings(contentElement) {
     darkHighlightedColorSetting.chainedSettings = [themeSetting]
     let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
     let downloadSizeSetting = new NumberSliderSetting(null, "maximum download size", 50, 200, 10, 100, " MB")
+    let showTitlesSetting = new CheckSetting(null, "show titles", true)
     let settings = [
+        showTitlesSetting,
         textSizeSetting,
         dayStartSetting,
         dayEndSetting,
@@ -1389,6 +1451,7 @@ async function initializeSettings(contentElement) {
         themeSetting: themeSetting,
         textSizeSetting: textSizeSetting,
         downloadSizeSetting: downloadSizeSetting,
+        showTitlesSetting: showTitlesSetting,
         allSettings: settings
     }
 }
