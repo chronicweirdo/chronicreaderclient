@@ -800,6 +800,8 @@ class BookItem extends Component {
 
         if (this.withCollection == true) {
             let title = document.createElement("span")
+            title.style.overflowWrap = "anywhere"
+            title.style.fontSize = ".8em"
             let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
             for (let i of items) {
                 title.appendChild(i)
@@ -816,6 +818,8 @@ class BookItem extends Component {
             this.element.appendChild(title)
         } else {
             let title = document.createElement("a")
+            title.style.overflowWrap = "anywhere"
+            title.style.fontSize = ".8em"
             title.innerHTML = this.book.title
             title.href = this.getBookLink()
             this.element.appendChild(title)
@@ -943,8 +947,8 @@ class Search extends Component {
     createLoading() {
         let p = document.createElement("p")
         p.innerHTML = "Loading..."
-        p.style.margin = "2.5vw"
         p.style.display = "none"
+        p.style.textAlign = "center"
         return p
     }
 
@@ -986,8 +990,8 @@ class Search extends Component {
         errorMessage.innerHTML = "there was an issue running the search"
         errorMessage.style.backgroundColor = "red"
         errorMessage.style.color = "white"
-        errorMessage.style.margin = "2.5vw"
         errorMessage.style.display = "none"
+        errorMessage.style.padding = "0.4em"
         return errorMessage
     }
 
