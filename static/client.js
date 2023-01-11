@@ -829,6 +829,7 @@ class BookItem extends Component {
 
 class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
+    CLASS_BOOK_LIST = "book_list"
 
     constructor(element, withCollections = false, searchFunction = null) {
         super(element)
@@ -855,6 +856,7 @@ class BookList extends Component {
 
     createListElement() {
         let list = document.createElement('ul')
+        list.classList.add(this.CLASS_BOOK_LIST)
         return list
     }
 
