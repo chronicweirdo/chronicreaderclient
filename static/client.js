@@ -516,31 +516,6 @@ class CollectionsTab extends Component {
     }
 
     createCollectionTree(node, root = false) {
-        let result = []
-        /**/
-
-        let pip = document.createElement("span")
-        if (node.children) {
-            if (root) {
-                pip.innerHTML = "-"
-            } else {
-                pip.innerHTML = "+"
-            }
-            pip.style.cursor = "pointer"
-        } else {
-            pip.innerHTML = "-"
-        }
-        //el.appendChild(pip)
-        result.push(pip)
-
-        let label = document.createElement("a")
-        label.innerHTML = node.label
-        if (this.searchFunction) {
-            label.onclick = () => this.searchFunction(node.label)
-        }
-        //el.appendChild(label)
-        result.push(label)
-
         let list = document.createElement("ul")
         if (root) {
             list.style.display = "block"
@@ -549,29 +524,46 @@ class CollectionsTab extends Component {
         }
         list.style.listStyleType = "none"
 
-        pip.onclick = () => {
-            if (list.style.display == "none") {
-                list.style.display = "block"
-                pip.innerHTML = "-"
-            } else {
-                list.style.display = "none"
-                pip.innerHTML = "+"
-            }
-        }
-
         if (node.children) {
-            for (let c in node.children) {
+            for (let i in node.children) {
+                let c = node.children[i]
                 let li = document.createElement("li")
-                let liComponents = this.createCollectionTree(node.children[c])
-                for (let c of liComponents) {
-                    li.appendChild(c)
+
+                let pip = document.createElement("span")
+                if (c.children) {
+                    pip.innerHTML = "+"
+                    pip.style.cursor = "pointer"
+                } else {
+                    pip.innerHTML = "-"
                 }
+                li.appendChild(pip)
+
+                let label = document.createElement("a")
+                label.innerHTML = c.label
+                if (this.searchFunction) {
+                    label.onclick = () => this.searchFunction(c.label)
+                }
+                li.appendChild(label)
+
+                if (c.children) {
+                    let childrenList = this.createCollectionTree(c)
+                    li.appendChild(childrenList)
+
+                    pip.onclick = () => {
+                        if (childrenList.style.display == "none") {
+                            childrenList.style.display = "block"
+                            pip.innerHTML = "-"
+                        } else {
+                            childrenList.style.display = "none"
+                            pip.innerHTML = "+"
+                        }
+                    }
+                }
+                
                 list.appendChild(li)
             }
         }
-        result.push(list)
-        //return el
-        return result
+        return list
     }
 
     async load() {
@@ -580,14 +572,8 @@ class CollectionsTab extends Component {
         let collectionsResponse = await fetch("/collections")
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
-            console.log(collections)
-            let div = document.createElement("div")
-            div.classList.add(this.COLLECTIONS_TREE_CLASS)
-            this.element.appendChild(div)
-            let els = this.createCollectionTree(collections, true)
-            for (let e of els) {
-                div.appendChild(e)
-            }
+            this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
+            this.element.appendChild(this.createCollectionTree(collections, true))
         }
     }
 }
