@@ -516,11 +516,6 @@ class LibrarySearchTab extends Component {
         })
         searchSection.appendChild(this.searchField)
         this.searchField.focus()
-
-        /*this.searchButton = document.createElement("a")
-        this.searchButton.innerHTML = "search"
-        this.searchButton.onclick = () => this.search()
-        searchSection.appendChild(this.searchButton)*/
         this.element.appendChild(searchSection)
 
         this.searchList = document.createElement("div")
@@ -593,8 +588,16 @@ class CollectionsTab extends Component {
         let collectionsResponse = await fetch("/collections")
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
-            this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
-            this.element.appendChild(this.createCollectionTree(collections, true))
+            console.log(collections)
+            if (collections != null) {
+                this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
+                this.element.appendChild(this.createCollectionTree(collections, true))
+            } else {
+                let error = document.createElement("p")
+                error.classList.add(CLASS_ERROR)
+                error.innerHTML = "there was an error loading collections"
+                this.element.appendChild(error)
+            }
         }
     }
 }
