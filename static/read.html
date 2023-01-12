@@ -6,6 +6,21 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="theme-color" content="#FFD700">
+
+    <link rel="shortcut icon" href="logo.png">
+    <link rel="icon" href="logo.png">
+
+    <link rel="icon" sizes="16x16" href="logo16.png">
+    <link rel="icon" sizes="24x24" href="logo24.png">
+    <link rel="icon" sizes="32x32" href="logo32.png">
+    <link rel="icon" sizes="48x48" href="logo48.png">
+    <link rel="icon" sizes="64x64" href="logo64.png">
+    <link rel="icon" sizes="192x192" href="logo192.png">
+
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="logo152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="logo180.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="logo167.png">
     
     <title>Chronic Reader Client</title>
     <script src="jszip.js"></script>
@@ -28,11 +43,14 @@
         }
 
         function displayPageCallback(callbackControl) {
-            document.themeSetting.apply()
+            new ThemeSliderSetting().apply()
             if (callbackControl.dominantColor) {
                 let color = getHexCode(callbackControl.dominantColor)
                 document.getElementById("content").style.backgroundColor = color
                 setStatusBarColor(color)
+                document.dominantColor = callbackControl.dominantColor
+            } else {
+                document.dominantColor = undefined
             }
             if (callbackControl.position != undefined && callbackControl.position != null) {
                 // sync progress with backend
@@ -72,8 +90,10 @@
             let additionalTools = document.createElement("div")
 
             let textSizeParagraph = document.createElement("p")
-            document.textSizeSetting.element = textSizeParagraph
-            document.textSizeSetting.load()
+            new TextSizeSetting(textSizeParagraph, "content", () => { if (document.display) document.display.update() })
+                .load()
+            //document.textSizeSetting.element = textSizeParagraph
+            //document.textSizeSetting.load()
             additionalTools.appendChild(textSizeParagraph)
 
             let downloadLinkParagraph = document.createElement("p")
@@ -82,10 +102,7 @@
             document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
 
             let bookDownloadUrl = "download/" + getBookId()    
-            let maxDownloadSize = 100 * 1000000
-            if (document.downloadSizeSetting) {
-                maxDownloadSize = document.downloadSizeSetting.get() * 1000000
-            }
+            let maxDownloadSize = new DownloadSizeSetting().get() * 1000000
             if (bookMeta.filesize > maxDownloadSize) {
                 bookDownloadUrl += "?chunked"
             }
@@ -153,26 +170,25 @@
                 "displayPageForCallback": displayPageCallback,
                 "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
             }
-            document.display = await ChronicReader.initDisplay(url, element, extension, settings, meta.filesize)
-            document.textSizeSetting = new TextSizeSetting(
-                null,
-                "text size",
-                0.5,
-                2,
-                0.1,
-                1,
-                document.getElementById("content"),
-                () => { if (document.display) document.display.update() }
-            )
+            let chunked = false
+            if (meta.chunked != undefined) {
+                chunked = meta.chunked
+            } else {
+                chunked = meta.filesize > DownloadSizeSetting.factory().get() * 1000000
+            }
+            document.display = await ChronicReader.initDisplay(url, element, extension, settings, chunked)
+            new TextSizeSetting().apply()
         }
         async function prepareUi() {
+            initStyleSettings()
             let contentElement = document.getElementById("content")
-            let settingsResult = await initializeSettings(contentElement)
-            document.themeSetting = settingsResult.themeSetting
-            document.downloadSizeSetting = settingsResult.downloadSizeSetting
-
+            let themeSetting = new ThemeSliderSetting()
+            
             window.addEventListener("focus", () => {
-                settingsResult.themeSetting.apply()
+                themeSetting.apply()
+                if (document.dominantColor) {
+                    setStatusBarColor(document.dominantColor)
+                }
             }, false)
 
             let bookId = getBookId()

@@ -66,6 +66,7 @@ function getFileExtension(filename) {
 }
 function typeCheck(value) {
     const return_value = Object.prototype.toString.call(value)
+    console.log(return_value)
     const type = return_value.substring(
              return_value.indexOf(" ") + 1, 
              return_value.indexOf("]"))
@@ -778,7 +779,7 @@ class ArchiveWrapper {
     static factory(type, bytes = null) {
         if ((type == "zip" || type == "epub" || type == "cbz") && bytes != null) {
             return new ZipWrapper(bytes)
-        } else if ((type == "rar" || type == "cbz") && bytes != null) {
+        } else if ((type == "rar" || type == "cbr") && bytes != null) {
             return new RarWrapper(bytes)
         } else {
             return null

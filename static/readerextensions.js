@@ -85,26 +85,19 @@ class RemoteArchive extends ArchiveWrapper {
     }
 }
 
-ChronicReader.initDisplay = async (url, element, extension = null, settings = {}, bookSize = null) => {
-    console.log("OVERWRITTEN")
+ChronicReader.initDisplay = async (url, element, extension = null, settings = {}, chunked) => {
     if (extension == null) {
         extension = getFileExtension(url)
     }
     let display = Display.factory(element, settings, extension)
     
     let archiveWrapper = null
-    let maxDownloadSize = 100 * 1000000
-    if (document.downloadSizeSetting) {
-        maxDownloadSize = document.downloadSizeSetting.get() * 1000000
-    }
-    if (bookSize != null & bookSize < maxDownloadSize) {
+    if (chunked) {
+        archiveWrapper = ArchiveWrapper.factory(ArchiveWrapper.EXTERNAL, url)
+    } else {
         let response = await fetch(url, { timeout: 60000 })
         let content = await response.blob()
-        console.log("loading locally")
         archiveWrapper = ArchiveWrapper.factory(extension, content)
-    } else {
-        console.log("loading remotely")
-        archiveWrapper = ArchiveWrapper.factory(ArchiveWrapper.EXTERNAL, url)
     }
 
     let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)

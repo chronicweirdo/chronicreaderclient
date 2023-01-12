@@ -19,7 +19,6 @@ function idTimeout(id, ms) {
             if (document.timeoutId[id] === triggeredTimestamp) {
                 resolve()
             } else {
-                console.log("not executing trigger " + id + " " + triggeredTimestamp)
                 reject()
             }
         }, ms)
@@ -54,10 +53,11 @@ class Component {
     }
     async load() {
         this.element.innerHTML = ""
+        Array.from(this.element.classList)
+            .forEach(c => this.element.classList.remove(c))
     }
 
     async update(data) {
-        console.log("update not implemented for " + this)
     }
 }
 
@@ -359,11 +359,9 @@ class LoginForm extends FormComponent {
                 headers: { 'Content-Type': 'application/json'}
             })
             .then(response => {
-                console.log(response)
                 return response.json()
             })
             .then(result => {
-                console.log(result)
                 loginResult.classList.remove(...loginResult.classList)
                 if (result == true) {
                     loginResult.innerHTML = "login successful"
@@ -389,6 +387,12 @@ class SettingsTab extends Component {
         super(element)
     }
 
+    newSettingLine() {
+        let p = document.createElement("p")
+        this.element.appendChild(p)
+        return p
+    }
+
     async load() {
         await super.load()
 
@@ -400,13 +404,31 @@ class SettingsTab extends Component {
         settingsTitle.innerHTML = "Settings"
         this.element.appendChild(settingsTitle)
 
-        for (let setting of document.settings) {
-            let p = document.createElement("p")
-            this.element.appendChild(p)
-            setting.element = p
-            await setting.load()
-        }
+        ShowTitlesSetting.factory(this.newSettingLine()).load()
+        TextSizeSetting.factory(this.newSettingLine()).load()
+        DayStartSetting.factory(this.newSettingLine()).load()
+        DayEndSetting.factory(this.newSettingLine()).load()
+        ThemeSliderSetting.factory(this.newSettingLine()).load()
+        DownloadSizeSetting.factory(this.newSettingLine()).load()
+        
+        LightThemeBackgroundColorSetting.factory(this.newSettingLine()).load()
+        LightThemeTextColorSetting.factory(this.newSettingLine()).load()
+        LightThemeHighlightColorSetting.factory(this.newSettingLine()).load()
+        LightThemeHighlightTextColorSetting.factory(this.newSettingLine()).load()
+        LightThemeErrorColorSetting.factory(this.newSettingLine()).load()
+        LightThemeErrorTextColorSetting.factory(this.newSettingLine()).load()
+        LightThemeSuccessColorSetting.factory(this.newSettingLine()).load()
+        LightThemeSuccessTextColorSetting.factory(this.newSettingLine()).load()
 
+        DarkThemeBackgroundColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeTextColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeHighlightColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeHighlightTextColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeErrorColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeErrorTextColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeSuccessColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeSuccessTextColorSetting.factory(this.newSettingLine()).load()
+        
         let clearStorageParagraph = document.createElement("p")
         let clearStorage = new ClearStorageControl(clearStorageParagraph)
         await clearStorage.load()
@@ -465,13 +487,11 @@ class LibrarySearchTab extends Component {
     }
 
     async search(term = null) {
-        console.log(this)
         if (term == null) {
             term = this.searchField.value
         } else {
             this.searchField.value = term
         }
-        console.log("searching for: " + term)
 
         let search = new Search(this.searchList, term, 12, Search.ORDER_TITLE, true, (term) => this.search(term))
         await search.load()
@@ -496,11 +516,6 @@ class LibrarySearchTab extends Component {
         })
         searchSection.appendChild(this.searchField)
         this.searchField.focus()
-
-        /*this.searchButton = document.createElement("a")
-        this.searchButton.innerHTML = "search"
-        this.searchButton.onclick = () => this.search()
-        searchSection.appendChild(this.searchButton)*/
         this.element.appendChild(searchSection)
 
         this.searchList = document.createElement("div")
@@ -539,7 +554,8 @@ class CollectionsTab extends Component {
                 li.appendChild(pip)
 
                 let label = document.createElement("a")
-                label.innerHTML = c.label
+                let labelParts = c.label.split("/")
+                label.innerHTML = labelParts[labelParts.length - 1]
                 if (this.searchFunction) {
                     label.onclick = () => this.searchFunction(c.label)
                 }
@@ -572,8 +588,16 @@ class CollectionsTab extends Component {
         let collectionsResponse = await fetch("/collections")
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
-            this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
-            this.element.appendChild(this.createCollectionTree(collections, true))
+            console.log(collections)
+            if (collections != null) {
+                this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
+                this.element.appendChild(this.createCollectionTree(collections, true))
+            } else {
+                let error = document.createElement("p")
+                error.classList.add(CLASS_ERROR)
+                error.innerHTML = "there was an error loading collections"
+                this.element.appendChild(error)
+            }
         }
     }
 }
@@ -820,9 +844,9 @@ class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
     CLASS_BOOK_LIST = "book_list"
 
-    constructor(element, withTitles = true, withCollections = false, searchFunction = null) {
+    constructor(element, withCollections = false, searchFunction = null) {
         super(element)
-        this.withTitles = withTitles
+        this.withTitles = ShowTitlesSetting.factory().get()
         this.withCollections = withCollections
         this.searchFunction = searchFunction
     }
@@ -1011,8 +1035,7 @@ class Search extends Component {
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
-        let withTitles = document.showTitlesSetting.get()
-        this.bookList = new BookList(bookListDiv, withTitles, withCollectionSections, this.collectionLinkFunction)
+        this.bookList = new BookList(bookListDiv, withCollectionSections, this.collectionLinkFunction)
         await this.bookList.load()
 
         this.nextButton = this.createNextButton()
@@ -1033,12 +1056,39 @@ class Search extends Component {
 }
 
 class Setting extends Component {
+    static INST = []
+
+    static getInstances() {
+        let instances = []
+        for (let i = 0; i < Setting.INST.length; i++) {
+            let setting = Setting.INST[i]
+            if (setting.constructor.name == this.name.toString()) {
+                instances.push(setting)
+            }
+        }
+        return instances
+    }
+    static factory(...args) {
+        let instances = this.getInstances()
+        if (instances.length > 0) {
+            if (args.length == 1) {
+                // first argument is always an element, we replace it if it exists
+                instances[0].element = args[0]
+            }
+            return instances[0]
+        } else {
+            let setting = new this(...args)
+            return setting
+        }
+    }
+
     CLASS_SETTING = "setting"
     constructor(element, name, defaultValue = null) {
         super(element)
         this.name = name
         this.defaultValue = defaultValue
         this.apply()
+        Setting.INST.push(this)
     }
 
     async load() {
@@ -1067,11 +1117,6 @@ class Setting extends Component {
     }
 
     apply() {
-        if (this.chainedSettings != null) {
-            for (let s of this.chainedSettings) {
-                s.apply()
-            }
-        }
     }
 }
 
@@ -1104,6 +1149,95 @@ class ColorSetting extends Setting {
     apply() {
         document.documentElement.style.setProperty("--" + this.getKey(), this.get())
         super.apply()
+    }
+}
+
+class LightThemeBackgroundColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme background color", "#ffffff")
+    }
+}
+class LightThemeTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme text color", "#000000")
+    }
+}
+class LightThemeHighlightColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme highlight color", "#FFD700")
+    }
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
+}
+class LightThemeHighlightTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme highlight text color", "#000000")
+    }
+}
+class LightThemeErrorColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme error color", "#dc143c")
+    }
+}
+class LightThemeErrorTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme error text color", "#FFFFFF")
+    }
+}
+class LightThemeSuccessColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme success color", "#008000")
+    }
+}
+class LightThemeSuccessTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme success text color", "#FFFFFF")
+    }
+}
+class DarkThemeBackgroundColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme background color", "#000000")
+    }
+}
+class DarkThemeTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme text color", "#ffffff")
+    }
+}
+class DarkThemeHighlightColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme highlight color", "#FFD700")
+    }
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
+}
+class DarkThemeHighlightTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme highlight text color", "#000000")
+    }
+}
+class DarkThemeErrorColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme error color", "#dc143c")
+    }
+}
+class DarkThemeErrorTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme error text color", "#FFFFFF")
+    }
+}
+class DarkThemeSuccessColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme success color", "#008000")
+    }
+}
+class DarkThemeSuccessTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme success text color", "#FFFFFF")
     }
 }
 
@@ -1168,10 +1302,16 @@ class NumberSliderSetting extends Setting {
     }
 }
 
+class DownloadSizeSetting extends NumberSliderSetting {
+    constructor(element = null) {
+        super(element, "maximum download size", 50, 200, 10, 100, " MB")
+    }
+}
+
 class TextSizeSetting extends NumberSliderSetting {
-    constructor(element, name, minimumValue, maximumValue, step, defaultValue, controlledElement, applyCallback = null) {
-        super(element, name, minimumValue, maximumValue, step, defaultValue)
-        this.controlledElement = controlledElement
+    constructor(element = null, controlledElementId = "content", applyCallback = null) {
+        super(element, "text size", 0.5, 2, 0.1, 1)
+        this.controlledElement = document.getElementById(controlledElementId)
         this.applyCallback = applyCallback
         this.apply()
     }
@@ -1213,7 +1353,6 @@ class OptionsSliderSetting extends Setting {
         input.min = 0
         input.max = this.values.length - 1
         input.step = 1
-        console.log(this.values.indexOf(this.get()))
         input.value = this.values.indexOf(this.get())
         this.element.appendChild(input)
         
@@ -1238,12 +1377,12 @@ class OptionsSliderSetting extends Setting {
 }
 
 class ThemeSliderSetting extends OptionsSliderSetting {
-    constructor(element, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting) {
+    constructor(element = null) {
         super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
-        this.dayStartSetting = dayStartSetting
-        this.dayEndSetting = dayEndSetting
-        this.lightHighlightedColorSetting = lightHighlightedColorSetting
-        this.darkHighlightedColorSetting = darkHighlightedColorSetting
+        this.dayStartSetting = DayStartSetting.factory()
+        this.dayEndSetting = DayEndSetting.factory()
+        this.lightHighlightedColorSetting = LightThemeHighlightColorSetting.factory()
+        this.darkHighlightedColorSetting = DarkThemeHighlightColorSetting.factory()
         this.apply()
     }
     
@@ -1305,9 +1444,6 @@ class CheckSetting extends Setting {
         input.style.width = "1em"
         input.type = "checkbox"
         input.name = this.getKey()
-        //input.value = this.get()
-        console.log("check value " + this.get())
-        console.log(typeof this.get())
         input.checked = this.get()
         this.element.appendChild(input)
 
@@ -1319,6 +1455,12 @@ class CheckSetting extends Setting {
 
     apply() {
         super.apply()
+    }
+}
+
+class ShowTitlesSetting extends CheckSetting {
+    constructor(element = null) {
+        super(element, "show titles", true)
     }
 }
 
@@ -1353,6 +1495,26 @@ class TimeSetting extends Setting {
     }
 }
 
+class DayStartSetting extends TimeSetting {
+    constructor(element = null) {
+        super(element, "day start", "07:00")
+    }
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
+}
+
+class DayEndSetting extends TimeSetting {
+    constructor(element = null) {
+        super(element, "day end", "21:00")
+    }
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
+}
+
 class ControlWithConfirmation extends Component {
     constructor(element, text, confirmation, timeout) {
         super(element)
@@ -1365,7 +1527,6 @@ class ControlWithConfirmation extends Component {
         await super.load()
 
         let button = document.createElement("a")
-        console.log(this.text)
         button.innerHTML = this.text
         this.element.appendChild(button)
 
@@ -1391,14 +1552,12 @@ class ControlWithConfirmation extends Component {
     }
 
     execute() {
-        console.log("not implemented")
     }
 }
 
 class ClearStorageControl extends ControlWithConfirmation {
     constructor(element) {
         super(element, "Clear storage", "Click if you are sure you want to clear storage", 5000)
-        console.log("created clear storage")
     }
     async load() {
         await super.load()
@@ -1409,49 +1568,26 @@ class ClearStorageControl extends ControlWithConfirmation {
     }
 }
 
-async function initializeSettings(contentElement) {
-    let dayStartSetting = new TimeSetting(null, "day start", "07:00")
-    let dayEndSetting = new TimeSetting(null, "day end", "21:00")
-    let lightHighlightedColorSetting = new ColorSetting(null, "light theme highlight color", "#FFD700")
-    let darkHighlightedColorSetting = new ColorSetting(null, "dark theme highlight color", "#FFD700")
-    let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting)
-    dayStartSetting.chainedSettings = [themeSetting]
-    dayEndSetting.chainedSettings = [themeSetting]
-    lightHighlightedColorSetting.chainedSettings = [themeSetting]
-    darkHighlightedColorSetting.chainedSettings = [themeSetting]
-    let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
-    let downloadSizeSetting = new NumberSliderSetting(null, "maximum download size", 50, 200, 10, 100, " MB")
-    let showTitlesSetting = new CheckSetting(null, "show titles", true)
-    let settings = [
-        showTitlesSetting,
-        textSizeSetting,
-        dayStartSetting,
-        dayEndSetting,
-        themeSetting,
-        downloadSizeSetting,
-        new ColorSetting(null, "light theme background color", "#ffffff"),
-        new ColorSetting(null, "light theme text color", "#000000"),
-        lightHighlightedColorSetting,
-        new ColorSetting(null, "light theme highlight text color", "#000000"),
-        new ColorSetting(null, "light theme error color", "#dc143c"),
-        new ColorSetting(null, "light theme error text color", "#FFFFFF"),
-        new ColorSetting(null, "light theme success color", "#008000"),
-        new ColorSetting(null, "light theme success text color", "#FFFFFF"),
+function initStyleSettings() {
+    // some settings must be initialized to configure page styles
+    TextSizeSetting.factory()
+    ThemeSliderSetting.factory()
+    
+    LightThemeBackgroundColorSetting.factory()
+    LightThemeTextColorSetting.factory()
+    LightThemeHighlightColorSetting.factory()
+    LightThemeHighlightTextColorSetting.factory()
+    LightThemeErrorColorSetting.factory()
+    LightThemeErrorTextColorSetting.factory()
+    LightThemeSuccessColorSetting.factory()
+    LightThemeSuccessTextColorSetting.factory()
 
-        new ColorSetting(null, "dark theme background color", "#000000"),
-        new ColorSetting(null, "dark theme text color", "#ffffff"),
-        darkHighlightedColorSetting,
-        new ColorSetting(null, "dark theme highlight text color", "#000000"),
-        new ColorSetting(null, "dark theme error color", "#dc143c"),
-        new ColorSetting(null, "dark theme error text color", "#FFFFFF"),
-        new ColorSetting(null, "dark theme success color", "#008000"),
-        new ColorSetting(null, "dark theme success text color", "#FFFFFF")
-    ]
-    return {
-        themeSetting: themeSetting,
-        textSizeSetting: textSizeSetting,
-        downloadSizeSetting: downloadSizeSetting,
-        showTitlesSetting: showTitlesSetting,
-        allSettings: settings
-    }
+    DarkThemeBackgroundColorSetting.factory()
+    DarkThemeTextColorSetting.factory()
+    DarkThemeHighlightColorSetting.factory()
+    DarkThemeHighlightTextColorSetting.factory()
+    DarkThemeErrorColorSetting.factory()
+    DarkThemeErrorTextColorSetting.factory()
+    DarkThemeSuccessColorSetting.factory()
+    DarkThemeSuccessTextColorSetting.factory()
 }

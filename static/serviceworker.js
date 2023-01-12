@@ -10,7 +10,6 @@ self.addEventListener('install', e => {
 
 self.addEventListener('fetch', e => {
     var url = new URL(e.request.url)
-    console.log("pathname: " + url.pathname)
 
     if (url.pathname.match(/\/upload/)) {
         e.respondWith(handleUpload(e.request))
@@ -59,7 +58,6 @@ class Database {
                 reject()
             }
             request.onsuccess = function(event) {
-                console.log("successfully opened database")
                 resolve(event.target.result)
             }
             request.onupgradeneeded = function(event) {
@@ -242,17 +240,8 @@ class Database {
         }
     }
 
-    async saveMeta(id, title, extension, collection, size, filesize, cover) {
-        let dbMeta = {
-            id: id,
-            title: title,
-            extension: extension,
-            collection: collection,
-            size: size,
-            filesize: filesize,
-            cover: cover
-        }
-        let saveResult = await this.databaseSave(Database.META_TABLE, dbMeta)
+    async saveMeta(meta) {
+        let saveResult = await this.databaseSave(Database.META_TABLE, meta)
         if (saveResult != undefined && saveResult != null) {
             return true
         } else {
@@ -657,15 +646,16 @@ async function updateLocalBooks() {
         let backendMeta = await backend.getMeta(book.id)
         if (backendMeta != null) {
             let localBook = await db.loadBook(book.id)
-            await db.saveMeta(
-                localBook.id, 
-                backendMeta.title,
-                localBook.extension, 
-                backendMeta.collection, 
-                localBook.size,
-                backendMeta.filesize,
-                backendMeta.cover
-            )
+            await db.saveMeta({
+                id: localBook.id, 
+                title: backendMeta.title,
+                extension: localBook.extension, 
+                collection: backendMeta.collection, 
+                size: localBook.size,
+                filesize: backendMeta.filesize,
+                cover: backendMeta.cover,
+                chunked: localBook.chunked != undefined ? localBook.chunked : false
+            })
         }
     }
 }
@@ -694,9 +684,11 @@ async function handleDownload(request) {
     let bookMeta = await backend.getMeta(bookId)
     if (bookMeta != null) {
         // save meta to db
+        let downloadedChunked = false
         let db = new Database()
         try {
             if (chunked || bookMeta.chunked) {
+                downloadedChunked = true
                 // download chunk files
                 let filesResponse = await backend.getContent(bookMeta.id, true)
                 if (filesResponse.status == 200) {
@@ -727,7 +719,16 @@ async function handleDownload(request) {
                 }
             }
             // save meta at the end only
-            db.saveMeta(bookMeta.id, bookMeta.title, bookMeta.extension, bookMeta.collection, bookMeta.size, bookMeta.filesize, bookMeta.cover)
+            db.saveMeta({
+                id: bookMeta.id,
+                title: bookMeta.title,
+                extension: bookMeta.extension,
+                collection: bookMeta.collection,
+                size: bookMeta.size,
+                filesize: bookMeta.filesize,
+                cover: bookMeta.cover,
+                chunked: downloadedChunked
+            })
             return getJsonResponse(true)
         } catch (err) {
             console.log(err)
@@ -773,15 +774,16 @@ async function handleUpload(request) {
 
     let db = new Database()
     let savedContent = await db.saveContent(hash, bytes)
-    let savedValue = await db.saveMeta(
-        hash, 
-        title, 
-        extension, 
-        collection,
-        size,
-        bytes.byteLength,
-        cover
-    )
+    let savedValue = await db.saveMeta({
+        id: hash, 
+        title: title, 
+        extension: extension, 
+        collection: collection,
+        size: size,
+        filesize: bytes.byteLength,
+        cover: cover,
+        chunked: false
+    })
 
     return getJsonResponse(savedContent && savedValue)
 }
