@@ -15,17 +15,17 @@
     <script>
         async function prepareUi() {
             let contentElement = document.getElementById("content")
-            let settingsResult = await initializeSettings(contentElement)
-            document.settings = settingsResult.allSettings
-            document.showTitlesSetting = settingsResult.showTitlesSetting
+            //let settingsResult = await initializeSettings(contentElement)
+            //document.settings = settingsResult.allSettings
+            //document.showTitlesSetting = settingsResult.showTitlesSetting
             new TabbedPage(contentElement).load()
 
             window.addEventListener("focus", () => {
-                settingsResult.themeSetting.apply()
+                new ThemeSliderSetting().apply()
             }, false)
 
             document.getElementById("content").addEventListener("click", () => {
-                settingsResult.themeSetting.apply()
+                new ThemeSliderSetting().apply()
             }, false)
         }
         window.onload = function() {

@@ -391,6 +391,12 @@ class SettingsTab extends Component {
         super(element)
     }
 
+    newSettingLine() {
+        let p = document.createElement("p")
+        this.element.appendChild(p)
+        return p
+    }
+
     async load() {
         await super.load()
 
@@ -402,13 +408,31 @@ class SettingsTab extends Component {
         settingsTitle.innerHTML = "Settings"
         this.element.appendChild(settingsTitle)
 
-        for (let setting of document.settings) {
-            let p = document.createElement("p")
-            this.element.appendChild(p)
-            setting.element = p
-            await setting.load()
-        }
+        new ShowTitlesSetting(this.newSettingLine()).load()
+        new TextSizeSetting(this.newSettingLine()).load()
+        new DayStartSetting(this.newSettingLine()).load()
+        new DayEndSetting(this.newSettingLine()).load()
+        new ThemeSliderSetting(this.newSettingLine()).load()
+        new DownloadSizeSetting(this.newSettingLine()).load()
+        
+        new LightThemeBackgroundColorSetting(this.newSettingLine()).load()
+        new LightThemeTextColorSetting(this.newSettingLine()).load()
+        new LightThemeHighlightColorSetting(this.newSettingLine()).load()
+        new LightThemeHighlightTextColorSetting(this.newSettingLine()).load()
+        new LightThemeErrorColorSetting(this.newSettingLine()).load()
+        new LightThemeErrorTextColorSetting(this.newSettingLine()).load()
+        new LightThemeSuccessColorSetting(this.newSettingLine()).load()
+        new LightThemeSuccessTextColorSetting(this.newSettingLine()).load()
 
+        new DarkThemeBackgroundColorSetting(this.newSettingLine()).load()
+        new DarkThemeTextColorSetting(this.newSettingLine()).load()
+        new DarkThemeHighlightColorSetting(this.newSettingLine()).load()
+        new DarkThemeHighlightTextColorSetting(this.newSettingLine()).load()
+        new DarkThemeErrorColorSetting(this.newSettingLine()).load()
+        new DarkThemeErrorTextColorSetting(this.newSettingLine()).load()
+        new DarkThemeSuccessColorSetting(this.newSettingLine()).load()
+        new DarkThemeSuccessTextColorSetting(this.newSettingLine()).load()
+        
         let clearStorageParagraph = document.createElement("p")
         let clearStorage = new ClearStorageControl(clearStorageParagraph)
         await clearStorage.load()
@@ -1013,7 +1037,7 @@ class Search extends Component {
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
-        let withTitles = document.showTitlesSetting.get()
+        let withTitles = new ShowTitlesSetting().get()
         this.bookList = new BookList(bookListDiv, withTitles, withCollectionSections, this.collectionLinkFunction)
         await this.bookList.load()
 
@@ -1252,10 +1276,16 @@ class NumberSliderSetting extends Setting {
     }
 }
 
+class DownloadSizeSetting extends NumberSliderSetting {
+    constructor(element = null) {
+        super(element, "maximum download size", 50, 200, 10, 100, " MB")
+    }
+}
+
 class TextSizeSetting extends NumberSliderSetting {
-    constructor(element, name, minimumValue, maximumValue, step, defaultValue, controlledElement, applyCallback = null) {
-        super(element, name, minimumValue, maximumValue, step, defaultValue)
-        this.controlledElement = controlledElement
+    constructor(element = null, controlledElementId = "content", applyCallback = null) {
+        super(element, "text size", 0.5, 2, 0.1, 1)
+        this.controlledElement = document.getElementById(controlledElementId)
         this.applyCallback = applyCallback
         this.apply()
     }
@@ -1406,6 +1436,12 @@ class CheckSetting extends Setting {
     }
 }
 
+class ShowTitlesSetting extends CheckSetting {
+    constructor(element = null) {
+        super(element, "show titles", true)
+    }
+}
+
 class TimeSetting extends Setting {
     constructor(element, name, defaultValue) {
         super(element, name, defaultValue)
@@ -1511,16 +1547,17 @@ class ClearStorageControl extends ControlWithConfirmation {
     }
 }
 
-async function initializeSettings(contentElement) {    
-    let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
-    let downloadSizeSetting = new NumberSliderSetting(null, "maximum download size", 50, 200, 10, 100, " MB")
-    let showTitlesSetting = new CheckSetting(null, "show titles", true)
+/*async function initializeSettings(contentElement) {
+    let themeSetting = new ThemeSliderSetting()
+    let textSizeSetting = new TextSizeSetting()
+    let downloadSizeSetting = new DownloadSizeSetting()
+    //let showTitlesSetting = new CheckSetting(null, "show titles", true)
     let settings = [
-        showTitlesSetting,
+        new ShowTitlesSetting(),
         textSizeSetting,
         new DayStartSetting(),
         new DayEndSetting(),
-        new ThemeSliderSetting(),
+        themeSetting,
         downloadSizeSetting,
         new ColorSetting(null, "light theme background color", "#ffffff"),
         new ColorSetting(null, "light theme text color", "#000000"),
@@ -1541,10 +1578,9 @@ async function initializeSettings(contentElement) {
         new ColorSetting(null, "dark theme success text color", "#FFFFFF")
     ]
     return {
-        themeSetting: new ThemeSliderSetting(),
+        themeSetting: themeSetting,
         textSizeSetting: textSizeSetting,
         downloadSizeSetting: downloadSizeSetting,
-        showTitlesSetting: showTitlesSetting,
         allSettings: settings
     }
-}
+}*/

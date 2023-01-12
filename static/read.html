@@ -28,7 +28,7 @@
         }
 
         function displayPageCallback(callbackControl) {
-            document.themeSetting.apply()
+            new ThemeSliderSetting().apply()
             if (callbackControl.dominantColor) {
                 let color = getHexCode(callbackControl.dominantColor)
                 document.getElementById("content").style.backgroundColor = color
@@ -72,8 +72,9 @@
             let additionalTools = document.createElement("div")
 
             let textSizeParagraph = document.createElement("p")
-            document.textSizeSetting.element = textSizeParagraph
-            document.textSizeSetting.load()
+            new TextSizeSetting(textSizeParagraph).load()
+            //document.textSizeSetting.element = textSizeParagraph
+            //document.textSizeSetting.load()
             additionalTools.appendChild(textSizeParagraph)
 
             let downloadLinkParagraph = document.createElement("p")
@@ -82,10 +83,7 @@
             document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
 
             let bookDownloadUrl = "download/" + getBookId()    
-            let maxDownloadSize = 100 * 1000000
-            if (document.downloadSizeSetting) {
-                maxDownloadSize = document.downloadSizeSetting.get() * 1000000
-            }
+            let maxDownloadSize = new DownloadSizeSetting().get() * 1000000
             if (bookMeta.filesize > maxDownloadSize) {
                 bookDownloadUrl += "?chunked"
             }
@@ -154,25 +152,18 @@
                 "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
             }
             document.display = await ChronicReader.initDisplay(url, element, extension, settings, meta.filesize)
-            document.textSizeSetting = new TextSizeSetting(
-                null,
-                "text size",
-                0.5,
-                2,
-                0.1,
-                1,
-                document.getElementById("content"),
-                () => { if (document.display) document.display.update() }
-            )
+            new TextSizeSetting(null, "content", () => { if (document.display) document.display.update() })
         }
         async function prepareUi() {
             let contentElement = document.getElementById("content")
-            let settingsResult = await initializeSettings(contentElement)
-            document.themeSetting = settingsResult.themeSetting
-            document.downloadSizeSetting = settingsResult.downloadSizeSetting
+            //let settingsResult = await initializeSettings(contentElement)
+            //document.themeSetting = settingsResult.themeSetting
+            let themeSetting = new ThemeSliderSetting()
+            //document.downloadSizeSetting = settingsResult.downloadSizeSetting
+
 
             window.addEventListener("focus", () => {
-                settingsResult.themeSetting.apply()
+                themeSetting.apply()
             }, false)
 
             let bookId = getBookId()
