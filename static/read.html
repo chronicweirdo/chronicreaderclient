@@ -170,7 +170,13 @@
                 "displayPageForCallback": displayPageCallback,
                 "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
             }
-            document.display = await ChronicReader.initDisplay(url, element, extension, settings, meta.filesize)
+            let chunked = false
+            if (meta.chunked != undefined) {
+                chunked = meta.chunked
+            } else {
+                chunked = meta.filesize > DownloadSizeSetting.factory().get() * 1000000
+            }
+            document.display = await ChronicReader.initDisplay(url, element, extension, settings, chunked)
             new TextSizeSetting().apply()
         }
         async function prepareUi() {
