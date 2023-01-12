@@ -1240,10 +1240,10 @@ class OptionsSliderSetting extends Setting {
 }
 
 class ThemeSliderSetting extends OptionsSliderSetting {
-    constructor(element, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting) {
+    constructor(element, lightHighlightedColorSetting, darkHighlightedColorSetting) {
         super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
-        this.dayStartSetting = dayStartSetting
-        this.dayEndSetting = dayEndSetting
+        this.dayStartSetting = new DayStartSetting()
+        this.dayEndSetting = new DayEndSetting()
         this.lightHighlightedColorSetting = lightHighlightedColorSetting
         this.darkHighlightedColorSetting = darkHighlightedColorSetting
         this.apply()
@@ -1355,6 +1355,18 @@ class TimeSetting extends Setting {
     }
 }
 
+class DayStartSetting extends TimeSetting {
+    constructor(element = null) {
+        super(element, "day start", "07:00")
+    }
+}
+
+class DayEndSetting extends TimeSetting {
+    constructor(element = null) {
+        super(element, "day end", "21:00")
+    }
+}
+
 class ControlWithConfirmation extends Component {
     constructor(element, text, confirmation, timeout) {
         super(element)
@@ -1412,11 +1424,11 @@ class ClearStorageControl extends ControlWithConfirmation {
 }
 
 async function initializeSettings(contentElement) {
-    let dayStartSetting = new TimeSetting(null, "day start", "07:00")
-    let dayEndSetting = new TimeSetting(null, "day end", "21:00")
+    let dayStartSetting = new DayStartSetting()
+    let dayEndSetting = new DayEndSetting()
     let lightHighlightedColorSetting = new ColorSetting(null, "light theme highlight color", "#FFD700")
     let darkHighlightedColorSetting = new ColorSetting(null, "dark theme highlight color", "#FFD700")
-    let themeSetting = new ThemeSliderSetting(null, dayStartSetting, dayEndSetting, lightHighlightedColorSetting, darkHighlightedColorSetting)
+    let themeSetting = new ThemeSliderSetting(null, lightHighlightedColorSetting, darkHighlightedColorSetting)
     dayStartSetting.chainedSettings = [themeSetting]
     dayEndSetting.chainedSettings = [themeSetting]
     lightHighlightedColorSetting.chainedSettings = [themeSetting]
