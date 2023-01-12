@@ -54,6 +54,8 @@ class Component {
     }
     async load() {
         this.element.innerHTML = ""
+        Array.from(this.element.classList)
+            .forEach(c => this.element.classList.remove(c))
     }
 
     async update(data) {
