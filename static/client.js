@@ -565,7 +565,8 @@ class CollectionsTab extends Component {
                 li.appendChild(pip)
 
                 let label = document.createElement("a")
-                label.innerHTML = c.label
+                let labelParts = c.label.split("/")
+                label.innerHTML = labelParts[labelParts.length - 1]
                 if (this.searchFunction) {
                     label.onclick = () => this.searchFunction(c.label)
                 }
