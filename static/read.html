@@ -72,7 +72,8 @@
             let additionalTools = document.createElement("div")
 
             let textSizeParagraph = document.createElement("p")
-            new TextSizeSetting(textSizeParagraph).load()
+            new TextSizeSetting(textSizeParagraph, "content", () => { if (document.display) document.display.update() })
+                .load()
             //document.textSizeSetting.element = textSizeParagraph
             //document.textSizeSetting.load()
             additionalTools.appendChild(textSizeParagraph)
@@ -152,7 +153,7 @@
                 "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
             }
             document.display = await ChronicReader.initDisplay(url, element, extension, settings, meta.filesize)
-            new TextSizeSetting(null, "content", () => { if (document.display) document.display.update() })
+            new TextSizeSetting().apply()
         }
         async function prepareUi() {
             let contentElement = document.getElementById("content")
