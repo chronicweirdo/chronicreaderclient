@@ -66,6 +66,7 @@ function getFileExtension(filename) {
 }
 function typeCheck(value) {
     const return_value = Object.prototype.toString.call(value)
+    console.log(return_value)
     const type = return_value.substring(
              return_value.indexOf(" ") + 1, 
              return_value.indexOf("]"))

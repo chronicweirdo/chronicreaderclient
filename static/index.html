@@ -21,11 +21,11 @@
             new TabbedPage(contentElement).load()
 
             window.addEventListener("focus", () => {
-                new ThemeSliderSetting().apply()
+                ThemeSliderSetting.factory().apply()
             }, false)
 
             document.getElementById("content").addEventListener("click", () => {
-                new ThemeSliderSetting().apply()
+                ThemeSliderSetting.factory().apply()
             }, false)
         }
         window.onload = function() {

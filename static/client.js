@@ -408,30 +408,30 @@ class SettingsTab extends Component {
         settingsTitle.innerHTML = "Settings"
         this.element.appendChild(settingsTitle)
 
-        new ShowTitlesSetting(this.newSettingLine()).load()
-        new TextSizeSetting(this.newSettingLine()).load()
-        new DayStartSetting(this.newSettingLine()).load()
-        new DayEndSetting(this.newSettingLine()).load()
-        new ThemeSliderSetting(this.newSettingLine()).load()
-        new DownloadSizeSetting(this.newSettingLine()).load()
+        ShowTitlesSetting.factory(this.newSettingLine()).load()
+        TextSizeSetting.factory(this.newSettingLine()).load()
+        DayStartSetting.factory(this.newSettingLine()).load()
+        DayEndSetting.factory(this.newSettingLine()).load()
+        ThemeSliderSetting.factory(this.newSettingLine()).load()
+        DownloadSizeSetting.factory(this.newSettingLine()).load()
         
-        new LightThemeBackgroundColorSetting(this.newSettingLine()).load()
-        new LightThemeTextColorSetting(this.newSettingLine()).load()
-        new LightThemeHighlightColorSetting(this.newSettingLine()).load()
-        new LightThemeHighlightTextColorSetting(this.newSettingLine()).load()
-        new LightThemeErrorColorSetting(this.newSettingLine()).load()
-        new LightThemeErrorTextColorSetting(this.newSettingLine()).load()
-        new LightThemeSuccessColorSetting(this.newSettingLine()).load()
-        new LightThemeSuccessTextColorSetting(this.newSettingLine()).load()
+        LightThemeBackgroundColorSetting.factory(this.newSettingLine()).load()
+        LightThemeTextColorSetting.factory(this.newSettingLine()).load()
+        LightThemeHighlightColorSetting.factory(this.newSettingLine()).load()
+        LightThemeHighlightTextColorSetting.factory(this.newSettingLine()).load()
+        LightThemeErrorColorSetting.factory(this.newSettingLine()).load()
+        LightThemeErrorTextColorSetting.factory(this.newSettingLine()).load()
+        LightThemeSuccessColorSetting.factory(this.newSettingLine()).load()
+        LightThemeSuccessTextColorSetting.factory(this.newSettingLine()).load()
 
-        new DarkThemeBackgroundColorSetting(this.newSettingLine()).load()
-        new DarkThemeTextColorSetting(this.newSettingLine()).load()
-        new DarkThemeHighlightColorSetting(this.newSettingLine()).load()
-        new DarkThemeHighlightTextColorSetting(this.newSettingLine()).load()
-        new DarkThemeErrorColorSetting(this.newSettingLine()).load()
-        new DarkThemeErrorTextColorSetting(this.newSettingLine()).load()
-        new DarkThemeSuccessColorSetting(this.newSettingLine()).load()
-        new DarkThemeSuccessTextColorSetting(this.newSettingLine()).load()
+        DarkThemeBackgroundColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeTextColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeHighlightColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeHighlightTextColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeErrorColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeErrorTextColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeSuccessColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeSuccessTextColorSetting.factory(this.newSettingLine()).load()
         
         let clearStorageParagraph = document.createElement("p")
         let clearStorage = new ClearStorageControl(clearStorageParagraph)
@@ -1037,7 +1037,7 @@ class Search extends Component {
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
-        let withTitles = new ShowTitlesSetting().get()
+        let withTitles = ShowTitlesSetting.factory().get()
         this.bookList = new BookList(bookListDiv, withTitles, withCollectionSections, this.collectionLinkFunction)
         await this.bookList.load()
 
@@ -1059,12 +1059,39 @@ class Search extends Component {
 }
 
 class Setting extends Component {
+    static INST = []
+
+    static getInstances() {
+        let instances = []
+        for (let i = 0; i < Setting.INST.length; i++) {
+            let setting = Setting.INST[i]
+            if (setting.constructor.name == this.name.toString()) {
+                instances.push(setting)
+            }
+        }
+        return instances
+    }
+    static factory(...args) {
+        let instances = this.getInstances()
+        if (instances.length > 0) {
+            if (args.length == 1) {
+                // first argument is always an element, we replace it if it exists
+                instances[0].element = args[0]
+            }
+            return instances[0]
+        } else {
+            let setting = new this(...args)
+            return setting
+        }
+    }
+
     CLASS_SETTING = "setting"
     constructor(element, name, defaultValue = null) {
         super(element)
         this.name = name
         this.defaultValue = defaultValue
         this.apply()
+        Setting.INST.push(this)
     }
 
     async load() {
@@ -1142,9 +1169,10 @@ class LightThemeHighlightColorSetting extends ColorSetting {
     constructor(element = null) {
         super(element, "light theme highlight color", "#FFD700")
     }
-    //apply() {
-        //new ThemeSliderSetting().apply()
-    //}
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
 }
 class LightThemeHighlightTextColorSetting extends ColorSetting {
     constructor(element = null) {
@@ -1185,9 +1213,10 @@ class DarkThemeHighlightColorSetting extends ColorSetting {
     constructor(element = null) {
         super(element, "dark theme highlight color", "#FFD700")
     }
-    //apply() {
-        //new ThemeSliderSetting().apply()
-    //}
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
 }
 class DarkThemeHighlightTextColorSetting extends ColorSetting {
     constructor(element = null) {
@@ -1354,10 +1383,10 @@ class OptionsSliderSetting extends Setting {
 class ThemeSliderSetting extends OptionsSliderSetting {
     constructor(element = null) {
         super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
-        this.dayStartSetting = new DayStartSetting()
-        this.dayEndSetting = new DayEndSetting()
-        this.lightHighlightedColorSetting = new LightThemeHighlightColorSetting()
-        this.darkHighlightedColorSetting = new DarkThemeHighlightColorSetting()
+        this.dayStartSetting = DayStartSetting.factory()
+        this.dayEndSetting = DayEndSetting.factory()
+        this.lightHighlightedColorSetting = LightThemeHighlightColorSetting.factory()
+        this.darkHighlightedColorSetting = DarkThemeHighlightColorSetting.factory()
         this.apply()
     }
     
@@ -1477,18 +1506,20 @@ class DayStartSetting extends TimeSetting {
     constructor(element = null) {
         super(element, "day start", "07:00")
     }
-    //apply() {
-        //new ThemeSliderSetting().apply() // creates a loop
-    //}
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
 }
 
 class DayEndSetting extends TimeSetting {
     constructor(element = null) {
         super(element, "day end", "21:00")
     }
-    //apply() {
-       //new ThemeSliderSetting().apply() // creates an instantiation loop
-    //}
+    apply() {
+        super.apply()
+        ThemeSliderSetting.factory().apply()
+    }
 }
 
 class ControlWithConfirmation extends Component {
@@ -1546,41 +1577,3 @@ class ClearStorageControl extends ControlWithConfirmation {
         window.location.reload()
     }
 }
-
-/*async function initializeSettings(contentElement) {
-    let themeSetting = new ThemeSliderSetting()
-    let textSizeSetting = new TextSizeSetting()
-    let downloadSizeSetting = new DownloadSizeSetting()
-    //let showTitlesSetting = new CheckSetting(null, "show titles", true)
-    let settings = [
-        new ShowTitlesSetting(),
-        textSizeSetting,
-        new DayStartSetting(),
-        new DayEndSetting(),
-        themeSetting,
-        downloadSizeSetting,
-        new ColorSetting(null, "light theme background color", "#ffffff"),
-        new ColorSetting(null, "light theme text color", "#000000"),
-        new LightThemeHighlightColorSetting(),
-        new ColorSetting(null, "light theme highlight text color", "#000000"),
-        new ColorSetting(null, "light theme error color", "#dc143c"),
-        new ColorSetting(null, "light theme error text color", "#FFFFFF"),
-        new ColorSetting(null, "light theme success color", "#008000"),
-        new ColorSetting(null, "light theme success text color", "#FFFFFF"),
-
-        new ColorSetting(null, "dark theme background color", "#000000"),
-        new ColorSetting(null, "dark theme text color", "#ffffff"),
-        new DarkThemeHighlightColorSetting(),
-        new ColorSetting(null, "dark theme highlight text color", "#000000"),
-        new ColorSetting(null, "dark theme error color", "#dc143c"),
-        new ColorSetting(null, "dark theme error text color", "#FFFFFF"),
-        new ColorSetting(null, "dark theme success color", "#008000"),
-        new ColorSetting(null, "dark theme success text color", "#FFFFFF")
-    ]
-    return {
-        themeSetting: themeSetting,
-        textSizeSetting: textSizeSetting,
-        downloadSizeSetting: downloadSizeSetting,
-        allSettings: settings
-    }
-}*/
