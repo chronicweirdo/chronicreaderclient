@@ -1069,11 +1069,6 @@ class Setting extends Component {
     }
 
     apply() {
-        if (this.chainedSettings != null) {
-            for (let s of this.chainedSettings) {
-                s.apply()
-            }
-        }
     }
 }
 
@@ -1106,6 +1101,93 @@ class ColorSetting extends Setting {
     apply() {
         document.documentElement.style.setProperty("--" + this.getKey(), this.get())
         super.apply()
+    }
+}
+
+class LightThemeBackgroundColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme background color", "#ffffff")
+    }
+}
+class LightThemeTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme text color", "#000000")
+    }
+}
+class LightThemeHighlightColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme highlight color", "#FFD700")
+    }
+    //apply() {
+        //new ThemeSliderSetting().apply()
+    //}
+}
+class LightThemeHighlightTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme highlight text color", "#000000")
+    }
+}
+class LightThemeErrorColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme error color", "#dc143c")
+    }
+}
+class LightThemeErrorTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme error text color", "#FFFFFF")
+    }
+}
+class LightThemeSuccessColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme success color", "#008000")
+    }
+}
+class LightThemeSuccessTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "light theme success text color", "#FFFFFF")
+    }
+}
+class DarkThemeBackgroundColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme background color", "#000000")
+    }
+}
+class DarkThemeTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme text color", "#ffffff")
+    }
+}
+class DarkThemeHighlightColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme highlight color", "#FFD700")
+    }
+    //apply() {
+        //new ThemeSliderSetting().apply()
+    //}
+}
+class DarkThemeHighlightTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme highlight text color", "#000000")
+    }
+}
+class DarkThemeErrorColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme error color", "#dc143c")
+    }
+}
+class DarkThemeErrorTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme error text color", "#FFFFFF")
+    }
+}
+class DarkThemeSuccessColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme success color", "#008000")
+    }
+}
+class DarkThemeSuccessTextColorSetting extends ColorSetting {
+    constructor(element = null) {
+        super(element, "dark theme success text color", "#FFFFFF")
     }
 }
 
@@ -1240,12 +1322,12 @@ class OptionsSliderSetting extends Setting {
 }
 
 class ThemeSliderSetting extends OptionsSliderSetting {
-    constructor(element, lightHighlightedColorSetting, darkHighlightedColorSetting) {
+    constructor(element = null) {
         super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
         this.dayStartSetting = new DayStartSetting()
         this.dayEndSetting = new DayEndSetting()
-        this.lightHighlightedColorSetting = lightHighlightedColorSetting
-        this.darkHighlightedColorSetting = darkHighlightedColorSetting
+        this.lightHighlightedColorSetting = new LightThemeHighlightColorSetting()
+        this.darkHighlightedColorSetting = new DarkThemeHighlightColorSetting()
         this.apply()
     }
     
@@ -1359,12 +1441,18 @@ class DayStartSetting extends TimeSetting {
     constructor(element = null) {
         super(element, "day start", "07:00")
     }
+    //apply() {
+        //new ThemeSliderSetting().apply() // creates a loop
+    //}
 }
 
 class DayEndSetting extends TimeSetting {
     constructor(element = null) {
         super(element, "day end", "21:00")
     }
+    //apply() {
+       //new ThemeSliderSetting().apply() // creates an instantiation loop
+    //}
 }
 
 class ControlWithConfirmation extends Component {
@@ -1423,29 +1511,20 @@ class ClearStorageControl extends ControlWithConfirmation {
     }
 }
 
-async function initializeSettings(contentElement) {
-    let dayStartSetting = new DayStartSetting()
-    let dayEndSetting = new DayEndSetting()
-    let lightHighlightedColorSetting = new ColorSetting(null, "light theme highlight color", "#FFD700")
-    let darkHighlightedColorSetting = new ColorSetting(null, "dark theme highlight color", "#FFD700")
-    let themeSetting = new ThemeSliderSetting(null, lightHighlightedColorSetting, darkHighlightedColorSetting)
-    dayStartSetting.chainedSettings = [themeSetting]
-    dayEndSetting.chainedSettings = [themeSetting]
-    lightHighlightedColorSetting.chainedSettings = [themeSetting]
-    darkHighlightedColorSetting.chainedSettings = [themeSetting]
+async function initializeSettings(contentElement) {    
     let textSizeSetting = new TextSizeSetting(null, "text size", 0.5, 2, 0.1, 1, contentElement)
     let downloadSizeSetting = new NumberSliderSetting(null, "maximum download size", 50, 200, 10, 100, " MB")
     let showTitlesSetting = new CheckSetting(null, "show titles", true)
     let settings = [
         showTitlesSetting,
         textSizeSetting,
-        dayStartSetting,
-        dayEndSetting,
-        themeSetting,
+        new DayStartSetting(),
+        new DayEndSetting(),
+        new ThemeSliderSetting(),
         downloadSizeSetting,
         new ColorSetting(null, "light theme background color", "#ffffff"),
         new ColorSetting(null, "light theme text color", "#000000"),
-        lightHighlightedColorSetting,
+        new LightThemeHighlightColorSetting(),
         new ColorSetting(null, "light theme highlight text color", "#000000"),
         new ColorSetting(null, "light theme error color", "#dc143c"),
         new ColorSetting(null, "light theme error text color", "#FFFFFF"),
@@ -1454,7 +1533,7 @@ async function initializeSettings(contentElement) {
 
         new ColorSetting(null, "dark theme background color", "#000000"),
         new ColorSetting(null, "dark theme text color", "#ffffff"),
-        darkHighlightedColorSetting,
+        new DarkThemeHighlightColorSetting(),
         new ColorSetting(null, "dark theme highlight text color", "#000000"),
         new ColorSetting(null, "dark theme error color", "#dc143c"),
         new ColorSetting(null, "dark theme error text color", "#FFFFFF"),
@@ -1462,7 +1541,7 @@ async function initializeSettings(contentElement) {
         new ColorSetting(null, "dark theme success text color", "#FFFFFF")
     ]
     return {
-        themeSetting: themeSetting,
+        themeSetting: new ThemeSliderSetting(),
         textSizeSetting: textSizeSetting,
         downloadSizeSetting: downloadSizeSetting,
         showTitlesSetting: showTitlesSetting,
