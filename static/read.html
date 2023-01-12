@@ -180,13 +180,10 @@
             new TextSizeSetting().apply()
         }
         async function prepareUi() {
+            initStyleSettings()
             let contentElement = document.getElementById("content")
-            //let settingsResult = await initializeSettings(contentElement)
-            //document.themeSetting = settingsResult.themeSetting
             let themeSetting = new ThemeSliderSetting()
-            //document.downloadSizeSetting = settingsResult.downloadSizeSetting
-
-
+            
             window.addEventListener("focus", () => {
                 themeSetting.apply()
                 if (document.dominantColor) {

@@ -1577,3 +1577,27 @@ class ClearStorageControl extends ControlWithConfirmation {
         window.location.reload()
     }
 }
+
+function initStyleSettings() {
+    // some settings must be initialized to configure page styles
+    TextSizeSetting.factory()
+    ThemeSliderSetting.factory()
+    
+    LightThemeBackgroundColorSetting.factory()
+    LightThemeTextColorSetting.factory()
+    LightThemeHighlightColorSetting.factory()
+    LightThemeHighlightTextColorSetting.factory()
+    LightThemeErrorColorSetting.factory()
+    LightThemeErrorTextColorSetting.factory()
+    LightThemeSuccessColorSetting.factory()
+    LightThemeSuccessTextColorSetting.factory()
+
+    DarkThemeBackgroundColorSetting.factory()
+    DarkThemeTextColorSetting.factory()
+    DarkThemeHighlightColorSetting.factory()
+    DarkThemeHighlightTextColorSetting.factory()
+    DarkThemeErrorColorSetting.factory()
+    DarkThemeErrorTextColorSetting.factory()
+    DarkThemeSuccessColorSetting.factory()
+    DarkThemeSuccessTextColorSetting.factory()
+}
