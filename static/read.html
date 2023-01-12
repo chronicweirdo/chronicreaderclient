@@ -33,6 +33,9 @@
                 let color = getHexCode(callbackControl.dominantColor)
                 document.getElementById("content").style.backgroundColor = color
                 setStatusBarColor(color)
+                document.dominantColor = callbackControl.dominantColor
+            } else {
+                document.dominantColor = undefined
             }
             if (callbackControl.position != undefined && callbackControl.position != null) {
                 // sync progress with backend
@@ -165,6 +168,9 @@
 
             window.addEventListener("focus", () => {
                 themeSetting.apply()
+                if (document.dominantColor) {
+                    setStatusBarColor(document.dominantColor)
+                }
             }, false)
 
             let bookId = getBookId()
