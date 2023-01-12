@@ -645,7 +645,7 @@ async function updateLocalBooks() {
     for (let book of localBookMetas) {
         let backendMeta = await backend.getMeta(book.id)
         if (backendMeta != null) {
-            let localBook = await db.loadBook(book.id)
+            let localBook = await db.loadMeta(book.id)
             await db.saveMeta({
                 id: localBook.id, 
                 title: backendMeta.title,
