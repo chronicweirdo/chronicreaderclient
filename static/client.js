@@ -172,7 +172,7 @@ class FormComponent extends Component {
     title(text) {
         let h = document.createElement("h1")
         h.innerHTML = text
-        h.classList.add(this.CLASS_FORM_ROW)
+        h.classList.add(CLASS_HIGHLIGHTED)
         return h
     }
 
@@ -251,6 +251,7 @@ class UploadForm extends FormComponent {
         this.element.appendChild(this.p(fileInput))
 
         let uploadResult = document.createElement("span")
+        uploadResult.style.display = "none"
         let button = document.createElement("a")
         button.innerHTML = "upload"
         button.onclick = () => {
@@ -272,16 +273,18 @@ class UploadForm extends FormComponent {
                 }
             })
             .then(result => {
+                uploadResult.classList.remove(...uploadResult.classList)
+                uploadResult.style.display = "inline-block"
                 if (result == true) {
                     uploadResult.innerHTML = "file upload was successful"
-                    uploadResult.style.backgroundColor = "green"
+                    uploadResult.classList.add(CLASS_SUCCESS)
                 } else {
                     uploadResult.innerHTML = "file upload failed"
-                    uploadResult.style.backgroundColor = "red"
+                    uploadResult.classList.add(CLASS_ERROR)
                 }
                 timeout(5000).then(() => {
                     uploadResult.innerHTML = ""
-                    uploadResult.style.backgroundColor = "transparent"
+                    uploadResult.style.display = "none"
                 })
             })
         }
@@ -300,8 +303,9 @@ class LoginForm extends FormComponent {
         this.element.appendChild(this.title("Server Connection"))
 
         let serverConnection = this.p(null)
-        serverConnection.style.display = "inline-block"
+        serverConnection.style.display = "block"
         serverConnection.style.overflowWrap = "anywhere"
+        serverConnection.style.padding = "0.4em"
         this.element.appendChild(serverConnection)
         
         let serverLabel = this.label("server", "server")
@@ -317,6 +321,7 @@ class LoginForm extends FormComponent {
         this.element.appendChild(this.p(passwordLabel, passwordInput))
 
         let loginResult = document.createElement("span")
+        loginResult.style.display = "none"
 
         let verifyConnection = () => {
             fetch("/verify")
@@ -363,6 +368,7 @@ class LoginForm extends FormComponent {
             })
             .then(result => {
                 loginResult.classList.remove(...loginResult.classList)
+                loginResult.style.display = "inline-block"
                 if (result == true) {
                     loginResult.innerHTML = "login successful"
                     loginResult.classList.add(CLASS_SUCCESS)
@@ -373,6 +379,7 @@ class LoginForm extends FormComponent {
                 verifyConnection()
                 timeout(5000).then(() => {
                     loginResult.innerHTML = ""
+                    loginResult.style.display = "none"
                 })
             })
         }
@@ -402,6 +409,7 @@ class SettingsTab extends Component {
 
         let settingsTitle = document.createElement("h1")
         settingsTitle.innerHTML = "Settings"
+        settingsTitle.classList.add(CLASS_HIGHLIGHTED)
         this.element.appendChild(settingsTitle)
 
         ShowTitlesSetting.factory(this.newSettingLine()).load()
@@ -953,6 +961,8 @@ class Search extends Component {
         let button = document.createElement("a")
         button.innerHTML = "next"
         p.style.display = "none"
+        p.style.textAlign = "center"
+        p.style.marginTop = "1em"
         button.onclick = () => {
             this.nextSearch()
         }
@@ -965,6 +975,7 @@ class Search extends Component {
         p.innerHTML = "Loading..."
         p.style.display = "none"
         p.style.textAlign = "center"
+        p.style.marginTop = "1em"
         return p
     }
 
