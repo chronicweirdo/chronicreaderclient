@@ -1,7 +1,19 @@
 {
-    "name": "chronicreader client",
-    "description": "The Chronic Reader client.",
+    "name": "ChronicReader Client",
+    "description": "The Chronic Reader client, an application for reading books and comics.",
     "lang": "en-US",
+    "icons": [
+        {"src": "logo16.png", "sizes": "16x16", "type": "image/png"},
+        {"src": "logo24.png", "sizes": "24x24", "type": "image/png"},
+        {"src": "logo32.png", "sizes": "32x32", "type": "image/png"},
+        {"src": "logo48.png", "sizes": "48x48", "type": "image/png"},
+        {"src": "logo64.png", "sizes": "64x64", "type": "image/png"},
+        {"src": "logo152.png", "sizes": "152x152", "type": "image/png"},
+        {"src": "logo167.png", "sizes": "167x167", "type": "image/png"},
+        {"src": "logo180.png", "sizes": "180x180", "type": "image/png"},
+        {"src": "logo192.png", "sizes": "192x192", "type": "image/png"},
+        {"src": "logo512.png", "sizes": "512x512", "type": "image/png"}
+    ],
     "start_url": "https://chronicweirdo.github.io/chronicreaderclient/",
     "display": "standalone",
     "theme_color": "#ffd700",
