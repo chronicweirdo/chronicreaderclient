@@ -10,7 +10,6 @@ self.addEventListener('install', e => {
 
 self.addEventListener('fetch', e => {
     var url = new URL(e.request.url)
-    console.log("pathname: " + url.pathname)
 
     if (url.pathname.match(/\/upload/)) {
         e.respondWith(handleUpload(e.request))
@@ -59,7 +58,6 @@ class Database {
                 reject()
             }
             request.onsuccess = function(event) {
-                console.log("successfully opened database")
                 resolve(event.target.result)
             }
             request.onupgradeneeded = function(event) {
@@ -242,17 +240,8 @@ class Database {
         }
     }
 
-    async saveMeta(meta/*id, title, extension, collection, size, filesize, cover*/) {
-        /*let dbMeta = {
-            id: id,
-            title: title,
-            extension: extension,
-            collection: collection,
-            size: size,
-            filesize: filesize,
-            cover: cover
-        }*/
-        let saveResult = await this.databaseSave(Database.META_TABLE, meta/*dbMeta*/)
+    async saveMeta(meta) {
+        let saveResult = await this.databaseSave(Database.META_TABLE, meta)
         if (saveResult != undefined && saveResult != null) {
             return true
         } else {
@@ -917,7 +906,6 @@ async function loadContent(request) {
     let filename = url.searchParams.get("filename")
 
     if (files) {
-        console.log("loading content file list")
         let db = new Database()
         let filesContent = await db.loadContentList(bookId)
         if (filesContent) {
@@ -927,7 +915,6 @@ async function loadContent(request) {
             return await backend.getContent(bookId, files = true)
         }
     } else if (filename) {
-        console.log("loading content archive file")
         let db = new Database()
         let fileContent = await db.loadContentFile(bookId, filename)
         if (fileContent) {
@@ -938,7 +925,6 @@ async function loadContent(request) {
         }
     } else {
         // check locally for book
-        console.log("loading content full archive")
         let db = new Database()
         let bookObject = await db.loadContent(bookId)
         if (bookObject) {

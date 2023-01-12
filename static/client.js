@@ -19,7 +19,6 @@ function idTimeout(id, ms) {
             if (document.timeoutId[id] === triggeredTimestamp) {
                 resolve()
             } else {
-                console.log("not executing trigger " + id + " " + triggeredTimestamp)
                 reject()
             }
         }, ms)
@@ -59,7 +58,6 @@ class Component {
     }
 
     async update(data) {
-        console.log("update not implemented for " + this)
     }
 }
 
@@ -361,11 +359,9 @@ class LoginForm extends FormComponent {
                 headers: { 'Content-Type': 'application/json'}
             })
             .then(response => {
-                console.log(response)
                 return response.json()
             })
             .then(result => {
-                console.log(result)
                 loginResult.classList.remove(...loginResult.classList)
                 if (result == true) {
                     loginResult.innerHTML = "login successful"
@@ -491,13 +487,11 @@ class LibrarySearchTab extends Component {
     }
 
     async search(term = null) {
-        console.log(this)
         if (term == null) {
             term = this.searchField.value
         } else {
             this.searchField.value = term
         }
-        console.log("searching for: " + term)
 
         let search = new Search(this.searchList, term, 12, Search.ORDER_TITLE, true, (term) => this.search(term))
         await search.load()
@@ -1356,7 +1350,6 @@ class OptionsSliderSetting extends Setting {
         input.min = 0
         input.max = this.values.length - 1
         input.step = 1
-        console.log(this.values.indexOf(this.get()))
         input.value = this.values.indexOf(this.get())
         this.element.appendChild(input)
         
@@ -1448,9 +1441,6 @@ class CheckSetting extends Setting {
         input.style.width = "1em"
         input.type = "checkbox"
         input.name = this.getKey()
-        //input.value = this.get()
-        console.log("check value " + this.get())
-        console.log(typeof this.get())
         input.checked = this.get()
         this.element.appendChild(input)
 
@@ -1534,7 +1524,6 @@ class ControlWithConfirmation extends Component {
         await super.load()
 
         let button = document.createElement("a")
-        console.log(this.text)
         button.innerHTML = this.text
         this.element.appendChild(button)
 
@@ -1560,14 +1549,12 @@ class ControlWithConfirmation extends Component {
     }
 
     execute() {
-        console.log("not implemented")
     }
 }
 
 class ClearStorageControl extends ControlWithConfirmation {
     constructor(element) {
         super(element, "Clear storage", "Click if you are sure you want to clear storage", 5000)
-        console.log("created clear storage")
     }
     async load() {
         await super.load()
