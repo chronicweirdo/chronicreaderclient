@@ -56,7 +56,13 @@
         body {
             font-family: 'Merriweather', serif;
             font-size: 1.2rem;
+            /*-ms-overflow-style: none; */ /* IE and Edge */
+            /*scrollbar-width: none; */ /* Firefox */
+            overflow-x: hidden;
         }
+        /*body::-webkit-scrollbar {
+            display: none; *//* Hide scrollbar for Chrome, Safari and Opera */
+        /*}*/
 
         .menu {
             margin-bottom: 2.5vw;
@@ -102,7 +108,7 @@
             overflow: auto;
             padding-bottom: 1em;
         }
-
+        
         .collections_tree {
             margin: 2.5vw;
         }
@@ -112,6 +118,9 @@
         }
         .collections_tree span {
             margin-right: 1em;
+        }
+        h1 {
+            padding: .4em;
         }
 
         @media (orientation: landscape) {
