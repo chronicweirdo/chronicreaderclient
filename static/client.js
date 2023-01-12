@@ -847,9 +847,9 @@ class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
     CLASS_BOOK_LIST = "book_list"
 
-    constructor(element, withTitles = true, withCollections = false, searchFunction = null) {
+    constructor(element, withCollections = false, searchFunction = null) {
         super(element)
-        this.withTitles = withTitles
+        this.withTitles = ShowTitlesSetting.factory().get()
         this.withCollections = withCollections
         this.searchFunction = searchFunction
     }
@@ -1038,8 +1038,7 @@ class Search extends Component {
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
-        let withTitles = ShowTitlesSetting.factory().get()
-        this.bookList = new BookList(bookListDiv, withTitles, withCollectionSections, this.collectionLinkFunction)
+        this.bookList = new BookList(bookListDiv, withCollectionSections, this.collectionLinkFunction)
         await this.bookList.load()
 
         this.nextButton = this.createNextButton()
