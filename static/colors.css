@@ -82,6 +82,16 @@ a {
     background-color: var(--dark_theme_error_color);
 }
 
+.progress_checkmark {
+    stroke: var(--light_theme_text_color);
+    fill: var(--light_theme_background_color);
+}
+
+.dark .progress_checkmark {
+    stroke: var(--dark_theme_text_color);
+    fill: var(--dark_theme_background_color);
+}
+
 .progress_enclosure {
     border: 1px solid var(--light_theme_text_color, black);
     background-color: var(--light_theme_background_color, white);

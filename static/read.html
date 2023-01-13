@@ -55,7 +55,10 @@
             if (callbackControl.position != undefined && callbackControl.position != null) {
                 // sync progress with backend
                 let bookId = getBookId()
-                fetch("sync/" + bookId + "?position=" + callbackControl.position).then(response => {
+                fetch("sync/" + bookId + "?" + new URLSearchParams({
+                    position: callbackControl.position,
+                    completed: callbackControl.isLastPage
+                })).then(response => {
                     console.log(response)
                 })
                 // update ui

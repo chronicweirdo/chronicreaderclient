@@ -470,7 +470,7 @@ class LatestReadTab extends Component {
 
     async load() {
         await super.load()
-        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_READ, true, this.searchFunction)
+        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_READ, true, this.searchFunction, false)
         await search.load()
     }
 }
@@ -612,6 +612,7 @@ class CollectionsTab extends Component {
 
 class BookItem extends Component {
     CLASS_PROGRESS_ENCLOSURE = "progress_enclosure"
+    CLASS_PROGRESS_CHECKMARK = "progress_checkmark"
     CLASS_PROGRESS_BAR = "progress_bar"
     CLASS_COVER_ENCLOSURE = "cover_enclosure"
 
@@ -624,27 +625,72 @@ class BookItem extends Component {
         this.searchFunction = searchFunction
     }
 
+    getCheckmarkSvg() {
+        //<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="margin:auto;display:block;" viewBox="0 0 12 10" preserveAspectRatio="xMidYMid"><path d="M 3 3 L 1 5 L 5 9 L 11 3 L 9 1 L 5 5 Z "></path></svg>
+        let namespace = "http://www.w3.org/2000/svg"
+        let svg = document.createElementNS(namespace, "svg")
+        svg.setAttribute("viewBox", "0 0 12 10")
+        svg.setAttribute("preserveAspectRatio", "xMidYMid")
+        /*svg.style.position = "absolute"
+        svg.style.width = width
+        svg.style.height = height
+        svg.style.top = top
+        svg.style.left = left*/
+
+        let path = document.createElementNS(namespace, "path")
+        path.setAttribute("d", "M 3 3 L 1 5 L 5 9 L 11 3 L 9 1 L 5 5 Z ")
+        path.setAttribute("stroke-width", "0.4")
+        path.setAttribute("stroke-linecap", "round")
+        //path.setAttribute("stroke", "black")
+        //path.setAttribute("fill", "white")
+        
+        svg.appendChild(path)
+
+        return svg
+    }
+
     getProgressItem(book) {
         if (book.position) {
-            let progressEnclosure = document.createElement("span")
-            progressEnclosure.style.position = "absolute"
-            progressEnclosure.style.width = "80%"
-            progressEnclosure.style.height = "5%"
-            progressEnclosure.style.bottom = "5%"
-            progressEnclosure.style.left = "10%"
-            progressEnclosure.style.display = "inline-block"
-            progressEnclosure.classList.add(this.CLASS_PROGRESS_ENCLOSURE)
+            console.log(book.position + " / " + book.size + " " + book.completed)
+            let progressFraction = (book.position <= book.size) ? book.position / book.size : 1
+            //if (book.completed)
+            if (book.completed) {
+                progressFraction = 1
+            }
+            console.log(progressFraction)
+            let progressEnclosure = null
+            if (progressFraction == 1) {
+                let checkmark = this.getCheckmarkSvg()
+                progressEnclosure = checkmark
+                progressEnclosure.style.position = "absolute"
+                progressEnclosure.style.width = "25%"
+                progressEnclosure.style.height = "15%"
+                progressEnclosure.style.bottom = "0%"
+                progressEnclosure.style.right = "0%"
+                progressEnclosure.style.display = "inline-block"
+                progressEnclosure.classList.add(this.CLASS_PROGRESS_CHECKMARK)
+            } else {
+                progressEnclosure = document.createElement("span")
+                progressEnclosure.style.position = "absolute"
+                progressEnclosure.style.width = "80%"
+                progressEnclosure.style.height = "5%"
+                progressEnclosure.style.bottom = "5%"
+                progressEnclosure.style.left = "10%"
+                progressEnclosure.style.display = "inline-block"
+                progressEnclosure.classList.add(this.CLASS_PROGRESS_ENCLOSURE)
 
-            let progress = document.createElement("span")
-            progress.style.position = "absolute"
-            progress.style.display = "inline-block"
-            progress.style.height = "80%"
-            progress.style.width = (99 * (book.position / book.size)) + "%"
-            progress.style.top = "10%"
-            progress.style.left = "1%"
-            progress.classList.add(this.CLASS_PROGRESS_BAR)
+                
+                let progress = document.createElement("span")
+                progress.style.position = "absolute"
+                progress.style.display = "inline-block"
+                progress.style.height = "80%"
+                progress.style.width = (98 * progressFraction) + "%"
+                progress.style.top = "10%"
+                progress.style.left = "1%"
+                progress.classList.add(this.CLASS_PROGRESS_BAR)
+                progressEnclosure.appendChild(progress)
+            }
 
-            progressEnclosure.appendChild(progress)
             return progressEnclosure
         } else {
             return null
@@ -938,12 +984,13 @@ class Search extends Component {
     static ORDER_LATEST_ADDED = "added"
     static ORDER_TITLE = ""
     CLASS_SEARCH_SECTION = "search_section"
-    constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null) {
+    constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null, completed = null) {
         super(element)
         this.term = term
         this.pageSize = pageSize
         this.order = order
         this.multipage = multipage
+        this.completed = completed
         this.collectionLinkFunction = collectionLinkFunction
     }
 
@@ -952,8 +999,9 @@ class Search extends Component {
             term: this.term,
             page: this.page,
             pageSize: this.pageSize,
-            order: this.order
-        }) 
+            order: this.order,
+            completed: this.completed
+        })
     }
 
     createNextButton() {
