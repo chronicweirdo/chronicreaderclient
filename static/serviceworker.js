@@ -290,13 +290,38 @@ class Database {
         return this.#saveContentInternal(id, content, Database.CONTENT_TYPE_FILE, filename)
     }
 
-    async saveProgress(bookId, updated, progress, completed) {
-        return await this.databaseSave(Database.PROGRESS_TABLE, {
-            "id": bookId,
-            "updated": updated,
-            "position": progress,
-            "completed": completed
-        })
+    async updateProgress(bookId, updated, progress, completed) {
+        let currentProgress = await this.loadProgress(bookId)
+        console.log("current db progress: " + JSON.stringify(currentProgress))
+        if (currentProgress != undefined && currentProgress != null) {
+            if (currentProgress.updated < updated) {
+                let updatedProgress = await this.databaseSave(Database.PROGRESS_TABLE, {
+                    "id": bookId,
+                    "updated": updated,
+                    "position": progress,
+                    "completed": completed != null ? completed : currentProgress.completed
+                })
+                if (updatedProgress != undefined && updatedProgress != null) {
+                    return true
+                } else {
+                    return false
+                }
+            } else {
+                return false
+            }
+        } else {
+            let newProgress = await this.databaseSave(Database.PROGRESS_TABLE, {
+                "id": bookId,
+                "updated": updated,
+                "position": progress,
+                "completed": completed
+            })
+            if (newProgress != undefined && newProgress != null) {
+                return true
+            } else {
+                return false
+            }
+        }
     }
 
     async loadProgress(bookId) {
@@ -596,17 +621,19 @@ class Backend {
         }
     }
 
-    async saveProgress(bookId, updated, position, completed) {
+    async updateProgress(bookId, updated, position, completed) {
         try {
             let url = this.server + "/progress/" + bookId
-            let body = JSON.stringify({
+            let body = {
                 position: position,
-                updated: updated,
-                completed: completed
-            })
+                updated: updated
+            }
+            if (completed != undefined && completed != null) {
+                body.completed = completed
+            }
             let response = await fetch(url, {
                 method: 'PUT', 
-                body: body,
+                body: JSON.stringify(body),
                 headers: this.getAuthHeaders("application/json")
             })
             if (response.status == 200) {
@@ -805,6 +832,8 @@ async function loadAllBooks() {
         let progress = await db.loadProgress(book.id)
         if (progress) {
             book.position = progress.position
+            book.updated = progress.updated
+            book.completed = progress.completed
         }
     }
     return getJsonResponse(databaseBooks)
@@ -844,10 +873,10 @@ async function getProgressForBook(bookId) {
         }
     } else if (backendProgress != null) {
         // save backend progress to local db and return it
-        let res = await db.saveProgress(backendProgress.id, backendProgress.updated, backend.position, backend.completed)
+        let res = await db.updateProgress(backendProgress.id, backendProgress.updated, backend.position, backend.completed)
         return backendProgress
     } else if (databaseProgress != null) {
-        let res = await backend.saveProgress(databaseProgress.id, databaseProgress.updated, databaseProgress.position, databaseProgress.completed)
+        let res = await backend.updateProgress(databaseProgress.id, databaseProgress.updated, databaseProgress.position, databaseProgress.completed)
         return databaseProgress
     } else {
         // we have no progress info, default position is 0
@@ -866,21 +895,23 @@ async function syncProgress(request) {
     let bookId = pathParts[pathParts.length - 1]
     let params = new URLSearchParams(url.search)
     let progress = params.get("position")
-    let completed = (params.get("completed") === "true")
+    let completed = (params.get("completed") != undefined) ? (params.get("completed") === "true") : null
+    console.log("sync " + progress + " " + completed)
 
     if (progress) {
         // save progress
         let now = new Date()
+        let dbSaveResult = false
         try {
             let db = new Database()
-            let res = await db.saveProgress(bookId, now, progress, completed)
+            dbSaveResult = await db.updateProgress(bookId, now, progress, completed)
         } catch (error) {
             console.log(error)
         }
         // todo: sync progress with backend if it exists
         let backend = await Backend.factory()
-        let saveProgressResult = await backend.saveProgress(bookId, now, progress, completed)
-        return getJsonResponse(progress)
+        let backendSaveResult = await backend.updateProgress(bookId, now, progress, completed)
+        return getJsonResponse(dbSaveResult)
     } else {
         let progress = await getProgressForBook(bookId)
         return getJsonResponse(progress)
@@ -905,6 +936,7 @@ async function loadBookMeta(request) {
         let progress = await getProgressForBook(bookId)
         bookObject.position = progress.position
         bookObject.updated = progress.updated
+        bookObject.completed = progress.completed
         return getJsonResponse(bookObject)
     } else {
         return get404Response()
