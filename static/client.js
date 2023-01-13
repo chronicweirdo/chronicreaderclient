@@ -523,7 +523,8 @@ class LibrarySearchTab extends Component {
         this.searchField = document.createElement("input")
         this.searchField.type = "text"
         this.searchField.style.width = "92vw"
-        this.searchField.addEventListener("keypress", (event) => {
+        this.searchField.addEventListener("keyup", (event) => {
+            console.log(event)
             if (event.key === "Enter") {
                 event.preventDefault()
                 this.search()
