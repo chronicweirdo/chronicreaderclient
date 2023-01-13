@@ -1120,10 +1120,13 @@ class Search extends Component {
 
     showNothingFoundMessage() {
         this.hideLoading()
-        let noBooks = document.createElement("p")
-        noBooks.innerHTML = "no books found"
-        noBooks.style.textAlign = "center"
-        this.element.appendChild(noBooks)
+        if (this.nothingFoundMessage == undefined) {
+            let noBooks = document.createElement("p")
+            noBooks.innerHTML = "no books found"
+            noBooks.style.textAlign = "center"
+            this.nothingFoundMessage = noBooks
+        }
+        this.element.appendChild(this.nothingFoundMessage)
     }
 
     async load() {
