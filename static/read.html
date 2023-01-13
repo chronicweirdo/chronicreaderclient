@@ -53,10 +53,30 @@
                 document.dominantColor = undefined
             }
             if (callbackControl.position != undefined && callbackControl.position != null) {
+                document.position = callbackControl.position
                 // sync progress with backend
                 let bookId = getBookId()
-                fetch("sync/" + bookId + "?position=" + callbackControl.position).then(response => {
-                    console.log(response)
+                let syncParams = {
+                    position: callbackControl.position
+                }
+                if (callbackControl.isLastPage) {
+                    syncParams.completed = true
+                }
+                console.log(syncParams)
+                fetch("sync/" + bookId + "?" + new URLSearchParams(syncParams))
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json()
+                    } else {
+                        return null
+                    }
+                }).then(result => {
+                    if (result != undefined && result != null) {
+                        if (callbackControl.isLastPage) {
+                            document.meta.completed = true
+                            document.completedButton.update()
+                        }
+                    }
                 })
                 // update ui
                 let newPosition = callbackControl.position
@@ -85,6 +105,64 @@
                 url += "?position=" + position
             }
             return url
+        }
+        class MarkCompletedButton extends Component {
+            constructor(element) {
+                super(element)
+            }
+            async load() {
+                super.load()
+
+                this.markAsCompleteButton = document.createElement("a")
+                this.markAsCompleteButton.style.display = "none"
+                this.markAsCompleteButton.innerHTML = 'mark book as read'
+                this.element.appendChild(this.markAsCompleteButton)
+
+                this.markAsUnreadButton = document.createElement("a")
+                this.markAsUnreadButton.style.display = "none"
+                this.markAsUnreadButton.innerHTML = "mark book as unread"
+                this.element.appendChild(this.markAsUnreadButton)
+
+                this.markAsCompleteButton.onclick = () => {
+                    fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
+                        position: document.position,
+                        completed: true
+                    }))
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result == true) {
+                            document.meta.completed = true
+                            this.update()
+                        }
+                    })
+                }
+
+                this.markAsUnreadButton.onclick = () => {
+                    fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
+                        position: document.position,
+                        completed: false
+                    }))
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result == true) {
+                            document.meta.completed = false
+                            this.update()
+                        }
+                    })
+                }
+
+                await this.update()
+            }
+
+            async update() {
+                if (document.meta.completed == true) {
+                    this.markAsCompleteButton.style.display = "none"
+                    this.markAsUnreadButton.style.display = "inline-block"
+                } else {
+                    this.markAsCompleteButton.style.display = "inline-block"
+                    this.markAsUnreadButton.style.display = "none"
+                }
+            }
         }
         function getTools(bookMeta) {
             let additionalTools = document.createElement("div")
@@ -141,6 +219,11 @@
 
             additionalTools.appendChild(downloadLinkParagraph)
 
+            let markCompletedParagraph = document.createElement("p")
+            additionalTools.appendChild(markCompletedParagraph)
+            document.completedButton = new MarkCompletedButton(markCompletedParagraph)
+            document.completedButton.load()
+
             let libraryLinkParagraph = document.createElement("p")
             let libraryLink = document.createElement("a")
             libraryLink.innerHTML = "library"
@@ -156,6 +239,7 @@
             return additionalTools
         }
         async function initBook(meta) {
+            document.meta = meta
             console.log(meta)
             let startPosition = getUrlPosition()
             if (! startPosition) {

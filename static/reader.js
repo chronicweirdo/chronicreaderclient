@@ -2041,13 +2041,17 @@ class ComicDisplay extends Display {
             this.progressDisplay.innerHTML = message
         }
         if (this.settings.displayPageForCallback) {
-            this.settings.displayPageForCallback(this.#buildCallbackControls())
+            let callbackControls = await this.#buildCallbackControls()
+            this.settings.displayPageForCallback(callbackControls)
         }
     }
 
-    #buildCallbackControls() {
+    async #buildCallbackControls() {
+        let position = this.getPosition()
+        let isLastPage = (position + 1) >= (await this.book.getSize())
         return {
             "position": this.getPosition(),
+            "isLastPage": isLastPage,
             "dominantColor": this.#computeImageDominantColor(),
             "setControlsColor": (color) => this.setControlsColor(color)
         }
@@ -2737,7 +2741,8 @@ class EbookDisplay extends Display {
             }
             await this.#timeout(10)
             if (this.settings.displayPageForCallback) {
-                this.settings.displayPageForCallback(this.#buildCallbackControls())
+                let callbackControls = await this.#buildCallbackControls()
+                this.settings.displayPageForCallback(callbackControls)
             }
         } else {
             console.log("page is NULL!!")
@@ -2746,9 +2751,13 @@ class EbookDisplay extends Display {
         return page
     }
 
-    #buildCallbackControls() {
+    async #buildCallbackControls() {
+        let position = this.getPosition()
+        let size = await this.book.getSize()
+        let isLastPage = this.currentPage.end >= size
         return {
-            "position": this.getPosition()
+            "position": this.getPosition(),
+            "isLastPage": isLastPage
         }
     }
 
