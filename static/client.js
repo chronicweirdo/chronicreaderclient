@@ -1438,10 +1438,6 @@ class OptionsSliderSetting extends Setting {
 class ThemeSliderSetting extends OptionsSliderSetting {
     constructor(element = null) {
         super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
-        this.dayStartSetting = DayStartSetting.factory()
-        this.dayEndSetting = DayEndSetting.factory()
-        this.lightHighlightedColorSetting = LightThemeHighlightColorSetting.factory()
-        this.darkHighlightedColorSetting = DarkThemeHighlightColorSetting.factory()
         this.apply()
     }
     
@@ -1449,37 +1445,37 @@ class ThemeSliderSetting extends OptionsSliderSetting {
         return new Date((new Date()).toDateString() + " " + value)
     }
 
+    setDarkTheme() {
+        document.body.classList.add("dark")
+        setStatusBarColor(DarkThemeBackgroundColorSetting.factory().get())
+    }
+
+    setLightTheme() {
+        document.body.classList.remove("dark")
+        setStatusBarColor(LightThemeBackgroundColorSetting.factory().get())
+    }
+
     apply() {
-        if (this.dayStartSetting != undefined && this.dayEndSetting != undefined
-            && this.lightHighlightedColorSetting != undefined && this.darkHighlightedColorSetting != undefined) {
-            let value = this.get()
-            if (value == "light") {
-                document.body.classList.remove("dark")
-                setStatusBarColor(this.lightHighlightedColorSetting.get())
-            } else if (value == "dark") {
-                document.body.classList.add("dark")
-                setStatusBarColor(this.darkHighlightedColorSetting.get())
-            } else if (value == "OS theme") {
-                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.body.classList.add("dark")
-                    setStatusBarColor(this.darkHighlightedColorSetting.get())
-                } else {
-                    document.body.classList.remove("dark")
-                    setStatusBarColor(this.lightHighlightedColorSetting.get())
-                }
-            } else if (value == "time based") {
-                let dayStart = this.timeStringToDate(this.dayStartSetting.get())
-                let dayEnd = this.timeStringToDate(this.dayEndSetting.get())
-                let now = new Date()
-                if (now < dayStart || dayEnd < now) {
-                    document.body.classList.add("dark")
-                    setStatusBarColor(this.darkHighlightedColorSetting.get())
-                } else {
-                    document.body.classList.remove("dark")
-                    setStatusBarColor(this.lightHighlightedColorSetting.get())
-                }
+        let value = this.get()
+        if (value == "light") {
+            this.setLightTheme()
+        } else if (value == "dark") {
+            this.setDarkTheme()
+        } else if (value == "OS theme") {
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                this.setDarkTheme()
+            } else {
+                this.setLightTheme()
             }
-            super.apply()
+        } else if (value == "time based") {
+            let dayStart = this.timeStringToDate(DayStartSetting.factory().get())
+            let dayEnd = this.timeStringToDate(DayEndSetting.factory.get())
+            let now = new Date()
+            if (now < dayStart || dayEnd < now) {
+                this.setDarkTheme()
+            } else {
+                this.setLightTheme()
+            }
         }
     }
 }

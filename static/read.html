@@ -43,7 +43,7 @@
         }
 
         function displayPageCallback(callbackControl) {
-            new ThemeSliderSetting().apply()
+            ThemeSliderSetting.factory().apply()
             if (callbackControl.dominantColor) {
                 let color = getHexCode(callbackControl.dominantColor)
                 document.getElementById("content").style.backgroundColor = color
@@ -266,7 +266,7 @@
         async function prepareUi() {
             initStyleSettings()
             let contentElement = document.getElementById("content")
-            let themeSetting = new ThemeSliderSetting()
+            let themeSetting = ThemeSliderSetting.factory()
             
             window.addEventListener("focus", () => {
                 themeSetting.apply()
