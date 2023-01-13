@@ -7,9 +7,9 @@
     --dark_theme_highlight_color: gold;
     --dark_theme_highlight_text_color: black;
     --dark_theme_error_color: red;
-    --dark_theme_error_text_color: white;
+    /*--dark_theme_error_text_color: white;
     --dark_theme_success_color: greenyellow;
-    --dark_theme_success_text_color: white;
+    --dark_theme_success_text_color: white;*/
 
     /* light theme */
     --light_theme_background_color: white;
@@ -17,9 +17,9 @@
     --light_theme_highlight_color: gold;
     --light_theme_highlight_text_color: black;
     --light_theme_error_color: red;
-    --light_theme_error_text_color: white;
+    /*--light_theme_error_text_color: white;
     --light_theme_success_color: green;
-    --light_theme_success_text_color: white;
+    --light_theme_success_text_color: white;*/
 }
 
 body {
@@ -47,22 +47,22 @@ a {
     color: var(--light_theme_text_color);
 }
 
-.dark, .dark a {
+/*.dark,*/ .dark a {
     color: var(--dark_theme_text_color, white);
     background-color: var(--dark_theme_background_color, black);
 }
 
-.highlighted {
+.highlighted, .success, .error {
     color: var(--light_theme_highlight_text_color);
     background-color: var(--light_theme_highlight_color);
 }
 
-.dark .highlighted {
+.dark .highlighted, .dark .success, .dark .error {
     color: var(--dark_theme_highlight_text_color);
     background-color: var(--dark_theme_highlight_color);
 }
 
-.success {
+/*.success {
     color: var(--light_theme_success_text_color);
     background-color: var(--light_theme_success_color);
 }
@@ -70,9 +70,9 @@ a {
 .dark .success {
     color: var(--dark_theme_success_text_color);
     background-color: var(--dark_theme_success_color);
-}
+}*/
 
-.error {
+/*.error {
     color: var(--light_theme_error_text_color);
     background-color: var(--light_theme_error_color);
 }
@@ -80,7 +80,7 @@ a {
 .dark .error {
     color: var(--dark_theme_error_text_color);
     background-color: var(--dark_theme_error_color);
-}
+}*/
 
 .progress_checkmark {
     stroke: var(--light_theme_text_color);
