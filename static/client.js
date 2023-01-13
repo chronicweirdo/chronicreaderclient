@@ -456,8 +456,17 @@ class OnDeviceTab extends Component {
         await fetch("/books")
             .then(response => response.json())
             .then((books) => {
-                let list = new BookList(this.element, false, this.searchFunction)
-                list.load().then(() => list.update(books))
+                if (books != undefined && books != null
+                    && books.length > 0) {
+                
+                    let list = new BookList(this.element, false, this.searchFunction)
+                    list.load().then(() => list.update(books))
+                } else {
+                    let noBooks = document.createElement("p")
+                    noBooks.innerHTML = "no books on device"
+                    noBooks.style.textAlign = "center"
+                    this.element.appendChild(noBooks)
+                }
             })
     }
 }
@@ -596,10 +605,18 @@ class CollectionsTab extends Component {
         let collectionsResponse = await fetch("/collections")
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
-            console.log(collections)
             if (collections != null) {
-                this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
-                this.element.appendChild(this.createCollectionTree(collections, true))
+                if (collections.children != undefined 
+                    && collections.children.length > 0) {
+                    
+                    this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
+                    this.element.appendChild(this.createCollectionTree(collections, true))
+                } else {
+                    let noCollectionsMessage = document.createElement("p")
+                    noCollectionsMessage.innerHTML = "no collections"
+                    noCollectionsMessage.style.textAlign = "center"
+                    this.element.appendChild(noCollectionsMessage)
+                }
             } else {
                 let error = document.createElement("p")
                 error.classList.add(CLASS_ERROR)
@@ -903,6 +920,11 @@ class BookList extends Component {
         this.withTitles = ShowTitlesSetting.factory().get()
         this.withCollections = withCollections
         this.searchFunction = searchFunction
+        this.bookCount = 0
+    }
+
+    getBookCount() {
+        return this.bookCount
     }
 
     async load() {
@@ -970,6 +992,7 @@ class BookList extends Component {
         parent.appendChild(bookListItem)
         let bookItem = new BookItem(bookListItem, book, this.withTitles, ! this.withCollections, this.searchFunction)
         await bookItem.load()
+        this.bookCount += 1
     }
 
     async update(books) {
@@ -984,6 +1007,7 @@ class Search extends Component {
     static ORDER_LATEST_ADDED = "added"
     static ORDER_TITLE = ""
     CLASS_SEARCH_SECTION = "search_section"
+
     constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null, completed = null) {
         super(element)
         this.term = term
@@ -1082,11 +1106,23 @@ class Search extends Component {
             })
             .then(searchResult => {
                 if (searchResult != null) {
-                    this.addBooksToResult(searchResult)
+                    if (searchResult.length > 0) {
+                        this.addBooksToResult(searchResult)
+                    } else if (this.bookList.getBookCount() == 0) {
+                        this.showNothingFoundMessage()
+                    }
                 } else {
                     this.showErrorMessage()
                 }
             })
+    }
+
+    showNothingFoundMessage() {
+        this.hideLoading()
+        let noBooks = document.createElement("p")
+        noBooks.innerHTML = "no books found"
+        noBooks.style.textAlign = "center"
+        this.element.appendChild(noBooks)
     }
 
     async load() {
