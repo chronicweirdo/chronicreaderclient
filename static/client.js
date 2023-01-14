@@ -1508,7 +1508,8 @@ class ThemeSliderSetting extends OptionsSliderSetting {
             }
         } else if (value == "time based") {
             let dayStart = this.timeStringToDate(DayStartSetting.factory().get())
-            let dayEnd = this.timeStringToDate(DayEndSetting.factory.get())
+            let dayEnd = this.timeStringToDate(DayEndSetting.factory().get())
+            console.log(dayStart + " " + dayEnd)
             let now = new Date()
             if (now < dayStart || dayEnd < now) {
                 this.setDarkTheme()
@@ -1595,7 +1596,6 @@ class DayStartSetting extends TimeSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 
@@ -1605,7 +1605,6 @@ class DayEndSetting extends TimeSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 
