@@ -42,16 +42,101 @@
             return "#" + intToHex(rgb[0]) + intToHex(rgb[1]) + intToHex(rgb[2])
         }
 
+        class MarkCompletedButton extends Component {
+            constructor(element) {
+                super(element)
+            }
+            async load() {
+                super.load()
+
+                this.markAsCompleteButton = document.createElement("a")
+                this.markAsCompleteButton.style.display = "none"
+                this.markAsCompleteButton.innerHTML = 'mark book as read'
+                this.element.appendChild(this.markAsCompleteButton)
+
+                this.markAsUnreadButton = document.createElement("a")
+                this.markAsUnreadButton.style.display = "none"
+                this.markAsUnreadButton.innerHTML = "mark book as unread"
+                this.element.appendChild(this.markAsUnreadButton)
+
+                this.markAsCompleteButton.onclick = () => {
+                    fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
+                        position: document.position,
+                        completed: true
+                    }))
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result == true) {
+                            document.meta.completed = true
+                            this.update()
+                        }
+                    })
+                }
+
+                this.markAsUnreadButton.onclick = () => {
+                    fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
+                        position: document.position,
+                        completed: false
+                    }))
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result == true) {
+                            document.meta.completed = false
+                            this.update()
+                        }
+                    })
+                }
+
+                await this.update()
+            }
+
+            async update() {
+                console.log("completed: " + document.meta.completed)
+                if (document.meta.completed == true) {
+                    this.markAsCompleteButton.style.display = "none"
+                    this.markAsUnreadButton.style.display = "inline-block"
+                } else {
+                    this.markAsCompleteButton.style.display = "inline-block"
+                    this.markAsUnreadButton.style.display = "none"
+                }
+            }
+        }
+
+        class DominantColor {
+            static INSTANCE = null
+
+            static factory() {
+                if (this.INSTANCE == null) {
+                    this.INSTANCE = new DominantColor()
+                }
+                return this.INSTANCE
+            }
+
+            constructor() {
+                this.contentElementId = "content"
+                this.dominantColor = null
+            }
+
+            apply(dominantColor) {
+                if (dominantColor != undefined) {
+                    this.dominantColor = dominantColor
+                }
+                if (this.dominantColor != null) {
+                    let color = getHexCode(this.dominantColor)
+                    document.getElementById(this.contentElementId).style.backgroundColor = color
+                    setStatusBarColor(color)
+                } else {
+                    // do nothing?
+                }
+            }
+        }
+
         function displayPageCallback(callbackControl) {
             ThemeSliderSetting.factory().apply()
-            if (callbackControl.dominantColor) {
-                let color = getHexCode(callbackControl.dominantColor)
-                document.getElementById("content").style.backgroundColor = color
-                setStatusBarColor(color)
-                document.dominantColor = callbackControl.dominantColor
-            } else {
-                document.dominantColor = undefined
-            }
+
+            DominantColor.factory().apply(callbackControl.dominantColor)
+
+
             if (callbackControl.position != undefined && callbackControl.position != null) {
                 document.position = callbackControl.position
                 // sync progress with backend
@@ -106,64 +191,7 @@
             }
             return url
         }
-        class MarkCompletedButton extends Component {
-            constructor(element) {
-                super(element)
-            }
-            async load() {
-                super.load()
-
-                this.markAsCompleteButton = document.createElement("a")
-                this.markAsCompleteButton.style.display = "none"
-                this.markAsCompleteButton.innerHTML = 'mark book as read'
-                this.element.appendChild(this.markAsCompleteButton)
-
-                this.markAsUnreadButton = document.createElement("a")
-                this.markAsUnreadButton.style.display = "none"
-                this.markAsUnreadButton.innerHTML = "mark book as unread"
-                this.element.appendChild(this.markAsUnreadButton)
-
-                this.markAsCompleteButton.onclick = () => {
-                    fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
-                        position: document.position,
-                        completed: true
-                    }))
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result == true) {
-                            document.meta.completed = true
-                            this.update()
-                        }
-                    })
-                }
-
-                this.markAsUnreadButton.onclick = () => {
-                    fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
-                        position: document.position,
-                        completed: false
-                    }))
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result == true) {
-                            document.meta.completed = false
-                            this.update()
-                        }
-                    })
-                }
-
-                await this.update()
-            }
-
-            async update() {
-                if (document.meta.completed == true) {
-                    this.markAsCompleteButton.style.display = "none"
-                    this.markAsUnreadButton.style.display = "inline-block"
-                } else {
-                    this.markAsCompleteButton.style.display = "inline-block"
-                    this.markAsUnreadButton.style.display = "none"
-                }
-            }
-        }
+        
         function getTools(bookMeta) {
             let additionalTools = document.createElement("div")
 
@@ -223,6 +251,7 @@
             additionalTools.appendChild(markCompletedParagraph)
             document.completedButton = new MarkCompletedButton(markCompletedParagraph)
             document.completedButton.load()
+            document.completedButton.update()
 
             let libraryLinkParagraph = document.createElement("p")
             let libraryLink = document.createElement("a")

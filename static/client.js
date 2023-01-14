@@ -2,6 +2,24 @@ var CLASS_SUCCESS = "success"
 var CLASS_ERROR = "error"
 var CLASS_HIGHLIGHTED = "highlighted"
 
+class SingletonInterface {
+    static factory(...args) {
+        if (this.INSTANCE == undefined) {
+            this.INSTANCE = new this(...args)
+        }
+        return this.INSTANCE
+    }
+}
+
+const AsSingleton = (C) => class extends C {
+    static factory(...args) {
+        if (this.INSTANCE == undefined) {
+            this.INSTANCE = new this(...args)
+        }
+        return this.INSTANCE
+    }
+}
+
 function timeout(ms) {
     return new Promise((resolve, reject) => {
         window.setTimeout(function() {
@@ -607,8 +625,7 @@ class CollectionsTab extends Component {
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
             if (collections != null) {
-                if (collections.children != undefined 
-                    && collections.children.length > 0) {
+                if (collections.children != undefined) {
                     
                     this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
                     this.element.appendChild(this.createCollectionTree(collections, true))
@@ -669,13 +686,10 @@ class BookItem extends Component {
 
     getProgressItem(book) {
         if (book.position) {
-            console.log(book.position + " / " + book.size + " " + book.completed)
             let progressFraction = (book.position <= book.size) ? book.position / book.size : 1
-            //if (book.completed)
             if (book.completed) {
                 progressFraction = 1
             }
-            console.log(progressFraction)
             let progressEnclosure = null
             if (progressFraction == 1) {
                 let checkmark = this.getCheckmarkSvg()
@@ -1247,7 +1261,6 @@ class ColorSetting extends Setting {
 
     apply() {
         document.documentElement.style.setProperty("--" + this.getKey(), this.get())
-        super.apply()
     }
 }
 
@@ -1267,7 +1280,6 @@ class LightThemeHighlightColorSetting extends ColorSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 class LightThemeHighlightTextColorSetting extends ColorSetting {
@@ -1311,7 +1323,6 @@ class DarkThemeHighlightColorSetting extends ColorSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 class DarkThemeHighlightTextColorSetting extends ColorSetting {
@@ -1487,12 +1498,20 @@ class ThemeSliderSetting extends OptionsSliderSetting {
 
     setDarkTheme() {
         document.body.classList.add("dark")
-        setStatusBarColor(DarkThemeBackgroundColorSetting.factory().get())
+        if (document.statusBarMode != undefined && document.statusBarMode == "highlighted") {
+            setStatusBarColor(DarkThemeHighlightColorSetting.factory().get())
+        } else {
+            setStatusBarColor(DarkThemeBackgroundColorSetting.factory().get())
+        }
     }
 
     setLightTheme() {
         document.body.classList.remove("dark")
-        setStatusBarColor(LightThemeBackgroundColorSetting.factory().get())
+        if (document.statusBarMode != undefined && document.statusBarMode == "highlighted") {
+            setStatusBarColor(LightThemeHighlightColorSetting.factory().get())
+        } else {
+            setStatusBarColor(LightThemeBackgroundColorSetting.factory().get())
+        }
     }
 
     apply() {
@@ -1509,7 +1528,8 @@ class ThemeSliderSetting extends OptionsSliderSetting {
             }
         } else if (value == "time based") {
             let dayStart = this.timeStringToDate(DayStartSetting.factory().get())
-            let dayEnd = this.timeStringToDate(DayEndSetting.factory.get())
+            let dayEnd = this.timeStringToDate(DayEndSetting.factory().get())
+            console.log(dayStart + " " + dayEnd)
             let now = new Date()
             if (now < dayStart || dayEnd < now) {
                 this.setDarkTheme()
@@ -1596,7 +1616,6 @@ class DayStartSetting extends TimeSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 
@@ -1606,7 +1625,6 @@ class DayEndSetting extends TimeSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 
