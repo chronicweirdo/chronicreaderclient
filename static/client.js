@@ -747,7 +747,9 @@ class BookItem extends Component {
         image.onload = () => {
             // center the image
             //image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
-            image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
+            timeout(2).then(() => {
+                image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
+            })
         }
 
         let progressItem = this.getProgressItem(book)
