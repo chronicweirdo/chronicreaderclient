@@ -607,8 +607,7 @@ class CollectionsTab extends Component {
         if (collectionsResponse.status == 200) {
             let collections = await collectionsResponse.json()
             if (collections != null) {
-                if (collections.children != undefined 
-                    && collections.children.length > 0) {
+                if (collections.children != undefined) {
                     
                     this.element.classList.add(this.COLLECTIONS_TREE_CLASS)
                     this.element.appendChild(this.createCollectionTree(collections, true))
