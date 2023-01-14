@@ -298,7 +298,7 @@ class Database {
                 let updatedProgress = await this.databaseSave(Database.PROGRESS_TABLE, {
                     "id": bookId,
                     "updated": updated,
-                    "position": progress,
+                    "position": Number(progress),
                     "completed": completed != null ? completed : currentProgress.completed
                 })
                 if (updatedProgress != undefined && updatedProgress != null) {
@@ -313,7 +313,7 @@ class Database {
             let newProgress = await this.databaseSave(Database.PROGRESS_TABLE, {
                 "id": bookId,
                 "updated": updated,
-                "position": progress,
+                "position": Number(progress),
                 "completed": completed
             })
             if (newProgress != undefined && newProgress != null) {
@@ -756,7 +756,7 @@ async function handleDownload(request) {
                 }
             }
             // save meta at the end only
-            db.saveMeta({
+            await db.saveMeta({
                 id: bookMeta.id,
                 title: bookMeta.title,
                 extension: bookMeta.extension,
@@ -829,7 +829,7 @@ async function loadAllBooks() {
     let db = new Database()
     let databaseBooks = await db.loadAllMetas()
     for (let book of databaseBooks) {
-        let progress = await db.loadProgress(book.id)
+        let progress = await getProgressForBook(book.id)
         if (progress) {
             book.position = progress.position
             book.updated = progress.updated
@@ -861,9 +861,15 @@ async function getProgressForBook(bookId) {
     // load progress from backend, if it exists
     let backend = await Backend.factory()
     let backendProgress = await backend.getProgress(bookId)
+    console.log("backend progress")
+    console.log(backendProgress)
+
     // load progress from database
     let db = new Database()
     let databaseProgress = await db.loadProgress(bookId)
+    console.log("database progress")
+    console.log(databaseProgress)
+
     if (backendProgress != null && databaseProgress != null) {
         // use the latest progress
         if (backendProgress.updated > databaseProgress.updated) {

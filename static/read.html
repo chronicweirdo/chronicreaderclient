@@ -91,6 +91,7 @@
             }
 
             async update() {
+                console.log("completed: " + document.meta.completed)
                 if (document.meta.completed == true) {
                     this.markAsCompleteButton.style.display = "none"
                     this.markAsUnreadButton.style.display = "inline-block"
@@ -250,6 +251,7 @@
             additionalTools.appendChild(markCompletedParagraph)
             document.completedButton = new MarkCompletedButton(markCompletedParagraph)
             document.completedButton.load()
+            document.completedButton.update()
 
             let libraryLinkParagraph = document.createElement("p")
             let libraryLink = document.createElement("a")

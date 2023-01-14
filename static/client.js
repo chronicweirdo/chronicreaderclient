@@ -2,6 +2,24 @@ var CLASS_SUCCESS = "success"
 var CLASS_ERROR = "error"
 var CLASS_HIGHLIGHTED = "highlighted"
 
+class SingletonInterface {
+    static factory(...args) {
+        if (this.INSTANCE == undefined) {
+            this.INSTANCE = new this(...args)
+        }
+        return this.INSTANCE
+    }
+}
+
+const AsSingleton = (C) => class extends C {
+    static factory(...args) {
+        if (this.INSTANCE == undefined) {
+            this.INSTANCE = new this(...args)
+        }
+        return this.INSTANCE
+    }
+}
+
 function timeout(ms) {
     return new Promise((resolve, reject) => {
         window.setTimeout(function() {
