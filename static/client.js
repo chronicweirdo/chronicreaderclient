@@ -686,13 +686,10 @@ class BookItem extends Component {
 
     getProgressItem(book) {
         if (book.position) {
-            console.log(book.position + " / " + book.size + " " + book.completed)
             let progressFraction = (book.position <= book.size) ? book.position / book.size : 1
-            //if (book.completed)
             if (book.completed) {
                 progressFraction = 1
             }
-            console.log(progressFraction)
             let progressEnclosure = null
             if (progressFraction == 1) {
                 let checkmark = this.getCheckmarkSvg()
