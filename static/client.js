@@ -740,14 +740,15 @@ class BookItem extends Component {
         } else {
             image.src = book.cover
         }
+        image.style.height = '100%'
+        image.style.position = "relative"
+        imageEnclosure.appendChild(image)
+
         image.onload = () => {
             // center the image
             image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
             image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
         }
-        image.style.height = '100%'
-        image.style.position = "relative"
-        imageEnclosure.appendChild(image)
 
         let progressItem = this.getProgressItem(book)
         if (progressItem != null) {
