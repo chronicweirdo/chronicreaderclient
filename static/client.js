@@ -1246,7 +1246,6 @@ class ColorSetting extends Setting {
 
     apply() {
         document.documentElement.style.setProperty("--" + this.getKey(), this.get())
-        super.apply()
     }
 }
 
@@ -1486,6 +1485,7 @@ class ThemeSliderSetting extends OptionsSliderSetting {
 
     setDarkTheme() {
         document.body.classList.add("dark")
+        // todo: have two status bar modes, integrated and contrasting
         setStatusBarColor(DarkThemeBackgroundColorSetting.factory().get())
     }
 
