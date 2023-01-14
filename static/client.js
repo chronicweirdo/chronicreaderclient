@@ -1280,7 +1280,6 @@ class LightThemeHighlightColorSetting extends ColorSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 class LightThemeHighlightTextColorSetting extends ColorSetting {
@@ -1324,7 +1323,6 @@ class DarkThemeHighlightColorSetting extends ColorSetting {
     }
     apply() {
         super.apply()
-        ThemeSliderSetting.factory().apply()
     }
 }
 class DarkThemeHighlightTextColorSetting extends ColorSetting {
@@ -1500,13 +1498,20 @@ class ThemeSliderSetting extends OptionsSliderSetting {
 
     setDarkTheme() {
         document.body.classList.add("dark")
-        // todo: have two status bar modes, integrated and contrasting
-        setStatusBarColor(DarkThemeBackgroundColorSetting.factory().get())
+        if (document.statusBarMode != undefined && document.statusBarMode == "highlighted") {
+            setStatusBarColor(DarkThemeHighlightColorSetting.factory().get())
+        } else {
+            setStatusBarColor(DarkThemeBackgroundColorSetting.factory().get())
+        }
     }
 
     setLightTheme() {
         document.body.classList.remove("dark")
-        setStatusBarColor(LightThemeBackgroundColorSetting.factory().get())
+        if (document.statusBarMode != undefined && document.statusBarMode == "highlighted") {
+            setStatusBarColor(LightThemeHighlightColorSetting.factory().get())
+        } else {
+            setStatusBarColor(LightThemeBackgroundColorSetting.factory().get())
+        }
     }
 
     apply() {
