@@ -20,6 +20,64 @@ const AsSingleton = (C) => class extends C {
     }
 }
 
+const AsOrientationListener = (C) => class extends C {
+    isLandscape() {
+        this.initMediaQuery()
+        return this.isInLandscape.matches
+    }
+    isPortrait() {
+        this.initMediaQuery()
+        return this.isInLandscape.matches == false
+    }
+    applyMediaQuery() {
+        if (this.isInLandscape.matches) {
+            this.applyLandscape()
+        } else {
+            this.applyPortrait()
+        }
+    }
+
+    initMediaQuery() {
+        if (this.isInLandscape == undefined) {
+            this.isInLandscape = window.matchMedia("(orientation: landscape)")
+            this.isInLandscape.addEventListener("change", () => this.applyMediaQuery())
+        }
+    }
+
+    onLandscape(func) {
+        this.initMediaQuery()
+        if (this.landscapeFunctions == undefined) {
+            this.landscapeFunctions = []
+        }
+        this.landscapeFunctions.push(func)
+    }
+
+    onPortrait(func) {
+        this.initMediaQuery()
+        if (this.portraitFunctions == undefined) {
+            this.portraitFunctions = []
+        }
+        this.portraitFunctions.push(func)
+    }
+
+    onOrientation(landscapeFunc, portraitFunc) {
+        this.onLandscape(landscapeFunc)
+        this.onPortrait(portraitFunc)
+    }
+
+    applyLandscape() {
+        for (let i in this.landscapeFunctions) {
+            this.landscapeFunctions[i]()
+        }
+    }
+
+    applyPortrait() {
+        for (let i in this.portraitFunctions) {
+            this.portraitFunctions[i]()
+        }
+    }
+}
+
 function timeout(ms) {
     return new Promise((resolve, reject) => {
         window.setTimeout(function() {
@@ -95,13 +153,6 @@ class TabsList extends Component {
         this.tabs = tabs;
     }
 
-    clearClass(className) {
-        let collection = this.element.getElementsByClassName(className);
-        while (collection.length > 0) {
-            collection.item(0).classList.remove(className);
-        }
-    }
-
     saveSelected(tab) {
         this.selectedTab = tab
         window.localStorage.setItem(this.STORAGE_KEY, tab.name);
@@ -135,19 +186,27 @@ class TabsMenu extends TabsList {
     }
 
     async selectTab(name, ...args) {
+        let selectedTab = null
         for (let tab of this.tabs) {
+            console.log(tab.name)
+            tab.button.style.fontWeight = "normal"
             if (tab.name == name) {
-                this.clearClass(CLASS_HIGHLIGHTED);
-                tab.button.classList.add(CLASS_HIGHLIGHTED);
-                this.saveSelected(tab);
-                if (tab.action != undefined) await tab.action(...args);
-                return
+                selectedTab = tab
             }
+        }
+        if (selectedTab != null) {
+            selectedTab.button.style.fontWeight = "bold"
+            this.saveSelected(selectedTab);
+            if (selectedTab.action != undefined) await selectedTab.action(...args);
         }
     }
 
     async load(element) {
         await super.load(element);
+
+        this.element.style.display = "block"
+        this.element.style.marginBottom = "1.4285vw"
+        this.element.classList.add(CLASS_HIGHLIGHTED)
 
         let buttons = this.createElement("div");
         buttons.classList.add(this.CLASS_MENU);
@@ -177,8 +236,6 @@ class TabsDropdown extends TabsList {
     async selectTab(name, ...args) {
         for (let tab of this.tabs) {
             if (tab.name == name) {
-                this.clearClass(CLASS_HIGHLIGHTED);
-                tab.listItem.classList.add(CLASS_HIGHLIGHTED);
                 this.saveSelected(tab);
                 this.collapse()
                 if (tab.action != undefined) await tab.action(...args);
@@ -222,18 +279,19 @@ class TabsDropdown extends TabsList {
     async load(element) {
         super.load(element);
 
-        let padding = ".6em"
         this.element.classList.add(this.CLASS_TABS_DROPDOWN)
+        this.element.style.marginBottom = "2.5vw"
         this.element.style.display = "grid"
         this.element.style.gridTemplateColumns = "50px auto"
         this.element.classList.add(CLASS_HIGHLIGHTED)
-        this.element.style.marginBottom = padding
+        
 
         this.expanded = false
         this.expandButton = this.createElement("a");
-        this.expandButton.style.padding = padding;
+        this.expandButton.style.display = "inline-block"
+        this.expandButton.style.padding = "2.5vw";
+
         this.expandButton.style.textDecoration = "none";
-        this.expandButton.classList.add(CLASS_HIGHLIGHTED)
         this.expandButton.innerHTML = "▼"
         this.expandButton.onclick = () => {
             if (this.expanded) {
@@ -254,7 +312,8 @@ class TabsDropdown extends TabsList {
             tab.button = button
             button.innerHTML = tab.name;
             button.style.display = "inline-block";
-            button.style.padding = padding;
+            button.style.padding = "2.5vw";
+            item.style.display = "none"
             button.style.cursor = "pointer";
 
             button.onclick = () => this.selectTab(tab.name, tab.args);
@@ -265,7 +324,7 @@ class TabsDropdown extends TabsList {
     }
 }
 
-class TabbedPage extends Component {
+class TabbedPage extends AsOrientationListener(Component) {
     
     constructor() {
         super()
@@ -275,15 +334,14 @@ class TabbedPage extends Component {
         await super.load(element)
 
         let tabBar = this.createElement("div")
-        //let tabsList = new TabsList(null)
-        let tabsDropdown = new TabsDropdown(null)
+        let tabsComponent = null;
 
         this.content = this.createElement("div")
 
         let searchTabName = "search"
         let searchTab = new LibrarySearchTab()
         let globalSearchFunction = (term) => {
-            tabsDropdown.selectTab(searchTabName, term)
+            tabsComponent.selectTab(searchTabName, term)
         }
 
         let tabs = [
@@ -313,8 +371,14 @@ class TabbedPage extends Component {
             }
         ]
 
-        tabsDropdown.tabs = tabs;
-        tabsDropdown.load(tabBar)
+        this.onOrientation(_ => {
+            tabsComponent = new TabsMenu(tabs)
+            tabsComponent.load(tabBar)
+        }, _ => {
+            tabsComponent = new TabsDropdown(tabs)
+            tabsComponent.load(tabBar)
+        })
+        this.applyMediaQuery()
     }
 }
 
