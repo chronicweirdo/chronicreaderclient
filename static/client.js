@@ -20,6 +20,58 @@ const AsSingleton = (C) => class extends C {
     }
 }
 
+const AsOrientationListener = (C) => class extends C {
+    applyMediaQuery() {
+        if (this.isInLandscape.matches) {
+            console.log("switched to landscape")
+            this.applyLandscape()
+        } else {
+            console.log("switched to portrait")
+            this.applyPortrait()
+        }
+    }
+
+    initMediaQuery() {
+        if (this.isInLandscape == undefined) {
+            this.isInLandscape = window.matchMedia("(orientation: landscape)")
+            this.isInLandscape.addEventListener("change", () => this.applyMediaQuery())
+        }
+    }
+
+    onLandscape(func) {
+        this.initMediaQuery()
+        if (this.landscapeFunctions == undefined) {
+            this.landscapeFunctions = []
+        }
+        this.landscapeFunctions.push(func)
+    }
+
+    onPortrait(func) {
+        this.initMediaQuery()
+        if (this.portraitFunctions == undefined) {
+            this.portraitFunctions = []
+        }
+        this.portraitFunctions.push(func)
+    }
+
+    onOrientation(landscapeFunc, portraitFunc) {
+        this.onLandscape(landscapeFunc)
+        this.onPortrait(portraitFunc)
+    }
+
+    applyLandscape() {
+        for (let i in this.landscapeFunctions) {
+            this.landscapeFunctions[i]()
+        }
+    }
+
+    applyPortrait() {
+        for (let i in this.portraitFunctions) {
+            this.portraitFunctions[i]()
+        }
+    }
+}
+
 function timeout(ms) {
     return new Promise((resolve, reject) => {
         window.setTimeout(function() {
@@ -168,7 +220,7 @@ class TabsMenu extends TabsList {
     }
 }
 
-class TabsDropdown extends TabsList {
+class TabsDropdown extends AsOrientationListener(TabsList) {
     CLASS_TABS_DROPDOWN = "tabs_dropdown"
     constructor(tabs) {
         super(tabs);
@@ -222,16 +274,14 @@ class TabsDropdown extends TabsList {
     async load(element) {
         super.load(element);
 
-        let padding = ".6em"
         this.element.classList.add(this.CLASS_TABS_DROPDOWN)
         this.element.style.display = "grid"
         this.element.style.gridTemplateColumns = "50px auto"
         this.element.classList.add(CLASS_HIGHLIGHTED)
-        this.element.style.marginBottom = padding
+        
 
         this.expanded = false
         this.expandButton = this.createElement("a");
-        this.expandButton.style.padding = padding;
         this.expandButton.style.textDecoration = "none";
         this.expandButton.classList.add(CLASS_HIGHLIGHTED)
         this.expandButton.innerHTML = "▼"
@@ -254,14 +304,27 @@ class TabsDropdown extends TabsList {
             tab.button = button
             button.innerHTML = tab.name;
             button.style.display = "inline-block";
-            button.style.padding = padding;
+            this.onOrientation(
+                _ => button.style.padding = "1.4285vw",
+                _ => button.style.padding = "2.5vw"
+            )
             button.style.cursor = "pointer";
 
             button.onclick = () => this.selectTab(tab.name, tab.args);
         }
 
+        this.onOrientation(_ => {
+            console.log('switched tabs to landscape')
+            this.element.style.marginBottom = "1.4285vw"
+            this.expandButton.style.padding = "1.4285vw";
+        }, _ => {
+            this.element.style.marginBottom = "2.5vw"
+            this.expandButton.style.padding = "2.5vw";
+        })
+
         let selectedTab = this.loadSelected()
         await this.selectTab(selectedTab.name, selectedTab.args)
+        this.applyMediaQuery()
     }
 }
 
