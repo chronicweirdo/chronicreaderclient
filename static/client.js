@@ -21,12 +21,18 @@ const AsSingleton = (C) => class extends C {
 }
 
 const AsOrientationListener = (C) => class extends C {
+    isLandscape() {
+        this.initMediaQuery()
+        return this.isInLandscape.matches
+    }
+    isPortrait() {
+        this.initMediaQuery()
+        return this.isInLandscape.matches == false
+    }
     applyMediaQuery() {
         if (this.isInLandscape.matches) {
-            console.log("switched to landscape")
             this.applyLandscape()
         } else {
-            console.log("switched to portrait")
             this.applyPortrait()
         }
     }
@@ -147,13 +153,6 @@ class TabsList extends Component {
         this.tabs = tabs;
     }
 
-    clearClass(className) {
-        let collection = this.element.getElementsByClassName(className);
-        while (collection.length > 0) {
-            collection.item(0).classList.remove(className);
-        }
-    }
-
     saveSelected(tab) {
         this.selectedTab = tab
         window.localStorage.setItem(this.STORAGE_KEY, tab.name);
@@ -187,19 +186,27 @@ class TabsMenu extends TabsList {
     }
 
     async selectTab(name, ...args) {
+        let selectedTab = null
         for (let tab of this.tabs) {
+            console.log(tab.name)
+            tab.button.style.fontWeight = "normal"
             if (tab.name == name) {
-                this.clearClass(CLASS_HIGHLIGHTED);
-                tab.button.classList.add(CLASS_HIGHLIGHTED);
-                this.saveSelected(tab);
-                if (tab.action != undefined) await tab.action(...args);
-                return
+                selectedTab = tab
             }
+        }
+        if (selectedTab != null) {
+            selectedTab.button.style.fontWeight = "bold"
+            this.saveSelected(selectedTab);
+            if (selectedTab.action != undefined) await selectedTab.action(...args);
         }
     }
 
     async load(element) {
         await super.load(element);
+
+        this.element.style.display = "block"
+        this.element.style.marginBottom = "1.4285vw"
+        this.element.classList.add(CLASS_HIGHLIGHTED)
 
         let buttons = this.createElement("div");
         buttons.classList.add(this.CLASS_MENU);
@@ -220,7 +227,7 @@ class TabsMenu extends TabsList {
     }
 }
 
-class TabsDropdown extends AsOrientationListener(TabsList) {
+class TabsDropdown extends TabsList {
     CLASS_TABS_DROPDOWN = "tabs_dropdown"
     constructor(tabs) {
         super(tabs);
@@ -229,8 +236,6 @@ class TabsDropdown extends AsOrientationListener(TabsList) {
     async selectTab(name, ...args) {
         for (let tab of this.tabs) {
             if (tab.name == name) {
-                this.clearClass(CLASS_HIGHLIGHTED);
-                tab.listItem.classList.add(CLASS_HIGHLIGHTED);
                 this.saveSelected(tab);
                 this.collapse()
                 if (tab.action != undefined) await tab.action(...args);
@@ -275,6 +280,7 @@ class TabsDropdown extends AsOrientationListener(TabsList) {
         super.load(element);
 
         this.element.classList.add(this.CLASS_TABS_DROPDOWN)
+        this.element.style.marginBottom = "2.5vw"
         this.element.style.display = "grid"
         this.element.style.gridTemplateColumns = "50px auto"
         this.element.classList.add(CLASS_HIGHLIGHTED)
@@ -282,8 +288,10 @@ class TabsDropdown extends AsOrientationListener(TabsList) {
 
         this.expanded = false
         this.expandButton = this.createElement("a");
+        this.expandButton.style.display = "inline-block"
+        this.expandButton.style.padding = "2.5vw";
+
         this.expandButton.style.textDecoration = "none";
-        this.expandButton.classList.add(CLASS_HIGHLIGHTED)
         this.expandButton.innerHTML = "▼"
         this.expandButton.onclick = () => {
             if (this.expanded) {
@@ -304,31 +312,19 @@ class TabsDropdown extends AsOrientationListener(TabsList) {
             tab.button = button
             button.innerHTML = tab.name;
             button.style.display = "inline-block";
-            this.onOrientation(
-                _ => button.style.padding = "1.4285vw",
-                _ => button.style.padding = "2.5vw"
-            )
+            button.style.padding = "2.5vw";
+            item.style.display = "none"
             button.style.cursor = "pointer";
 
             button.onclick = () => this.selectTab(tab.name, tab.args);
         }
 
-        this.onOrientation(_ => {
-            console.log('switched tabs to landscape')
-            this.element.style.marginBottom = "1.4285vw"
-            this.expandButton.style.padding = "1.4285vw";
-        }, _ => {
-            this.element.style.marginBottom = "2.5vw"
-            this.expandButton.style.padding = "2.5vw";
-        })
-
         let selectedTab = this.loadSelected()
         await this.selectTab(selectedTab.name, selectedTab.args)
-        this.applyMediaQuery()
     }
 }
 
-class TabbedPage extends Component {
+class TabbedPage extends AsOrientationListener(Component) {
     
     constructor() {
         super()
@@ -338,15 +334,14 @@ class TabbedPage extends Component {
         await super.load(element)
 
         let tabBar = this.createElement("div")
-        //let tabsList = new TabsList(null)
-        let tabsDropdown = new TabsDropdown(null)
+        let tabsComponent = null;
 
         this.content = this.createElement("div")
 
         let searchTabName = "search"
         let searchTab = new LibrarySearchTab()
         let globalSearchFunction = (term) => {
-            tabsDropdown.selectTab(searchTabName, term)
+            tabsComponent.selectTab(searchTabName, term)
         }
 
         let tabs = [
@@ -376,8 +371,14 @@ class TabbedPage extends Component {
             }
         ]
 
-        tabsDropdown.tabs = tabs;
-        tabsDropdown.load(tabBar)
+        this.onOrientation(_ => {
+            tabsComponent = new TabsMenu(tabs)
+            tabsComponent.load(tabBar)
+        }, _ => {
+            tabsComponent = new TabsDropdown(tabs)
+            tabsComponent.load(tabBar)
+        })
+        this.applyMediaQuery()
     }
 }
 
