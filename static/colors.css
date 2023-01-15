@@ -82,12 +82,12 @@ a {
     background-color: var(--dark_theme_error_color);
 }*/
 
-.progress_checkmark {
+svg, .progress_checkmark {
     stroke: var(--light_theme_text_color);
     fill: var(--light_theme_background_color);
 }
 
-.dark .progress_checkmark {
+.dark svg, .dark .progress_checkmark {
     stroke: var(--dark_theme_text_color);
     fill: var(--dark_theme_background_color);
 }
