@@ -1,6 +1,7 @@
 var CLASS_SUCCESS = "success"
 var CLASS_ERROR = "error"
 var CLASS_HIGHLIGHTED = "highlighted"
+var CLASS_INVERSE_HIGHLIGHTED = "highlighted_inverse"
 
 class SingletonInterface {
     static factory(...args) {
@@ -30,6 +31,7 @@ const AsOrientationListener = (C) => class extends C {
         return this.isInLandscape.matches == false
     }
     applyMediaQuery() {
+        this.initMediaQuery()
         if (this.isInLandscape.matches) {
             this.applyLandscape()
         } else {
@@ -84,6 +86,10 @@ function timeout(ms) {
             resolve()
         }, ms)
     })
+}
+
+function getBookLink(book) {
+    return "read.html?book=" + book.id
 }
 
 function idTimeout(id, ms) {
@@ -167,7 +173,6 @@ class TabsList extends Component {
                 for (let tab of this.tabs) {
                     if (tab.name === selectedName) {
                         this.selectedTab = tab
-                        console.log("selecting tab " + tab.name)
                         return this.selectedTab
                     }
                 }
@@ -188,14 +193,15 @@ class TabsMenu extends TabsList {
     async selectTab(name, ...args) {
         let selectedTab = null
         for (let tab of this.tabs) {
-            console.log(tab.name)
-            tab.button.style.fontWeight = "normal"
+            tab.button.classList.remove(CLASS_INVERSE_HIGHLIGHTED)
+            tab.button.classList.add(CLASS_HIGHLIGHTED)
             if (tab.name == name) {
                 selectedTab = tab
             }
         }
         if (selectedTab != null) {
-            selectedTab.button.style.fontWeight = "bold"
+            selectedTab.button.classList.remove(CLASS_HIGHLIGHTED)
+            selectedTab.button.classList.add(CLASS_INVERSE_HIGHLIGHTED)
             this.saveSelected(selectedTab);
             if (selectedTab.action != undefined) await selectedTab.action(...args);
         }
@@ -239,21 +245,21 @@ class TabsDropdown extends TabsList {
                 this.saveSelected(tab);
                 this.collapse()
                 if (tab.action != undefined) await tab.action(...args);
-                return
+                return;
             }
         }
     }
 
     expand() {
         let selectedTab = this.loadSelected()
-        let items = this.tabList.getElementsByTagName("li")
-        for (let i =0; i < items.length; i++) {
-            let item = items.item(i)
-            item.style.display = "list-item"
-            if (item == selectedTab.listItem) {
-                item.style.fontWeight = "bold"
+        for (let tab of this.tabs) {
+            tab.listItem.style.display = "list-item"
+            if (tab == selectedTab) {
+                tab.button.classList.remove(CLASS_HIGHLIGHTED)
+                tab.button.classList.add(CLASS_INVERSE_HIGHLIGHTED)
             } else {
-                item.style.fontWeight = "normal"
+                tab.button.classList.remove(CLASS_INVERSE_HIGHLIGHTED)
+                tab.button.classList.add(CLASS_HIGHLIGHTED)
             }
         }
         this.expandButton.innerHTML = "▲"
@@ -262,14 +268,13 @@ class TabsDropdown extends TabsList {
 
     collapse() {
         let selectedTab = this.loadSelected()
-        let items = this.tabList.getElementsByTagName("li")
-        for (let i = 0; i < items.length; i++) {
-            let item = items.item(i)
-            if (item == selectedTab.listItem) {
-                item.style.display = "list-item"
-                item.style.fontWeight = "normal"
+        for (let tab of this.tabs) {
+            if (tab == selectedTab) {
+                tab.listItem.style.display = "list-item"
+                tab.button.classList.remove(CLASS_INVERSE_HIGHLIGHTED)
+                tab.button.classList.add(CLASS_HIGHLIGHTED)
             } else {
-                item.style.display = "none"
+                tab.listItem.style.display = "none"
             }
         }
         this.expandButton.innerHTML = "▼"
@@ -290,7 +295,7 @@ class TabsDropdown extends TabsList {
         this.expandButton = this.createElement("a");
         this.expandButton.style.display = "inline-block"
         this.expandButton.style.padding = "2.5vw";
-
+        this.expandButton.classList.add(CLASS_HIGHLIGHTED)
         this.expandButton.style.textDecoration = "none";
         this.expandButton.innerHTML = "▼"
         this.expandButton.onclick = () => {
@@ -826,38 +831,27 @@ class CollectionsTab extends Component {
     }
 }
 
-class BookItem extends Component {
+class CoverItem extends AsOrientationListener(Component) {
     CLASS_PROGRESS_ENCLOSURE = "progress_enclosure"
     CLASS_PROGRESS_CHECKMARK = "progress_checkmark"
     CLASS_PROGRESS_BAR = "progress_bar"
     CLASS_COVER_ENCLOSURE = "cover_enclosure"
 
-    constructor(book, withTitle, withCollection, searchFunction = null) {
+    constructor(book) {
         super()
         this.book = book
-        this.withTitle = withTitle
-        this.withCollection = withCollection
-        this.searchFunction = searchFunction
     }
 
     getCheckmarkSvg() {
-        //<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="margin:auto;display:block;" viewBox="0 0 12 10" preserveAspectRatio="xMidYMid"><path d="M 3 3 L 1 5 L 5 9 L 11 3 L 9 1 L 5 5 Z "></path></svg>
         let namespace = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(namespace, "svg")
         svg.setAttribute("viewBox", "0 0 12 10")
         svg.setAttribute("preserveAspectRatio", "xMidYMid")
-        /*svg.style.position = "absolute"
-        svg.style.width = width
-        svg.style.height = height
-        svg.style.top = top
-        svg.style.left = left*/
 
         let path = document.createElementNS(namespace, "path")
         path.setAttribute("d", "M 3 3 L 1 5 L 5 9 L 11 3 L 9 1 L 5 5 Z ")
         path.setAttribute("stroke-width", "0.4")
         path.setAttribute("stroke-linecap", "round")
-        //path.setAttribute("stroke", "black")
-        //path.setAttribute("fill", "white")
         
         svg.appendChild(path)
 
@@ -907,37 +901,6 @@ class BookItem extends Component {
         } else {
             return null
         }
-    }
-    
-    
-    async getCoverItem(book) {
-        let imageEnclosure = document.createElement("span")
-        imageEnclosure.classList.add(this.CLASS_COVER_ENCLOSURE)
-
-        let image = document.createElement("img")
-        if (book.cover == null) {
-            image.src = await this.createBookCover(book.id, book.title, 500, 800)
-        } else {
-            image.src = book.cover
-        }
-        image.style.height = '100%'
-        image.style.position = "relative"
-        imageEnclosure.appendChild(image)
-
-        image.onload = () => {
-            // center the image
-            //image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
-            timeout(2).then(() => {
-                image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
-            })
-        }
-
-        let progressItem = this.getProgressItem(book)
-        if (progressItem != null) {
-            imageEnclosure.appendChild(progressItem)
-        }
-
-        return imageEnclosure
     }
 
     getIdSeed(id) {
@@ -1034,6 +997,53 @@ class BookItem extends Component {
         return base64
     }
 
+    async load(element) {
+        await super.load(element)
+
+        //let imageEnclosure = document.createElement("span")
+        this.element.classList.add(this.CLASS_COVER_ENCLOSURE)
+        this.element.style.overflow = "hidden"
+        this.element.style.position = "relative"
+        this.element.style.display = "block"
+        this.onOrientation(_ => {
+            this.element.style.height = "24vw" /* (8/5*15) */
+        }, _ => {
+            this.element.style.height = "48vw" /* (8/5*30) */
+        })
+
+        let image = document.createElement("img")
+        if (this.book.cover == null) {
+            image.src = await this.createBookCover(this.book.id, this.book.title, 500, 800)
+        } else {
+            image.src = this.book.cover
+        }
+        image.style.height = '100%'
+        image.style.position = "relative"
+        this.element.appendChild(image)
+
+        image.onload = () => {
+            timeout(2).then(() => {
+                image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
+            })
+        }
+
+        let progressItem = this.getProgressItem(this.book)
+        if (progressItem != null) {
+            this.element.appendChild(progressItem)
+        }
+
+        this.applyMediaQuery()
+    }
+}
+
+class TitleItem extends Component {
+    constructor(book, withCollection, searchFunction) {
+        super()
+        this.book = book
+        this.withCollection = withCollection
+        this.searchFunction = searchFunction
+    }
+
     static getCollectionItems(collection, searchFunction) {
         if (collection == undefined || collection == null || collection.length == 0) return []
         if (searchFunction != undefined && searchFunction != null) {
@@ -1060,8 +1070,42 @@ class BookItem extends Component {
         }
     }
 
-    getBookLink() {
-        return "read.html?book=" + this.book.id
+    async load(element) {
+        await super.load(element)
+        
+        this.element.style.overflowWrap = "anywhere"
+        this.element.style.fontSize = ".8em"
+        if (this.withCollection == true) {
+            let items = TitleItem.getCollectionItems(this.book.collection, this.searchFunction)
+            for (let i of items) {
+                this.element.appendChild(i)
+            }
+            if (items.length > 0) {
+                let slash = this.createElement("span")
+                slash.innerHTML = "/"
+            }
+            let actualTitle = this.createElement("a")
+            actualTitle.innerHTML = this.book.title
+            actualTitle.href = getBookLink(this.book)
+        } else {
+            let title = this.createElement("a")
+            title.innerHTML = this.book.title
+            title.href = getBookLink(this.book)
+        }
+    }
+}
+
+class BookItem extends Component {
+    constructor(book, withTitle, withCollection, searchFunction = null) {
+        super()
+        this.book = book
+        this.withTitle = withTitle
+        this.withCollection = withCollection
+        this.searchFunction = searchFunction
+    }
+     
+    async getCoverItem(book) {
+        
     }
 
     async load(element) {
@@ -1074,38 +1118,17 @@ class BookItem extends Component {
         let itemLink = this.createElement("a")
         itemLink.style.overflow = 'hidden'
         itemLink.style.position = 'relative'
-        itemLink.href = this.getBookLink()
+        itemLink.href = getBookLink(this.book)
         
-        itemLink.appendChild(await this.getCoverItem(this.book))
+        new CoverItem(this.book).load(this.createElement("span", itemLink))
 
         if (this.withTitle) {
-            if (this.withCollection == true) {
-                let title = this.createElement("span")
-                title.style.overflowWrap = "anywhere"
-                title.style.fontSize = ".8em"
-                let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
-                for (let i of items) {
-                    title.appendChild(i)
-                }
-                if (items.length > 0) {
-                    let slash = this.createElement("span", title)
-                    slash.innerHTML = "/"
-                }
-                let actualTitle = this.createElement("a", title)
-                actualTitle.innerHTML = this.book.title
-                actualTitle.href = this.getBookLink()
-            } else {
-                let title = this.createElement("a")
-                title.style.overflowWrap = "anywhere"
-                title.style.fontSize = ".8em"
-                title.innerHTML = this.book.title
-                title.href = this.getBookLink()
-            }
+            new TitleItem(this.book, this.withCollection, this.searchFunction).load(this.createElement("span"))
         }
     }
 }
 
-class BookList extends Component {
+class BookList extends AsOrientationListener(Component) {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
     CLASS_BOOK_LIST = "book_list"
 
@@ -1123,12 +1146,14 @@ class BookList extends Component {
 
     async load(element) {
         await super.load(element)
+        this.applyMediaQuery()
     }
 
     createTitle(collection) {
         let title = document.createElement("h1")
+        title.style.overflowWrap = "anywhere"
         if (this.searchFunction != undefined && this.searchFunction != null) {
-            let items = BookItem.getCollectionItems(collection, this.searchFunction)
+            let items = TitleItem.getCollectionItems(collection, this.searchFunction)
             for (let i of items) {
                 title.appendChild(i)
             }
@@ -1139,8 +1164,42 @@ class BookList extends Component {
     }
 
     createListElement() {
+        /*
+        ul.book_list {
+            padding: 0;
+            list-style-type: none;
+            display: grid;
+            grid-template-columns: 30vw 30vw 30vw;
+            column-gap: 2.5vw;
+            row-gap: 2.5vw;
+            margin-left: 2.5vw;
+        }
+        */
+        /*ul.book_list {
+                grid-template-columns: repeat(6, 15vw);
+                column-gap: 1.4285vw;
+                row-gap: 1.4285vw;
+                margin-left: 1.4285vw;
+            }*/
         let list = document.createElement('ul')
+        list.style.padding = "0"
+        list.style.listStyleType = "none"
+        list.style.display = "grid"
+        this.onOrientation(_ => {
+            let spacing = "1.4285vw"
+            list.style.gridTemplateColumns = "repeat(6, 15vw)"
+            list.style.columnGap = spacing
+            list.style.rowGap = spacing
+            list.style.marginLeft = spacing
+        }, _ => {
+            let spacing = "2.5vw"
+            list.style.gridTemplateColumns = "repeat(3, 30vw)"
+            list.style.columnGap = spacing
+            list.style.rowGap = spacing
+            list.style.marginLeft = spacing
+        })
         list.classList.add(this.CLASS_BOOK_LIST)
+        this.applyMediaQuery()
         return list
     }
 

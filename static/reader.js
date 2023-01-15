@@ -1982,12 +1982,24 @@ class ComicDisplay extends Display {
     #setFitComicToScreen(value) {
         this.fitComicToScreen = value
     }
+    #getZoomJumpKey() {
+        return "zoom_jump_" + this.book.id
+    }
     #getZoomJump() {
-        if (this.zoomJump == undefined) this.zoomJump = 1
+        if (this.zoomJump == undefined) {
+            // try to get from storage
+            let savedZoomJump = window.localStorage.getItem(this.#getZoomJumpKey())
+            if (savedZoomJump != undefined && savedZoomJump != null) {
+                this.zoomJump = JSON.parse(savedZoomJump)
+            } else {
+                this.zoomJump = 1
+            }
+        }
         return this.zoomJump
     }
     #setZoomJump(value) {
         this.zoomJump = value
+        window.localStorage.setItem(this.#getZoomJumpKey(), JSON.stringify(value))
         this.#setFitComicToScreen(false)
     }
     #zoomJump(x, y) {
