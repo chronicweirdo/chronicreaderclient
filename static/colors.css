@@ -7,9 +7,9 @@
     --dark_theme_highlight_color: gold;
     --dark_theme_highlight_text_color: black;
     --dark_theme_error_color: red;
-    /*--dark_theme_error_text_color: white;
+    /*--dark_theme_error_text_color: white;*/
     --dark_theme_success_color: greenyellow;
-    --dark_theme_success_text_color: white;*/
+    /*--dark_theme_success_text_color: white;*/
 
     /* light theme */
     --light_theme_background_color: white;
@@ -17,9 +17,9 @@
     --light_theme_highlight_color: gold;
     --light_theme_highlight_text_color: black;
     --light_theme_error_color: red;
-    /*--light_theme_error_text_color: white;
+    /*--light_theme_error_text_color: white;*/
     --light_theme_success_color: green;
-    --light_theme_success_text_color: white;*/
+    /*--light_theme_success_text_color: white;*/
 }
 
 body {
@@ -52,42 +52,42 @@ a {
     background-color: var(--dark_theme_background_color, black);
 }
 
-.highlighted, .success, .error {
+.highlighted, .highlighted a {
     color: var(--light_theme_highlight_text_color);
     background-color: var(--light_theme_highlight_color);
 }
 
-.dark .highlighted, .dark .success, .dark .error {
+.dark .highlighted, .dark .highlighted a {
     color: var(--dark_theme_highlight_text_color);
     background-color: var(--dark_theme_highlight_color);
 }
 
-/*.success {
-    color: var(--light_theme_success_text_color);
+.success {
+    color: var(--light_theme_highlight_text_color);
     background-color: var(--light_theme_success_color);
 }
 
 .dark .success {
-    color: var(--dark_theme_success_text_color);
+    color: var(--dark_theme_highlight_text_color);
     background-color: var(--dark_theme_success_color);
-}*/
+}
 
-/*.error {
-    color: var(--light_theme_error_text_color);
+.error {
+    color: var(--light_theme_highlight_text_color);
     background-color: var(--light_theme_error_color);
 }
 
 .dark .error {
-    color: var(--dark_theme_error_text_color);
+    color: var(--dark_theme_highlight_text_color);
     background-color: var(--dark_theme_error_color);
-}*/
+}
 
-.progress_checkmark {
+svg, .progress_checkmark {
     stroke: var(--light_theme_text_color);
     fill: var(--light_theme_background_color);
 }
 
-.dark .progress_checkmark {
+.dark svg, .dark .progress_checkmark {
     stroke: var(--dark_theme_text_color);
     fill: var(--dark_theme_background_color);
 }

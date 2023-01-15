@@ -7,20 +7,20 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="theme-color" content="#FFD700">
 
-    <link rel="shortcut icon" href="logo.png">
-    <link rel="icon" href="logo.png">
+    <link rel="shortcut icon" type="image/png" href="logo.png">
+    <link rel="icon" type="image/png" href="logo.png">
 
-    <link rel="icon" sizes="16x16" href="logo16.png">
-    <link rel="icon" sizes="24x24" href="logo24.png">
-    <link rel="icon" sizes="32x32" href="logo32.png">
-    <link rel="icon" sizes="48x48" href="logo48.png">
-    <link rel="icon" sizes="64x64" href="logo64.png">
-    <link rel="icon" sizes="192x192" href="logo192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="logo16.png">
+    <link rel="icon" type="image/png" sizes="24x24" href="logo24.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="logo32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="logo48.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="logo64.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="logo192.png">
 
-    <link rel="apple-touch-icon" href="logo.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="logo152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="logo180.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="logo167.png">
+    <link rel="apple-touch-icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="152x152" href="logo152.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="logo180.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="167x167" href="logo167.png">
     
     <title>Chronic Reader Client</title>
     <script src="jszip.js"></script>
@@ -43,21 +43,19 @@
         }
 
         class MarkCompletedButton extends Component {
-            constructor(element) {
-                super(element);
+            constructor() {
+                super();
             }
-            async load() {
-                super.load();
+            async load(element) {
+                super.load(element);
 
-                this.markAsCompleteButton = document.createElement("a");
+                this.markAsCompleteButton = this.createElement("a");
                 this.markAsCompleteButton.style.display = "none";
                 this.markAsCompleteButton.innerHTML = 'mark book as read';
-                this.element.appendChild(this.markAsCompleteButton);
 
-                this.markAsUnreadButton = document.createElement("a");
+                this.markAsUnreadButton = this.createElement("a");
                 this.markAsUnreadButton.style.display = "none";
                 this.markAsUnreadButton.innerHTML = "mark book as unread";
-                this.element.appendChild(this.markAsUnreadButton);
 
                 this.markAsCompleteButton.onclick = () => {
                     fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
@@ -194,10 +192,8 @@
             let additionalTools = document.createElement("div");
 
             let textSizeParagraph = document.createElement("p");
-            new TextSizeSetting(textSizeParagraph, "content", () => { if (document.display) document.display.update() })
-                .load();
-            //document.textSizeSetting.element = textSizeParagraph
-            //document.textSizeSetting.load()
+            new TextSizeSetting("content", () => { if (document.display) document.display.update() })
+                .load(textSizeParagraph);
             additionalTools.appendChild(textSizeParagraph);
 
             let downloadLinkParagraph = document.createElement("p");
@@ -246,8 +242,8 @@
 
             let markCompletedParagraph = document.createElement("p");
             additionalTools.appendChild(markCompletedParagraph);
-            document.completedButton = new MarkCompletedButton(markCompletedParagraph);
-            document.completedButton.load();
+            document.completedButton = new MarkCompletedButton();
+            document.completedButton.load(markCompletedParagraph);
             document.completedButton.update();
 
             let libraryLinkParagraph = document.createElement("p");
@@ -312,6 +308,10 @@
     <link rel="stylesheet" type="text/css" href="fonts.css">
     <link rel="stylesheet" href="colors.css" />
     <style>
+        html, body, #content {
+            max-width: 100%;
+            min-width: 350px; /*https://stackoverflow.com/questions/6695676/100-width-css-issue-only-on-mobile-safari*/
+        }
         body {
             margin: 0;
             padding: 0;
