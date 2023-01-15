@@ -1,6 +1,7 @@
 var CLASS_SUCCESS = "success"
 var CLASS_ERROR = "error"
 var CLASS_HIGHLIGHTED = "highlighted"
+var CLASS_INVERSE_HIGHLIGHTED = "highlighted_inverse"
 
 class SingletonInterface {
     static factory(...args) {
@@ -167,7 +168,6 @@ class TabsList extends Component {
                 for (let tab of this.tabs) {
                     if (tab.name === selectedName) {
                         this.selectedTab = tab
-                        console.log("selecting tab " + tab.name)
                         return this.selectedTab
                     }
                 }
@@ -188,14 +188,15 @@ class TabsMenu extends TabsList {
     async selectTab(name, ...args) {
         let selectedTab = null
         for (let tab of this.tabs) {
-            console.log(tab.name)
-            tab.button.style.fontWeight = "normal"
+            tab.button.classList.remove(CLASS_INVERSE_HIGHLIGHTED)
+            tab.button.classList.add(CLASS_HIGHLIGHTED)
             if (tab.name == name) {
                 selectedTab = tab
             }
         }
         if (selectedTab != null) {
-            selectedTab.button.style.fontWeight = "bold"
+            selectedTab.button.classList.remove(CLASS_HIGHLIGHTED)
+            selectedTab.button.classList.add(CLASS_INVERSE_HIGHLIGHTED)
             this.saveSelected(selectedTab);
             if (selectedTab.action != undefined) await selectedTab.action(...args);
         }
@@ -239,21 +240,21 @@ class TabsDropdown extends TabsList {
                 this.saveSelected(tab);
                 this.collapse()
                 if (tab.action != undefined) await tab.action(...args);
-                return
+                return;
             }
         }
     }
 
     expand() {
         let selectedTab = this.loadSelected()
-        let items = this.tabList.getElementsByTagName("li")
-        for (let i =0; i < items.length; i++) {
-            let item = items.item(i)
-            item.style.display = "list-item"
-            if (item == selectedTab.listItem) {
-                item.style.fontWeight = "bold"
+        for (let tab of this.tabs) {
+            tab.listItem.style.display = "list-item"
+            if (tab == selectedTab) {
+                tab.button.classList.remove(CLASS_HIGHLIGHTED)
+                tab.button.classList.add(CLASS_INVERSE_HIGHLIGHTED)
             } else {
-                item.style.fontWeight = "normal"
+                tab.button.classList.remove(CLASS_INVERSE_HIGHLIGHTED)
+                tab.button.classList.add(CLASS_HIGHLIGHTED)
             }
         }
         this.expandButton.innerHTML = "▲"
@@ -262,14 +263,13 @@ class TabsDropdown extends TabsList {
 
     collapse() {
         let selectedTab = this.loadSelected()
-        let items = this.tabList.getElementsByTagName("li")
-        for (let i = 0; i < items.length; i++) {
-            let item = items.item(i)
-            if (item == selectedTab.listItem) {
-                item.style.display = "list-item"
-                item.style.fontWeight = "normal"
+        for (let tab of this.tabs) {
+            if (tab == selectedTab) {
+                tab.listItem.style.display = "list-item"
+                tab.button.classList.remove(CLASS_INVERSE_HIGHLIGHTED)
+                tab.button.classList.add(CLASS_HIGHLIGHTED)
             } else {
-                item.style.display = "none"
+                tab.listItem.style.display = "none"
             }
         }
         this.expandButton.innerHTML = "▼"
@@ -290,7 +290,7 @@ class TabsDropdown extends TabsList {
         this.expandButton = this.createElement("a");
         this.expandButton.style.display = "inline-block"
         this.expandButton.style.padding = "2.5vw";
-
+        this.expandButton.classList.add(CLASS_HIGHLIGHTED)
         this.expandButton.style.textDecoration = "none";
         this.expandButton.innerHTML = "▼"
         this.expandButton.onclick = () => {
