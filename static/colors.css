@@ -52,12 +52,12 @@ a {
     background-color: var(--dark_theme_background_color, black);
 }
 
-.highlighted {
+.highlighted, .highlighted a {
     color: var(--light_theme_highlight_text_color);
     background-color: var(--light_theme_highlight_color);
 }
 
-.dark .highlighted {
+.dark .highlighted, .dark .highlighted a {
     color: var(--dark_theme_highlight_text_color);
     background-color: var(--dark_theme_highlight_color);
 }

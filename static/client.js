@@ -88,7 +88,6 @@ class Component {
 }
 
 class TabsList extends Component {
-    CLASS_MENU = "menu"
     STORAGE_KEY = "tabbed_page_latest_tab"
 
     constructor(tabs) {
@@ -104,23 +103,35 @@ class TabsList extends Component {
     }
 
     saveSelected(tab) {
+        this.selectedTab = tab
         window.localStorage.setItem(this.STORAGE_KEY, tab.name);
     }
 
     loadSelected() {
-        let selectedName = window.localStorage.getItem(this.STORAGE_KEY);
-        console.log(selectedName)
-        console.log(this.tabs)
-        if (selectedName == undefined || selectedName == null) {
-            return this.tabs[0]
+        if (this.selectedTab != undefined) {
+            return this.selectedTab
         } else {
-            for (let tab of this.tabs) {
-                if (tab.name === selectedName) {
-                    return tab
+            let selectedName = window.localStorage.getItem(this.STORAGE_KEY);
+            if (selectedName != undefined && selectedName != null) {
+                for (let tab of this.tabs) {
+                    if (tab.name === selectedName) {
+                        this.selectedTab = tab
+                        console.log("selecting tab " + tab.name)
+                        return this.selectedTab
+                    }
                 }
             }
-            return this.tabs[0]
+            this.selectedTab = this.tabs[0]
+            return this.selectedTab
         }
+    }
+}
+
+class TabsMenu extends TabsList {
+    CLASS_MENU = "tabs_menu"
+
+    constructor(tabs) {
+        super(tabs);
     }
 
     async selectTab(name, ...args) {
@@ -157,9 +168,104 @@ class TabsList extends Component {
     }
 }
 
+class TabsDropdown extends TabsList {
+    CLASS_TABS_DROPDOWN = "tabs_dropdown"
+    constructor(tabs) {
+        super(tabs);
+    }
+
+    async selectTab(name, ...args) {
+        for (let tab of this.tabs) {
+            if (tab.name == name) {
+                this.clearClass(CLASS_HIGHLIGHTED);
+                tab.listItem.classList.add(CLASS_HIGHLIGHTED);
+                this.saveSelected(tab);
+                this.collapse()
+                if (tab.action != undefined) await tab.action(...args);
+                return
+            }
+        }
+    }
+
+    expand() {
+        let selectedTab = this.loadSelected()
+        let items = this.tabList.getElementsByTagName("li")
+        for (let i =0; i < items.length; i++) {
+            let item = items.item(i)
+            item.style.display = "list-item"
+            if (item == selectedTab.listItem) {
+                item.style.fontWeight = "bold"
+            } else {
+                item.style.fontWeight = "normal"
+            }
+        }
+        this.expandButton.innerHTML = "▲"
+        this.expanded = true
+    }
+
+    collapse() {
+        let selectedTab = this.loadSelected()
+        let items = this.tabList.getElementsByTagName("li")
+        for (let i = 0; i < items.length; i++) {
+            let item = items.item(i)
+            if (item == selectedTab.listItem) {
+                item.style.display = "list-item"
+                item.style.fontWeight = "normal"
+            } else {
+                item.style.display = "none"
+            }
+        }
+        this.expandButton.innerHTML = "▼"
+        this.expanded = false
+    }
+
+    async load(element) {
+        super.load(element);
+
+        let padding = ".6em"
+        this.element.classList.add(this.CLASS_TABS_DROPDOWN)
+        this.element.style.display = "grid"
+        this.element.style.gridTemplateColumns = "50px auto"
+        this.element.classList.add(CLASS_HIGHLIGHTED)
+        this.element.style.marginBottom = padding
+
+        this.expanded = false
+        this.expandButton = this.createElement("a");
+        this.expandButton.style.padding = padding;
+        this.expandButton.style.textDecoration = "none";
+        this.expandButton.classList.add(CLASS_HIGHLIGHTED)
+        this.expandButton.innerHTML = "▼"
+        this.expandButton.onclick = () => {
+            if (this.expanded) {
+                this.collapse()
+            } else {
+                this.expand()
+            }
+        }
+        
+        this.tabList = this.createElement("ul")
+        this.tabList.style.listStyle = "none"
+
+        for (let tab of this.tabs) {
+            let item = this.createElement("li", this.tabList);
+            item.style.display = "none"
+            tab.listItem = item
+            let button = this.createElement("a", item);
+            tab.button = button
+            button.innerHTML = tab.name;
+            button.style.display = "inline-block";
+            button.style.padding = padding;
+            button.style.cursor = "pointer";
+
+            button.onclick = () => this.selectTab(tab.name, tab.args);
+        }
+
+        let selectedTab = this.loadSelected()
+        await this.selectTab(selectedTab.name, selectedTab.args)
+    }
+}
+
 class TabbedPage extends Component {
-    CLASS_MENU = "menu"
-    STORAGE_KEY = "tabbed_page_latest_tab"
     
     constructor() {
         super()
@@ -169,14 +275,15 @@ class TabbedPage extends Component {
         await super.load(element)
 
         let tabBar = this.createElement("div")
-        let tabsList = new TabsList(null)
+        //let tabsList = new TabsList(null)
+        let tabsDropdown = new TabsDropdown(null)
 
         this.content = this.createElement("div")
 
         let searchTabName = "search"
         let searchTab = new LibrarySearchTab()
         let globalSearchFunction = (term) => {
-            tabsList.selectTab(searchTabName, term)
+            tabsDropdown.selectTab(searchTabName, term)
         }
 
         let tabs = [
@@ -206,8 +313,8 @@ class TabbedPage extends Component {
             }
         ]
 
-        tabsList.tabs = tabs;
-        tabsList.load(tabBar)
+        tabsDropdown.tabs = tabs;
+        tabsDropdown.load(tabBar)
     }
 }
 
