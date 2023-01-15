@@ -30,21 +30,21 @@
     <script src="client.js"></script>
     <script>
         async function prepareUi() {
-            initStyleSettings()
-            let contentElement = document.getElementById("content")
-            new TabbedPage(contentElement).load()
+            initStyleSettings();
+            let contentElement = document.getElementById("content");
+            new TabbedPage(contentElement).load();
 
             window.addEventListener("focus", () => {
-                ThemeSliderSetting.factory().apply()
+                ThemeSliderSetting.factory().apply();
             }, false)
 
             document.getElementById("content").addEventListener("click", () => {
-                ThemeSliderSetting.factory().apply()
+                ThemeSliderSetting.factory().apply();
             }, false)
         }
         window.onload = function() {
-            document.statusBarMode = "highlighted"
-            prepareUi()
+            document.statusBarMode = "highlighted";
+            prepareUi();
         }
     </script>
     <link rel="stylesheet" href="colors.css" />
