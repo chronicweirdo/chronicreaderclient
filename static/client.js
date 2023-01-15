@@ -87,6 +87,10 @@ function timeout(ms) {
     })
 }
 
+function getBookLink(book) {
+    return "read.html?book=" + book.id
+}
+
 function idTimeout(id, ms) {
     if (document.timeoutId == undefined) document.timeoutId = {}
     let triggeredTimestamp = Date.now()
@@ -826,38 +830,27 @@ class CollectionsTab extends Component {
     }
 }
 
-class BookItem extends Component {
+class CoverItem extends Component {
     CLASS_PROGRESS_ENCLOSURE = "progress_enclosure"
     CLASS_PROGRESS_CHECKMARK = "progress_checkmark"
     CLASS_PROGRESS_BAR = "progress_bar"
     CLASS_COVER_ENCLOSURE = "cover_enclosure"
 
-    constructor(book, withTitle, withCollection, searchFunction = null) {
+    constructor(book) {
         super()
         this.book = book
-        this.withTitle = withTitle
-        this.withCollection = withCollection
-        this.searchFunction = searchFunction
     }
 
     getCheckmarkSvg() {
-        //<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="margin:auto;display:block;" viewBox="0 0 12 10" preserveAspectRatio="xMidYMid"><path d="M 3 3 L 1 5 L 5 9 L 11 3 L 9 1 L 5 5 Z "></path></svg>
         let namespace = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(namespace, "svg")
         svg.setAttribute("viewBox", "0 0 12 10")
         svg.setAttribute("preserveAspectRatio", "xMidYMid")
-        /*svg.style.position = "absolute"
-        svg.style.width = width
-        svg.style.height = height
-        svg.style.top = top
-        svg.style.left = left*/
 
         let path = document.createElementNS(namespace, "path")
         path.setAttribute("d", "M 3 3 L 1 5 L 5 9 L 11 3 L 9 1 L 5 5 Z ")
         path.setAttribute("stroke-width", "0.4")
         path.setAttribute("stroke-linecap", "round")
-        //path.setAttribute("stroke", "black")
-        //path.setAttribute("fill", "white")
         
         svg.appendChild(path)
 
@@ -907,37 +900,6 @@ class BookItem extends Component {
         } else {
             return null
         }
-    }
-    
-    
-    async getCoverItem(book) {
-        let imageEnclosure = document.createElement("span")
-        imageEnclosure.classList.add(this.CLASS_COVER_ENCLOSURE)
-
-        let image = document.createElement("img")
-        if (book.cover == null) {
-            image.src = await this.createBookCover(book.id, book.title, 500, 800)
-        } else {
-            image.src = book.cover
-        }
-        image.style.height = '100%'
-        image.style.position = "relative"
-        imageEnclosure.appendChild(image)
-
-        image.onload = () => {
-            // center the image
-            //image.style.top = (- (image.height - image.parentElement.offsetHeight) / 2) + "px"
-            timeout(2).then(() => {
-                image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
-            })
-        }
-
-        let progressItem = this.getProgressItem(book)
-        if (progressItem != null) {
-            imageEnclosure.appendChild(progressItem)
-        }
-
-        return imageEnclosure
     }
 
     getIdSeed(id) {
@@ -1034,6 +996,43 @@ class BookItem extends Component {
         return base64
     }
 
+    async load(element) {
+        await super.load(element)
+
+        //let imageEnclosure = document.createElement("span")
+        this.element.classList.add(this.CLASS_COVER_ENCLOSURE)
+
+        let image = document.createElement("img")
+        if (this.book.cover == null) {
+            image.src = await this.createBookCover(this.book.id, this.book.title, 500, 800)
+        } else {
+            image.src = this.book.cover
+        }
+        image.style.height = '100%'
+        image.style.position = "relative"
+        this.element.appendChild(image)
+
+        image.onload = () => {
+            timeout(2).then(() => {
+                image.style.left = (- (image.width - image.parentElement.offsetWidth) / 2) + "px"
+            })
+        }
+
+        let progressItem = this.getProgressItem(this.book)
+        if (progressItem != null) {
+            this.element.appendChild(progressItem)
+        }
+    }
+}
+
+class TitleItem extends Component {
+    constructor(book, withCollection, searchFunction) {
+        super()
+        this.book = book
+        this.withCollection = withCollection
+        this.searchFunction = searchFunction
+    }
+
     static getCollectionItems(collection, searchFunction) {
         if (collection == undefined || collection == null || collection.length == 0) return []
         if (searchFunction != undefined && searchFunction != null) {
@@ -1060,8 +1059,42 @@ class BookItem extends Component {
         }
     }
 
-    getBookLink() {
-        return "read.html?book=" + this.book.id
+    async load(element) {
+        await super.load(element)
+        
+        this.element.style.overflowWrap = "anywhere"
+        this.element.style.fontSize = ".8em"
+        if (this.withCollection == true) {
+            let items = TitleItem.getCollectionItems(this.book.collection, this.searchFunction)
+            for (let i of items) {
+                this.element.appendChild(i)
+            }
+            if (items.length > 0) {
+                let slash = this.createElement("span")
+                slash.innerHTML = "/"
+            }
+            let actualTitle = this.createElement("a")
+            actualTitle.innerHTML = this.book.title
+            actualTitle.href = getBookLink(this.book)
+        } else {
+            let title = this.createElement("a")
+            title.innerHTML = this.book.title
+            title.href = getBookLink(this.book)
+        }
+    }
+}
+
+class BookItem extends Component {
+    constructor(book, withTitle, withCollection, searchFunction = null) {
+        super()
+        this.book = book
+        this.withTitle = withTitle
+        this.withCollection = withCollection
+        this.searchFunction = searchFunction
+    }
+     
+    async getCoverItem(book) {
+        
     }
 
     async load(element) {
@@ -1074,33 +1107,12 @@ class BookItem extends Component {
         let itemLink = this.createElement("a")
         itemLink.style.overflow = 'hidden'
         itemLink.style.position = 'relative'
-        itemLink.href = this.getBookLink()
+        itemLink.href = getBookLink(this.book)
         
-        itemLink.appendChild(await this.getCoverItem(this.book))
+        new CoverItem(this.book).load(this.createElement("span", itemLink))
 
         if (this.withTitle) {
-            if (this.withCollection == true) {
-                let title = this.createElement("span")
-                title.style.overflowWrap = "anywhere"
-                title.style.fontSize = ".8em"
-                let items = BookItem.getCollectionItems(this.book.collection, this.searchFunction)
-                for (let i of items) {
-                    title.appendChild(i)
-                }
-                if (items.length > 0) {
-                    let slash = this.createElement("span", title)
-                    slash.innerHTML = "/"
-                }
-                let actualTitle = this.createElement("a", title)
-                actualTitle.innerHTML = this.book.title
-                actualTitle.href = this.getBookLink()
-            } else {
-                let title = this.createElement("a")
-                title.style.overflowWrap = "anywhere"
-                title.style.fontSize = ".8em"
-                title.innerHTML = this.book.title
-                title.href = this.getBookLink()
-            }
+            new TitleItem(this.book, this.withCollection, this.searchFunction).load(this.createElement("span"))
         }
     }
 }
@@ -1127,8 +1139,9 @@ class BookList extends Component {
 
     createTitle(collection) {
         let title = document.createElement("h1")
+        title.style.overflowWrap = "anywhere"
         if (this.searchFunction != undefined && this.searchFunction != null) {
-            let items = BookItem.getCollectionItems(collection, this.searchFunction)
+            let items = TitleItem.getCollectionItems(collection, this.searchFunction)
             for (let i of items) {
                 title.appendChild(i)
             }
