@@ -31,6 +31,7 @@ const AsOrientationListener = (C) => class extends C {
         return this.isInLandscape.matches == false
     }
     applyMediaQuery() {
+        this.initMediaQuery()
         if (this.isInLandscape.matches) {
             this.applyLandscape()
         } else {
@@ -830,7 +831,7 @@ class CollectionsTab extends Component {
     }
 }
 
-class CoverItem extends Component {
+class CoverItem extends AsOrientationListener(Component) {
     CLASS_PROGRESS_ENCLOSURE = "progress_enclosure"
     CLASS_PROGRESS_CHECKMARK = "progress_checkmark"
     CLASS_PROGRESS_BAR = "progress_bar"
@@ -1001,6 +1002,14 @@ class CoverItem extends Component {
 
         //let imageEnclosure = document.createElement("span")
         this.element.classList.add(this.CLASS_COVER_ENCLOSURE)
+        this.element.style.overflow = "hidden"
+        this.element.style.position = "relative"
+        this.element.style.display = "block"
+        this.onOrientation(_ => {
+            this.element.style.height = "24vw" /* (8/5*15) */
+        }, _ => {
+            this.element.style.height = "48vw" /* (8/5*30) */
+        })
 
         let image = document.createElement("img")
         if (this.book.cover == null) {
@@ -1022,6 +1031,8 @@ class CoverItem extends Component {
         if (progressItem != null) {
             this.element.appendChild(progressItem)
         }
+
+        this.applyMediaQuery()
     }
 }
 
@@ -1117,7 +1128,7 @@ class BookItem extends Component {
     }
 }
 
-class BookList extends Component {
+class BookList extends AsOrientationListener(Component) {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
     CLASS_BOOK_LIST = "book_list"
 
@@ -1135,6 +1146,7 @@ class BookList extends Component {
 
     async load(element) {
         await super.load(element)
+        this.applyMediaQuery()
     }
 
     createTitle(collection) {
@@ -1152,8 +1164,42 @@ class BookList extends Component {
     }
 
     createListElement() {
+        /*
+        ul.book_list {
+            padding: 0;
+            list-style-type: none;
+            display: grid;
+            grid-template-columns: 30vw 30vw 30vw;
+            column-gap: 2.5vw;
+            row-gap: 2.5vw;
+            margin-left: 2.5vw;
+        }
+        */
+        /*ul.book_list {
+                grid-template-columns: repeat(6, 15vw);
+                column-gap: 1.4285vw;
+                row-gap: 1.4285vw;
+                margin-left: 1.4285vw;
+            }*/
         let list = document.createElement('ul')
+        list.style.padding = "0"
+        list.style.listStyleType = "none"
+        list.style.display = "grid"
+        this.onOrientation(_ => {
+            let spacing = "1.4285vw"
+            list.style.gridTemplateColumns = "repeat(6, 15vw)"
+            list.style.columnGap = spacing
+            list.style.rowGap = spacing
+            list.style.marginLeft = spacing
+        }, _ => {
+            let spacing = "2.5vw"
+            list.style.gridTemplateColumns = "repeat(3, 30vw)"
+            list.style.columnGap = spacing
+            list.style.rowGap = spacing
+            list.style.marginLeft = spacing
+        })
         list.classList.add(this.CLASS_BOOK_LIST)
+        this.applyMediaQuery()
         return list
     }
 
