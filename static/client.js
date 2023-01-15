@@ -87,6 +87,76 @@ class Component {
     }
 }
 
+class TabsList extends Component {
+    CLASS_MENU = "menu"
+    STORAGE_KEY = "tabbed_page_latest_tab"
+
+    constructor(tabs) {
+        super();
+        this.tabs = tabs;
+    }
+
+    clearClass(className) {
+        let collection = this.element.getElementsByClassName(className);
+        while (collection.length > 0) {
+            collection.item(0).classList.remove(className);
+        }
+    }
+
+    saveSelected(tab) {
+        window.localStorage.setItem(this.STORAGE_KEY, tab.name);
+    }
+
+    loadSelected() {
+        let selectedName = window.localStorage.getItem(this.STORAGE_KEY);
+        console.log(selectedName)
+        console.log(this.tabs)
+        if (selectedName == undefined || selectedName == null) {
+            return this.tabs[0]
+        } else {
+            for (let tab of this.tabs) {
+                if (tab.name === selectedName) {
+                    return tab
+                }
+            }
+            return this.tabs[0]
+        }
+    }
+
+    async selectTab(name, ...args) {
+        for (let tab of this.tabs) {
+            if (tab.name == name) {
+                this.clearClass(CLASS_HIGHLIGHTED);
+                tab.button.classList.add(CLASS_HIGHLIGHTED);
+                this.saveSelected(tab);
+                if (tab.action != undefined) await tab.action(...args);
+                return
+            }
+        }
+    }
+
+    async load(element) {
+        await super.load(element);
+
+        let buttons = this.createElement("div");
+        buttons.classList.add(this.CLASS_MENU);
+
+        for (let tab of this.tabs) {
+            let button = this.createElement("a", buttons);
+            tab.button = button
+            button.innerHTML = tab.name;
+            button.style.display = "inline-block";
+            button.style.padding = ".4em";
+            button.style.cursor = "pointer";
+
+            button.onclick = () => this.selectTab(tab.name, tab.args);
+        }
+
+        let selectedTab = this.loadSelected()
+        await this.selectTab(selectedTab.name, selectedTab.args)
+    }
+}
+
 class TabbedPage extends Component {
     CLASS_MENU = "menu"
     STORAGE_KEY = "tabbed_page_latest_tab"
@@ -95,95 +165,49 @@ class TabbedPage extends Component {
         super()
     }
 
-    createButton(label, additionalAction = null) {
-        let button = document.createElement("a")
-        button.innerHTML = label
-        button.onclick = (event) => this.displayTab(event.target)
-            .then(() => {
-                if (additionalAction) additionalAction()
-            })
-        button.style.display = "inline-block"
-        button.style.padding = ".4em"
-        button.style.cursor = "pointer"
-        return button
-    }
-
-    saveTabIndex(i) {
-        window.localStorage.setItem(this.STORAGE_KEY, JSON.stringify(i))
-    }
-
-    loadTabIndex() {
-        let savedValue = window.localStorage.getItem(this.STORAGE_KEY)
-        if (savedValue != undefined && savedValue != null) {
-            return JSON.parse(savedValue)
-        } else {
-            return 0
-        }
-    }
-
-    async displayTab(button) {
-        for (let i in this.tabs) {
-            let t = this.tabs[i]
-            if (t.button == button) {
-                this.saveTabIndex(i)
-                t.button.classList.add(CLASS_HIGHLIGHTED)
-                t.tab.load(this.content)
-            } else {
-                t.button.classList.remove(CLASS_HIGHLIGHTED)
-            }
-        }
-    }
-
     async load(element) {
         await super.load(element)
 
-        let buttons = this.createElement("div")
-        buttons.classList.add(this.CLASS_MENU)
+        let tabBar = this.createElement("div")
+        let tabsList = new TabsList(null)
 
         this.content = this.createElement("div")
 
+        let searchTabName = "search"
         let searchTab = new LibrarySearchTab()
-        let initialSearch = () => searchTab.search()
-        let searchButton = this.createButton("search", initialSearch)
         let globalSearchFunction = (term) => {
-            this.displayTab(searchButton).then(() => searchTab.search(term))
+            tabsList.selectTab(searchTabName, term)
         }
 
-        this.tabs = [
+        let tabs = [
             {
-                tab: new OnDeviceTab(globalSearchFunction),
-                button: this.createButton("on device")
+                name: "on device",
+                action: async () => new OnDeviceTab(globalSearchFunction).load(this.content)
             },
             {
-                tab: new LatestReadTab(globalSearchFunction),
-                button: this.createButton("latest read")
+                name: "latest read",
+                action: async () => new LatestReadTab(globalSearchFunction).load(this.content)
             },
             {
-                tab: new LatestAddedTab(globalSearchFunction),
-                button: this.createButton("latest added")
+                name: "latest added",
+                action: async () => new LatestAddedTab(globalSearchFunction).load(this.content)
             },
             {
-                tab: searchTab,
-                button: searchButton
+                name: searchTabName,
+                action: async (term) => searchTab.load(this.content).then(() => searchTab.search(term))
             },
             {
-                tab: new CollectionsTab(globalSearchFunction),
-                button: this.createButton("collections")
+                name: "collections",
+                action: async () => new CollectionsTab(globalSearchFunction).load(this.content)
             },
             {
-                tab: new SettingsTab(),
-                button: this.createButton("settings")
+                name: "settings",
+                action: async () => new SettingsTab().load(this.content)
             }
         ]
-        
-        for (let t of this.tabs) {
-            buttons.appendChild(t.button)   
-        }
 
-        let tabIndex = this.loadTabIndex()
-        this.displayTab(this.tabs[tabIndex].button).then(() => {
-            if (this.tabs[tabIndex].button == searchButton) initialSearch()
-        })
+        tabsList.tabs = tabs;
+        tabsList.load(tabBar)
     }
 }
 
