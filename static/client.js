@@ -53,21 +53,20 @@ function setStatusBarColor(color) {
 }
 
 class Component {
-    static async create(tagName, ...args) {
+    /*static async create(tagName, ...args) {
         let element = document.createElement(tagName)
         let component = new this(element, ...args)
-        await component.load()
+        await component.load(element)
         return element
-    }
-    static async createInParent(parent, tagName, ...args) {
+    }*/
+    /*static async createInParent(parent, tagName, ...args) {
         let element = document.createElement(tagName)
         parent.appendChild(element)
         let component = new this(element, ...args)
-        await component.load()
+        await component.load(element)
         return component
-    }
-    constructor(element) {
-        this.element = element
+    }*/
+    constructor() {
     }
     async load(element) {
         if (element != undefined && element != null) {
@@ -88,8 +87,8 @@ class TabbedPage extends Component {
     CLASS_MENU = "menu"
     STORAGE_KEY = "tabbed_page_latest_tab"
     
-    constructor(element) {
-        super(element)
+    constructor() {
+        super()
     }
 
     createButton(label, additionalAction = null) {
@@ -124,7 +123,7 @@ class TabbedPage extends Component {
             if (t.button == button) {
                 this.saveTabIndex(i)
                 t.button.classList.add(CLASS_HIGHLIGHTED)
-                t.tab.load()
+                t.tab.load(this.content)
             } else {
                 t.button.classList.remove(CLASS_HIGHLIGHTED)
             }
@@ -141,7 +140,7 @@ class TabbedPage extends Component {
         this.content = document.createElement("div")
         this.element.appendChild(this.content)
 
-        let searchTab = new LibrarySearchTab(this.content)
+        let searchTab = new LibrarySearchTab()
         let initialSearch = () => searchTab.search()
         let searchButton = this.createButton("search", initialSearch)
         let globalSearchFunction = (term) => {
@@ -150,15 +149,15 @@ class TabbedPage extends Component {
 
         this.tabs = [
             {
-                tab: new OnDeviceTab(this.content, globalSearchFunction),
+                tab: new OnDeviceTab(globalSearchFunction),
                 button: this.createButton("on device")
             },
             {
-                tab: new LatestReadTab(this.content, globalSearchFunction),
+                tab: new LatestReadTab(globalSearchFunction),
                 button: this.createButton("latest read")
             },
             {
-                tab: new LatestAddedTab(this.content, globalSearchFunction),
+                tab: new LatestAddedTab(globalSearchFunction),
                 button: this.createButton("latest added")
             },
             {
@@ -166,11 +165,11 @@ class TabbedPage extends Component {
                 button: searchButton
             },
             {
-                tab: new CollectionsTab(this.content, globalSearchFunction),
+                tab: new CollectionsTab(globalSearchFunction),
                 button: this.createButton("collections")
             },
             {
-                tab: new SettingsTab(this.content),
+                tab: new SettingsTab(),
                 button: this.createButton("settings")
             }
         ]
@@ -188,8 +187,8 @@ class TabbedPage extends Component {
 
 class FormComponent extends Component {
     CLASS_FORM_ROW = "form_row"
-    constructor(element) {
-        super(element)
+    constructor() {
+        super()
     }
 
     title(text) {
@@ -261,8 +260,8 @@ class FormComponent extends Component {
 }
 
 class UploadForm extends FormComponent {
-    constructor(element) {
-        super(element)
+    constructor() {
+        super()
     }
 
     async load(element) {
@@ -316,8 +315,8 @@ class UploadForm extends FormComponent {
 }
 
 class LoginForm extends FormComponent {
-    constructor(element) {
-        super(element)
+    constructor() {
+        super()
     }
 
     async load(element) {
@@ -413,8 +412,8 @@ class LoginForm extends FormComponent {
 }
 
 class SettingsTab extends Component {
-    constructor(element) {
-        super(element)
+    constructor() {
+        super()
     }
 
     newSettingLine() {
@@ -426,9 +425,13 @@ class SettingsTab extends Component {
     async load(element) {
         await super.load(element)
 
-        await LoginForm.createInParent(this.element, "div")
+        let loginFormDiv = document.createElement("div")
+        this.element.appendChild(loginFormDiv)
+        await new LoginForm().load(loginFormDiv)
 
-        await UploadForm.createInParent(this.element, "div")
+        let uploadFormDiv = document.createElement("div")
+        this.element.appendChild(uploadFormDiv)
+        await new UploadForm().load(uploadFormDiv)
 
         let settingsTitle = document.createElement("h1")
         settingsTitle.innerHTML = "Settings"
@@ -457,15 +460,15 @@ class SettingsTab extends Component {
         DarkThemeSuccessColorSetting.factory().load(this.newSettingLine())
         
         let clearStorageParagraph = document.createElement("p")
-        let clearStorage = new ClearStorageControl(clearStorageParagraph)
-        await clearStorage.load()
+        let clearStorage = new ClearStorageControl()
+        await clearStorage.load(clearStorageParagraph)
         this.element.appendChild(clearStorageParagraph)
     }
 }
 
 class OnDeviceTab extends Component {
-    constructor(element, searchFunction = null) {
-        super(element)
+    constructor(searchFunction = null) {
+        super()
         this.searchFunction = searchFunction
     }
 
@@ -478,8 +481,8 @@ class OnDeviceTab extends Component {
                 if (books != undefined && books != null
                     && books.length > 0) {
                 
-                    let list = new BookList(this.element, false, this.searchFunction)
-                    list.load().then(() => list.update(books))
+                    let list = new BookList(false, this.searchFunction)
+                    list.load(this.element).then(() => list.update(books))
                 } else {
                     let noBooks = document.createElement("p")
                     noBooks.innerHTML = "no books on device"
@@ -491,35 +494,35 @@ class OnDeviceTab extends Component {
 }
 
 class LatestReadTab extends Component {
-    constructor(element, searchFunction = null) {
-        super(element)
+    constructor(searchFunction = null) {
+        super()
         this.searchFunction = searchFunction
     }
 
     async load(element) {
         await super.load(element)
-        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_READ, true, this.searchFunction, false)
-        await search.load()
+        let search = new Search("", 12, Search.ORDER_LATEST_READ, true, this.searchFunction, false)
+        await search.load(this.element)
     }
 }
 
 class LatestAddedTab extends Component {
-    constructor(element, searchFunction = null) {
-        super(element)
+    constructor(searchFunction = null) {
+        super()
         this.searchFunction = searchFunction
     }
 
     async load(element) {
         await super.load(element)
-        let search = new Search(this.element, "", 12, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
-        await search.load()
+        let search = new Search("", 12, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
+        await search.load(this.element)
     }
 }
 
 class LibrarySearchTab extends Component {
     CLASS_SEARCH_SECTION = "search_section"
-    constructor(element) {
-        super(element)
+    constructor() {
+        super()
     }
 
     async search(term = null) {
@@ -529,8 +532,8 @@ class LibrarySearchTab extends Component {
             this.searchField.value = term
         }
 
-        let search = new Search(this.searchList, term, 12, Search.ORDER_TITLE, true, (term) => this.search(term))
-        await search.load()
+        let search = new Search(term, 12, Search.ORDER_TITLE, true, (term) => this.search(term))
+        await search.load(this.searchList)
     }
 
     async load(element) {
@@ -562,8 +565,8 @@ class LibrarySearchTab extends Component {
 
 class CollectionsTab extends Component {
     COLLECTIONS_TREE_CLASS = "collections_tree"
-    constructor(element, searchFunction = null) {
-        super(element)
+    constructor(searchFunction = null) {
+        super()
         this.searchFunction = searchFunction
     }
 
@@ -652,9 +655,8 @@ class BookItem extends Component {
     CLASS_PROGRESS_BAR = "progress_bar"
     CLASS_COVER_ENCLOSURE = "cover_enclosure"
 
-    constructor(element, book, withTitle, withCollection, searchFunction = null) {
-        super(element)
-        if (element.tagName != "LI") throw "book item must be applied to li"
+    constructor(book, withTitle, withCollection, searchFunction = null) {
+        super()
         this.book = book
         this.withTitle = withTitle
         this.withCollection = withCollection
@@ -887,6 +889,7 @@ class BookItem extends Component {
 
     async load(element) {
         await super.load(element)
+        if (this.element.tagName != "LI") throw "book item must be applied to li"
 
         this.element.style.width = '100%'
         this.element.style.overflow = 'hidden'
@@ -934,8 +937,8 @@ class BookList extends Component {
     static SEED_MAX = parseInt("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
     CLASS_BOOK_LIST = "book_list"
 
-    constructor(element, withCollections = false, searchFunction = null) {
-        super(element)
+    constructor(withCollections = false, searchFunction = null) {
+        super()
         this.withTitles = ShowTitlesSetting.factory().get()
         this.withCollections = withCollections
         this.searchFunction = searchFunction
@@ -1009,8 +1012,8 @@ class BookList extends Component {
 
         let bookListItem = document.createElement("li")
         parent.appendChild(bookListItem)
-        let bookItem = new BookItem(bookListItem, book, this.withTitles, ! this.withCollections, this.searchFunction)
-        await bookItem.load()
+        let bookItem = new BookItem(book, this.withTitles, ! this.withCollections, this.searchFunction)
+        await bookItem.load(bookListItem)
         this.bookCount += 1
     }
 
@@ -1027,8 +1030,8 @@ class Search extends Component {
     static ORDER_TITLE = ""
     CLASS_SEARCH_SECTION = "search_section"
 
-    constructor(element, term, pageSize, order, multipage, collectionLinkFunction = null, completed = null) {
-        super(element)
+    constructor(term, pageSize, order, multipage, collectionLinkFunction = null, completed = null) {
+        super()
         this.term = term
         this.pageSize = pageSize
         this.order = order
@@ -1152,8 +1155,8 @@ class Search extends Component {
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
-        this.bookList = new BookList(bookListDiv, withCollectionSections, this.collectionLinkFunction)
-        await this.bookList.load()
+        this.bookList = new BookList(withCollectionSections, this.collectionLinkFunction)
+        await this.bookList.load(bookListDiv)
 
         this.nextButton = this.createNextButton()
         this.element.appendChild(this.nextButton)
@@ -1200,8 +1203,8 @@ class Setting extends AsSingleton(Component) {
     }*/
 
     CLASS_SETTING = "setting"
-    constructor(element, name, defaultValue = null) {
-        super(element)
+    constructor(name, defaultValue = null) {
+        super()
         this.name = name
         this.defaultValue = defaultValue
         this.apply()
@@ -1238,8 +1241,8 @@ class Setting extends AsSingleton(Component) {
 }
 
 class ColorSetting extends Setting {
-    constructor(element, name, defaultValue = "#ffffff") {
-        super(element, name, defaultValue)
+    constructor(name, defaultValue = "#ffffff") {
+        super(name, defaultValue)
     }
 
     async load(element) {
@@ -1269,95 +1272,95 @@ class ColorSetting extends Setting {
 }
 
 class LightThemeBackgroundColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "light theme background color", "#ffffff")
+    constructor() {
+        super("light theme background color", "#ffffff")
     }
 }
 class LightThemeTextColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "light theme text color", "#000000")
+    constructor() {
+        super("light theme text color", "#000000")
     }
 }
 class LightThemeHighlightColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "light theme highlight color", "#FFD700")
+    constructor() {
+        super("light theme highlight color", "#FFD700")
     }
     apply() {
         super.apply()
     }
 }
 class LightThemeHighlightTextColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "light theme highlight text color", "#000000")
+    constructor() {
+        super("light theme highlight text color", "#000000")
     }
 }
 class LightThemeErrorColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "light theme error color", "#dc143c")
+    constructor() {
+        super("light theme error color", "#dc143c")
     }
 }
 class LightThemeErrorTextColorSetting extends ColorSetting {
-    constructor(element = null) {
+    constructor() {
         super(element, "light theme error text color", "#FFFFFF")
     }
 }
 class LightThemeSuccessColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "light theme success color", "#008000")
+    constructor() {
+        super("light theme success color", "#008000")
     }
 }
 class LightThemeSuccessTextColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "light theme success text color", "#FFFFFF")
+    constructor() {
+        super("light theme success text color", "#FFFFFF")
     }
 }
 class DarkThemeBackgroundColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme background color", "#000000")
+    constructor() {
+        super("dark theme background color", "#000000")
     }
 }
 class DarkThemeTextColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme text color", "#ffffff")
+    constructor() {
+        super("dark theme text color", "#ffffff")
     }
 }
 class DarkThemeHighlightColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme highlight color", "#FFD700")
+    constructor() {
+        super("dark theme highlight color", "#FFD700")
     }
     apply() {
         super.apply()
     }
 }
 class DarkThemeHighlightTextColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme highlight text color", "#000000")
+    constructor() {
+        super("dark theme highlight text color", "#000000")
     }
 }
 class DarkThemeErrorColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme error color", "#dc143c")
+    constructor() {
+        super("dark theme error color", "#dc143c")
     }
 }
 class DarkThemeErrorTextColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme error text color", "#FFFFFF")
+    constructor() {
+        super("dark theme error text color", "#FFFFFF")
     }
 }
 class DarkThemeSuccessColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme success color", "#008000")
+    constructor() {
+        super("dark theme success color", "#008000")
     }
 }
 class DarkThemeSuccessTextColorSetting extends ColorSetting {
-    constructor(element = null) {
-        super(element, "dark theme success text color", "#FFFFFF")
+    constructor() {
+        super("dark theme success text color", "#FFFFFF")
     }
 }
 
 class NumberSliderSetting extends Setting {
-    constructor(element, name, minimumValue, maximumValue, step, defaultValue, unitOfMeasure = null) {
-        super(element, name, defaultValue)
+    constructor(name, minimumValue, maximumValue, step, defaultValue, unitOfMeasure = null) {
+        super(name, defaultValue)
         this.minimumValue = minimumValue
         this.maximumValue = maximumValue
         this.step = step
@@ -1417,14 +1420,14 @@ class NumberSliderSetting extends Setting {
 }
 
 class DownloadSizeSetting extends NumberSliderSetting {
-    constructor(element = null) {
-        super(element, "maximum download size", 50, 200, 10, 100, " MB")
+    constructor() {
+        super("maximum download size", 50, 200, 10, 100, " MB")
     }
 }
 
 class TextSizeSetting extends NumberSliderSetting {
-    constructor(element = null, controlledElementId = "content", applyCallback = null) {
-        super(element, "text size", 0.5, 2, 0.1, 1)
+    constructor(controlledElementId = "content", applyCallback = null) {
+        super("text size", 0.5, 2, 0.1, 1)
         this.controlledElement = document.getElementById(controlledElementId)
         this.applyCallback = applyCallback
         this.apply()
@@ -1441,8 +1444,8 @@ class TextSizeSetting extends NumberSliderSetting {
 }
 
 class OptionsSliderSetting extends Setting {
-    constructor(element, name, values, defaultValue) {
-        super(element, name, defaultValue)
+    constructor(name, values, defaultValue) {
+        super(name, defaultValue)
         this.values = values
     }
 
@@ -1491,8 +1494,8 @@ class OptionsSliderSetting extends Setting {
 }
 
 class ThemeSliderSetting extends OptionsSliderSetting {
-    constructor(element = null) {
-        super(element, "theme", ["dark", "OS theme", "time based", "light"], "light")
+    constructor() {
+        super("theme", ["dark", "OS theme", "time based", "light"], "light")
         this.apply()
     }
     
@@ -1545,8 +1548,8 @@ class ThemeSliderSetting extends OptionsSliderSetting {
 }
 
 class CheckSetting extends Setting {
-    constructor(element, name, defaultValue) {
-        super(element, name, defaultValue)
+    constructor(name, defaultValue) {
+        super(name, defaultValue)
     }
 
     async load(element) {
@@ -1578,14 +1581,14 @@ class CheckSetting extends Setting {
 }
 
 class ShowTitlesSetting extends CheckSetting {
-    constructor(element = null) {
-        super(element, "show titles", true)
+    constructor() {
+        super("show titles", true)
     }
 }
 
 class TimeSetting extends Setting {
-    constructor(element, name, defaultValue) {
-        super(element, name, defaultValue)
+    constructor(name, defaultValue) {
+        super(name, defaultValue)
     }
 
     async load(element) {
@@ -1615,8 +1618,8 @@ class TimeSetting extends Setting {
 }
 
 class DayStartSetting extends TimeSetting {
-    constructor(element = null) {
-        super(element, "day start", "07:00")
+    constructor() {
+        super("day start", "07:00")
     }
     apply() {
         super.apply()
@@ -1624,8 +1627,8 @@ class DayStartSetting extends TimeSetting {
 }
 
 class DayEndSetting extends TimeSetting {
-    constructor(element = null) {
-        super(element, "day end", "21:00")
+    constructor() {
+        super("day end", "21:00")
     }
     apply() {
         super.apply()
@@ -1633,8 +1636,8 @@ class DayEndSetting extends TimeSetting {
 }
 
 class ControlWithConfirmation extends Component {
-    constructor(element, text, confirmation, timeout) {
-        super(element)
+    constructor(text, confirmation, timeout) {
+        super()
         this.text = text
         this.confirmation = confirmation
         this.timeout = timeout
@@ -1673,8 +1676,8 @@ class ControlWithConfirmation extends Component {
 }
 
 class ClearStorageControl extends ControlWithConfirmation {
-    constructor(element) {
-        super(element, "Clear storage", "Click if you are sure you want to clear storage", 5000)
+    constructor() {
+        super("Clear storage", "Click if you are sure you want to clear storage", 5000)
     }
     async load(element) {
         await super.load(element)

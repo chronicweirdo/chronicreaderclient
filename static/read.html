@@ -43,11 +43,11 @@
         }
 
         class MarkCompletedButton extends Component {
-            constructor(element) {
-                super(element);
+            constructor() {
+                super();
             }
-            async load() {
-                super.load();
+            async load(element) {
+                super.load(element);
 
                 this.markAsCompleteButton = document.createElement("a");
                 this.markAsCompleteButton.style.display = "none";
@@ -194,10 +194,8 @@
             let additionalTools = document.createElement("div");
 
             let textSizeParagraph = document.createElement("p");
-            new TextSizeSetting(textSizeParagraph, "content", () => { if (document.display) document.display.update() })
-                .load();
-            //document.textSizeSetting.element = textSizeParagraph
-            //document.textSizeSetting.load()
+            new TextSizeSetting("content", () => { if (document.display) document.display.update() })
+                .load(textSizeParagraph);
             additionalTools.appendChild(textSizeParagraph);
 
             let downloadLinkParagraph = document.createElement("p");
@@ -246,8 +244,8 @@
 
             let markCompletedParagraph = document.createElement("p");
             additionalTools.appendChild(markCompletedParagraph);
-            document.completedButton = new MarkCompletedButton(markCompletedParagraph);
-            document.completedButton.load();
+            document.completedButton = new MarkCompletedButton();
+            document.completedButton.load(markCompletedParagraph);
             document.completedButton.update();
 
             let libraryLinkParagraph = document.createElement("p");

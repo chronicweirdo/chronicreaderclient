@@ -32,7 +32,7 @@
         async function prepareUi() {
             initStyleSettings();
             let contentElement = document.getElementById("content");
-            new TabbedPage(contentElement).load();
+            new TabbedPage().load(contentElement);
 
             window.addEventListener("focus", () => {
                 ThemeSliderSetting.factory().apply();
