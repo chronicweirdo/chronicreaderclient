@@ -49,15 +49,13 @@
             async load(element) {
                 super.load(element);
 
-                this.markAsCompleteButton = document.createElement("a");
+                this.markAsCompleteButton = this.createElement("a");
                 this.markAsCompleteButton.style.display = "none";
                 this.markAsCompleteButton.innerHTML = 'mark book as read';
-                this.element.appendChild(this.markAsCompleteButton);
 
-                this.markAsUnreadButton = document.createElement("a");
+                this.markAsUnreadButton = this.createElement("a");
                 this.markAsUnreadButton.style.display = "none";
                 this.markAsUnreadButton.innerHTML = "mark book as unread";
-                this.element.appendChild(this.markAsUnreadButton);
 
                 this.markAsCompleteButton.onclick = () => {
                     fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
