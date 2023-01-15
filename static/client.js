@@ -69,10 +69,15 @@ class Component {
     constructor(element) {
         this.element = element
     }
-    async load() {
-        this.element.innerHTML = ""
-        Array.from(this.element.classList)
-            .forEach(c => this.element.classList.remove(c))
+    async load(element) {
+        if (element != undefined && element != null) {
+            this.element = element
+        }
+        if (this.element != undefined && this.element != null) {
+            this.element.innerHTML = ""
+            Array.from(this.element.classList)
+                .forEach(c => this.element.classList.remove(c))
+        }
     }
 
     async update(data) {
@@ -126,8 +131,8 @@ class TabbedPage extends Component {
         }
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let buttons = document.createElement("div")
         buttons.classList.add(this.CLASS_MENU)
@@ -250,8 +255,8 @@ class FormComponent extends Component {
         return p
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
     }
 }
 
@@ -260,8 +265,8 @@ class UploadForm extends FormComponent {
         super(element)
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         this.element.appendChild(this.title("File Upload"))
 
@@ -315,8 +320,8 @@ class LoginForm extends FormComponent {
         super(element)
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         this.element.appendChild(this.title("Server Connection"))
 
@@ -418,8 +423,8 @@ class SettingsTab extends Component {
         return p
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         await LoginForm.createInParent(this.element, "div")
 
@@ -430,30 +435,26 @@ class SettingsTab extends Component {
         settingsTitle.classList.add(CLASS_HIGHLIGHTED)
         this.element.appendChild(settingsTitle)
 
-        ShowTitlesSetting.factory(this.newSettingLine()).load()
-        TextSizeSetting.factory(this.newSettingLine()).load()
-        DayStartSetting.factory(this.newSettingLine()).load()
-        DayEndSetting.factory(this.newSettingLine()).load()
-        ThemeSliderSetting.factory(this.newSettingLine()).load()
-        DownloadSizeSetting.factory(this.newSettingLine()).load()
+        ShowTitlesSetting.factory().load(this.newSettingLine())
+        TextSizeSetting.factory().load(this.newSettingLine())
+        DayStartSetting.factory().load(this.newSettingLine())
+        DayEndSetting.factory().load(this.newSettingLine())
+        ThemeSliderSetting.factory().load(this.newSettingLine())
+        DownloadSizeSetting.factory().load(this.newSettingLine())
         
-        LightThemeBackgroundColorSetting.factory(this.newSettingLine()).load()
-        LightThemeTextColorSetting.factory(this.newSettingLine()).load()
-        LightThemeHighlightColorSetting.factory(this.newSettingLine()).load()
-        LightThemeHighlightTextColorSetting.factory(this.newSettingLine()).load()
-        LightThemeErrorColorSetting.factory(this.newSettingLine()).load()
-        //LightThemeErrorTextColorSetting.factory(this.newSettingLine()).load()
-        LightThemeSuccessColorSetting.factory(this.newSettingLine()).load()
-        //LightThemeSuccessTextColorSetting.factory(this.newSettingLine()).load()
+        LightThemeBackgroundColorSetting.factory().load(this.newSettingLine())
+        LightThemeTextColorSetting.factory().load(this.newSettingLine())
+        LightThemeHighlightColorSetting.factory().load(this.newSettingLine())
+        LightThemeHighlightTextColorSetting.factory().load(this.newSettingLine())
+        LightThemeErrorColorSetting.factory().load(this.newSettingLine())
+        LightThemeSuccessColorSetting.factory().load(this.newSettingLine())
 
-        DarkThemeBackgroundColorSetting.factory(this.newSettingLine()).load()
-        DarkThemeTextColorSetting.factory(this.newSettingLine()).load()
-        DarkThemeHighlightColorSetting.factory(this.newSettingLine()).load()
-        DarkThemeHighlightTextColorSetting.factory(this.newSettingLine()).load()
-        DarkThemeErrorColorSetting.factory(this.newSettingLine()).load()
-        //DarkThemeErrorTextColorSetting.factory(this.newSettingLine()).load()
-        DarkThemeSuccessColorSetting.factory(this.newSettingLine()).load()
-        //DarkThemeSuccessTextColorSetting.factory(this.newSettingLine()).load()
+        DarkThemeBackgroundColorSetting.factory().load(this.newSettingLine())
+        DarkThemeTextColorSetting.factory().load(this.newSettingLine())
+        DarkThemeHighlightColorSetting.factory().load(this.newSettingLine())
+        DarkThemeHighlightTextColorSetting.factory().load(this.newSettingLine())
+        DarkThemeErrorColorSetting.factory().load(this.newSettingLine())
+        DarkThemeSuccessColorSetting.factory().load(this.newSettingLine())
         
         let clearStorageParagraph = document.createElement("p")
         let clearStorage = new ClearStorageControl(clearStorageParagraph)
@@ -468,8 +469,8 @@ class OnDeviceTab extends Component {
         this.searchFunction = searchFunction
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         await fetch("/books")
             .then(response => response.json())
@@ -495,8 +496,8 @@ class LatestReadTab extends Component {
         this.searchFunction = searchFunction
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
         let search = new Search(this.element, "", 12, Search.ORDER_LATEST_READ, true, this.searchFunction, false)
         await search.load()
     }
@@ -508,8 +509,8 @@ class LatestAddedTab extends Component {
         this.searchFunction = searchFunction
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
         let search = new Search(this.element, "", 12, Search.ORDER_LATEST_ADDED, true, this.searchFunction)
         await search.load()
     }
@@ -532,8 +533,8 @@ class LibrarySearchTab extends Component {
         await search.load()
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let searchSection = document.createElement("p")
         searchSection.style.textAlign = "center"
@@ -618,8 +619,8 @@ class CollectionsTab extends Component {
         return list
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let collectionsResponse = await fetch("/collections")
         if (collectionsResponse.status == 200) {
@@ -884,8 +885,8 @@ class BookItem extends Component {
         return "read.html?book=" + this.book.id
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         this.element.style.width = '100%'
         this.element.style.overflow = 'hidden'
@@ -945,8 +946,8 @@ class BookList extends Component {
         return this.bookCount
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
     }
 
     createTitle(collection) {
@@ -1146,8 +1147,8 @@ class Search extends Component {
         this.element.appendChild(this.nothingFoundMessage)
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
         let withCollectionSections = (this.order == Search.ORDER_TITLE)
         let bookListDiv = document.createElement("div")
         this.element.appendChild(bookListDiv)
@@ -1171,8 +1172,8 @@ class Search extends Component {
     }
 }
 
-class Setting extends Component {
-    static INST = []
+class Setting extends AsSingleton(Component) {
+    /*static INST = []
 
     static getInstances() {
         let instances = []
@@ -1196,7 +1197,7 @@ class Setting extends Component {
             let setting = new this(...args)
             return setting
         }
-    }
+    }*/
 
     CLASS_SETTING = "setting"
     constructor(element, name, defaultValue = null) {
@@ -1204,11 +1205,11 @@ class Setting extends Component {
         this.name = name
         this.defaultValue = defaultValue
         this.apply()
-        Setting.INST.push(this)
+        //Setting.INST.push(this)
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         this.element.classList.add(this.CLASS_SETTING)
         this.element.style.display = "grid"
@@ -1241,8 +1242,8 @@ class ColorSetting extends Setting {
         super(element, name, defaultValue)
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let label = document.createElement("label")
         label.innerHTML = this.name
@@ -1371,8 +1372,8 @@ class NumberSliderSetting extends Setting {
         }
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let label = document.createElement("label")
         label.innerHTML = this.name
@@ -1445,8 +1446,8 @@ class OptionsSliderSetting extends Setting {
         this.values = values
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let label = document.createElement("label")
         label.innerHTML = this.name
@@ -1548,8 +1549,8 @@ class CheckSetting extends Setting {
         super(element, name, defaultValue)
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let label = document.createElement("label")
         label.innerHTML = this.name
@@ -1587,8 +1588,8 @@ class TimeSetting extends Setting {
         super(element, name, defaultValue)
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let label = document.createElement("label")
         label.innerHTML = this.name
@@ -1639,8 +1640,8 @@ class ControlWithConfirmation extends Component {
         this.timeout = timeout
     }
 
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
 
         let button = document.createElement("a")
         button.innerHTML = this.text
@@ -1675,8 +1676,8 @@ class ClearStorageControl extends ControlWithConfirmation {
     constructor(element) {
         super(element, "Clear storage", "Click if you are sure you want to clear storage", 5000)
     }
-    async load() {
-        await super.load()
+    async load(element) {
+        await super.load(element)
     }
     execute() {
         window.localStorage.clear()
