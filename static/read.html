@@ -30,34 +30,34 @@
     <script src="client.js"></script>
     <script>
         function intToHex(i) {
-            let ri = Math.floor(i)
-            let h = ri.toString(16)
+            let ri = Math.floor(i);
+            let h = ri.toString(16);
             if (h.length < 2) {
-                h = "0" + h
+                h = "0" + h;
             }
-            return h
+            return h;
         }
 
         function getHexCode(rgb) {
-            return "#" + intToHex(rgb[0]) + intToHex(rgb[1]) + intToHex(rgb[2])
+            return "#" + intToHex(rgb[0]) + intToHex(rgb[1]) + intToHex(rgb[2]);
         }
 
         class MarkCompletedButton extends Component {
             constructor(element) {
-                super(element)
+                super(element);
             }
             async load() {
-                super.load()
+                super.load();
 
-                this.markAsCompleteButton = document.createElement("a")
-                this.markAsCompleteButton.style.display = "none"
-                this.markAsCompleteButton.innerHTML = 'mark book as read'
-                this.element.appendChild(this.markAsCompleteButton)
+                this.markAsCompleteButton = document.createElement("a");
+                this.markAsCompleteButton.style.display = "none";
+                this.markAsCompleteButton.innerHTML = 'mark book as read';
+                this.element.appendChild(this.markAsCompleteButton);
 
-                this.markAsUnreadButton = document.createElement("a")
-                this.markAsUnreadButton.style.display = "none"
-                this.markAsUnreadButton.innerHTML = "mark book as unread"
-                this.element.appendChild(this.markAsUnreadButton)
+                this.markAsUnreadButton = document.createElement("a");
+                this.markAsUnreadButton.style.display = "none";
+                this.markAsUnreadButton.innerHTML = "mark book as unread";
+                this.element.appendChild(this.markAsUnreadButton);
 
                 this.markAsCompleteButton.onclick = () => {
                     fetch("sync/" + document.meta.id + "?" + new URLSearchParams({
@@ -70,7 +70,7 @@
                             document.meta.completed = true
                             this.update()
                         }
-                    })
+                    });
                 }
 
                 this.markAsUnreadButton.onclick = () => {
@@ -84,47 +84,46 @@
                             document.meta.completed = false
                             this.update()
                         }
-                    })
+                    });
                 }
 
-                await this.update()
+                await this.update();
             }
 
             async update() {
-                console.log("completed: " + document.meta.completed)
                 if (document.meta.completed == true) {
-                    this.markAsCompleteButton.style.display = "none"
-                    this.markAsUnreadButton.style.display = "inline-block"
+                    this.markAsCompleteButton.style.display = "none";
+                    this.markAsUnreadButton.style.display = "inline-block";
                 } else {
-                    this.markAsCompleteButton.style.display = "inline-block"
-                    this.markAsUnreadButton.style.display = "none"
+                    this.markAsCompleteButton.style.display = "inline-block";
+                    this.markAsUnreadButton.style.display = "none";
                 }
             }
         }
 
         class DominantColor {
-            static INSTANCE = null
+            static INSTANCE = null;
 
             static factory() {
                 if (this.INSTANCE == null) {
-                    this.INSTANCE = new DominantColor()
+                    this.INSTANCE = new DominantColor();
                 }
-                return this.INSTANCE
+                return this.INSTANCE;
             }
 
             constructor() {
-                this.contentElementId = "content"
-                this.dominantColor = null
+                this.contentElementId = "content";
+                this.dominantColor = null;
             }
 
             apply(dominantColor) {
                 if (dominantColor != undefined) {
-                    this.dominantColor = dominantColor
+                    this.dominantColor = dominantColor;
                 }
                 if (this.dominantColor != null) {
-                    let color = getHexCode(this.dominantColor)
-                    document.getElementById(this.contentElementId).style.backgroundColor = color
-                    setStatusBarColor(color)
+                    let color = getHexCode(this.dominantColor);
+                    document.getElementById(this.contentElementId).style.backgroundColor = color;
+                    setStatusBarColor(color);
                 } else {
                     // do nothing?
                 }
@@ -132,22 +131,21 @@
         }
 
         function displayPageCallback(callbackControl) {
-            ThemeSliderSetting.factory().apply()
+            ThemeSliderSetting.factory().apply();
 
-            DominantColor.factory().apply(callbackControl.dominantColor)
+            DominantColor.factory().apply(callbackControl.dominantColor);
 
 
             if (callbackControl.position != undefined && callbackControl.position != null) {
-                document.position = callbackControl.position
+                document.position = callbackControl.position;
                 // sync progress with backend
-                let bookId = getBookId()
+                let bookId = getBookId();
                 let syncParams = {
                     position: callbackControl.position
                 }
                 if (callbackControl.isLastPage) {
-                    syncParams.completed = true
+                    syncParams.completed = true;
                 }
-                console.log(syncParams)
                 fetch("sync/" + bookId + "?" + new URLSearchParams(syncParams))
                 .then(response => {
                     if (response.status == 200) {
@@ -162,55 +160,55 @@
                             document.completedButton.update()
                         }
                     }
-                })
+                });
                 // update ui
-                let newPosition = callbackControl.position
-                let queryString = window.location.search
-                let urlParams = new URLSearchParams(queryString)
-                urlParams.delete("position")
-                urlParams.append("position", newPosition)
-                let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString()
-                window.history.replaceState('', '', newUrl)
+                let newPosition = callbackControl.position;
+                let queryString = window.location.search;
+                let urlParams = new URLSearchParams(queryString);
+                urlParams.delete("position");
+                urlParams.append("position", newPosition);
+                let newUrl = window.location.origin + window.location.pathname + "?" + urlParams.toString();
+                window.history.replaceState('', '', newUrl);
             }
             
         }
         function getBookId() {
-            let params = new URLSearchParams(window.location.search)
-            let bookId = params.get("book")
-            return bookId
+            let params = new URLSearchParams(window.location.search);
+            let bookId = params.get("book");
+            return bookId;
         }
         function getUrlPosition() {
-            let params = new URLSearchParams(window.location.search)
-            let position = params.get("position")
-            return Number(position)
+            let params = new URLSearchParams(window.location.search);
+            let position = params.get("position");
+            return Number(position);
         }
         function getSyncUrl(position = undefined) {
-            let url = "sync/" + getBookId()
+            let url = "sync/" + getBookId();
             if (position) {
-                url += "?position=" + position
+                url += "?position=" + position;
             }
-            return url
+            return url;
         }
         
         function getTools(bookMeta) {
-            let additionalTools = document.createElement("div")
+            let additionalTools = document.createElement("div");
 
-            let textSizeParagraph = document.createElement("p")
+            let textSizeParagraph = document.createElement("p");
             new TextSizeSetting(textSizeParagraph, "content", () => { if (document.display) document.display.update() })
-                .load()
+                .load();
             //document.textSizeSetting.element = textSizeParagraph
             //document.textSizeSetting.load()
-            additionalTools.appendChild(textSizeParagraph)
+            additionalTools.appendChild(textSizeParagraph);
 
-            let downloadLinkParagraph = document.createElement("p")
-            document.downloadLink = document.createElement("a")
-            document.downloadLink.innerHTML = "download"
-            document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block"
+            let downloadLinkParagraph = document.createElement("p");
+            document.downloadLink = document.createElement("a");
+            document.downloadLink.innerHTML = "download";
+            document.downloadLink.style.display = bookMeta.local ? "none" : "inline-block";
 
-            let bookDownloadUrl = "download/" + getBookId()    
-            let maxDownloadSize = new DownloadSizeSetting().get() * 1000000
+            let bookDownloadUrl = "download/" + getBookId();
+            let maxDownloadSize = new DownloadSizeSetting().get() * 1000000;
             if (bookMeta.filesize > maxDownloadSize) {
-                bookDownloadUrl += "?chunked"
+                bookDownloadUrl += "?chunked";
             }
 
             document.downloadLink.onclick = () => {
@@ -222,16 +220,15 @@
                             document.downloadLink.style.display = "none"
                             document.deleteLink.style.display = "inline-block"
                         }
-                    })
+                    });
             }
-            downloadLinkParagraph.appendChild(document.downloadLink)
+            downloadLinkParagraph.appendChild(document.downloadLink);
 
-            document.deleteLink = document.createElement("a")
-            document.deleteLink.innerHTML = "delete from local"
-            document.deleteLink.style.display = bookMeta.local ? "inline-block" : "none"
+            document.deleteLink = document.createElement("a");
+            document.deleteLink.innerHTML = "delete from local";
+            document.deleteLink.style.display = bookMeta.local ? "inline-block" : "none";
             document.deleteLink.onclick = () => {
-                let url = "delete/" + getBookId()
-                console.log("deleting book at " + url)
+                let url = "delete/" + getBookId();
                 fetch(url)
                     .then(response => response.json())
                     .then(result => {
@@ -241,76 +238,75 @@
                             document.deleteLink.style.display = "none"
                         }
                     })
-                    .catch(e => console.log(e))
+                    .catch(e => console.log(e));
             }
-            downloadLinkParagraph.appendChild(document.deleteLink)
+            downloadLinkParagraph.appendChild(document.deleteLink);
 
-            additionalTools.appendChild(downloadLinkParagraph)
+            additionalTools.appendChild(downloadLinkParagraph);
 
-            let markCompletedParagraph = document.createElement("p")
-            additionalTools.appendChild(markCompletedParagraph)
-            document.completedButton = new MarkCompletedButton(markCompletedParagraph)
-            document.completedButton.load()
-            document.completedButton.update()
+            let markCompletedParagraph = document.createElement("p");
+            additionalTools.appendChild(markCompletedParagraph);
+            document.completedButton = new MarkCompletedButton(markCompletedParagraph);
+            document.completedButton.load();
+            document.completedButton.update();
 
-            let libraryLinkParagraph = document.createElement("p")
-            let libraryLink = document.createElement("a")
-            libraryLink.innerHTML = "library"
-            let loc = window.location.pathname
-            let cutoff = loc.indexOf("read.html")
-            libraryLink.href = loc.substring(0, cutoff)
-            libraryLinkParagraph.appendChild(libraryLink)
+            let libraryLinkParagraph = document.createElement("p");
+            let libraryLink = document.createElement("a");
+            libraryLink.innerHTML = "library";
+            let loc = window.location.pathname;
+            let cutoff = loc.indexOf("read.html");
+            libraryLink.href = loc.substring(0, cutoff);
+            libraryLinkParagraph.appendChild(libraryLink);
 
-            libraryLinkParagraph.style.marginBottom = "2em"
+            libraryLinkParagraph.style.marginBottom = "2em";
 
-            additionalTools.appendChild(libraryLinkParagraph)
+            additionalTools.appendChild(libraryLinkParagraph);
 
-            return additionalTools
+            return additionalTools;
         }
         async function initBook(meta) {
-            document.meta = meta
-            console.log(meta)
-            let startPosition = getUrlPosition()
+            document.meta = meta;
+            let startPosition = getUrlPosition();
             if (! startPosition) {
-                startPosition = Number(meta.position)
+                startPosition = Number(meta.position);
             }
-            let url = "book/" + meta.id
-            let element = document.getElementById("content")
-            let extension = meta.extension
+            let url = "book/" + meta.id;
+            let element = document.getElementById("content");
+            let extension = meta.extension;
             let settings = {
                 "position": startPosition,
                 "displayControls": false,
                 "displayPageForCallback": displayPageCallback,
                 "toolsContents": ["toc", "cover", "progress", "zoom", () => getTools(meta)]
-            }
-            let chunked = false
+            };
+            let chunked = false;
             if (meta.chunked != undefined) {
-                chunked = meta.chunked
+                chunked = meta.chunked;
             } else {
-                chunked = meta.filesize > DownloadSizeSetting.factory().get() * 1000000
+                chunked = meta.filesize > DownloadSizeSetting.factory().get() * 1000000;
             }
-            document.display = await ChronicReader.initDisplay(url, element, extension, settings, chunked)
-            new TextSizeSetting().apply()
+            document.display = await ChronicReader.initDisplay(url, element, extension, settings, chunked);
+            new TextSizeSetting().apply();
         }
         async function prepareUi() {
-            initStyleSettings()
-            let contentElement = document.getElementById("content")
-            let themeSetting = ThemeSliderSetting.factory()
+            initStyleSettings();
+            let contentElement = document.getElementById("content");
+            let themeSetting = ThemeSliderSetting.factory();
             
             window.addEventListener("focus", () => {
-                themeSetting.apply()
+                themeSetting.apply();
                 if (document.dominantColor) {
-                    setStatusBarColor(document.dominantColor)
+                    setStatusBarColor(document.dominantColor);
                 }
             }, false)
 
-            let bookId = getBookId()
+            let bookId = getBookId();
             fetch("bookmeta/" + bookId)
                 .then(response => response.json())
-                .then(meta => initBook(meta))
+                .then(meta => initBook(meta));
         }
         window.onload = function() {
-            prepareUi()            
+            prepareUi();         
         }
     </script>
     <link rel="stylesheet" type="text/css" href="fonts.css">
