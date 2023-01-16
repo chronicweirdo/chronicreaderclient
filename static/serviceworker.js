@@ -34,6 +34,10 @@ self.addEventListener('fetch', e => {
         e.respondWith(worker.handleVerify(e.request))
     } else if (url.pathname.match(/\/collections/)) {
         e.respondWith(worker.handleCollections(e.request))
+    } else if (url.pathname.match(/\/setting\//) && url.method == "GET") {
+        e.respondWith(worker.loadSetting(e.request))
+    } else if (url.pathname.match(/\/setting\//) && url.method == "PUT") {
+        e.respondWith(worker.saveSetting(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -42,6 +46,31 @@ self.addEventListener('fetch', e => {
 class Worker {
     constructor() {
 
+    }
+
+    async saveSetting(request) {
+        let url = new URL(request.url)
+        let pathParts = url.pathname.split("/")
+        let key = pathParts[pathParts.length - 1]
+        let value = await request.json()
+
+        let db = new Database()
+        let result = await db.saveSetting(key, value)
+        return this.getJsonResponse(result)
+    }
+
+    async loadSetting(request) {
+        let url = new URL(request.url)
+        let pathParts = url.pathname.split("/")
+        let key = pathParts[pathParts.length - 1]
+
+        let db = new Database()
+        let result = await db.loadSetting(key)
+        if (result != null) {
+            return this.getJsonResponse(result.value)
+        } else {
+            return this.getJsonResponse(null)
+        }
     }
 
     async login(request) {
@@ -417,6 +446,7 @@ class Database {
     static CONNECTION_TABLE = 'connection'
     static META_TABLE = "meta"
     static CONTENT_TABLE = "content"
+    static SETTING_TABLE = "setting"
 
     constructor() {
 
@@ -440,6 +470,7 @@ class Database {
                     let connectionStore = localDb.createObjectStore(Database.CONNECTION_TABLE, {keyPath: 'id'})
                     let metaStore = localDb.createObjectStore(Database.META_TABLE, {keyPath: 'id'})
                     let contentStore = localDb.createObjectStore(Database.CONTENT_TABLE, {keyPath: 'id'})
+                    let settingStore = localDb.createObjectStore(Database.SETTING_TABLE, {keyPath: 'id'})
                     console.log("upgraded")
                     resolve(localDb)
                 } catch (error) {
@@ -586,6 +617,28 @@ class Database {
         return {
             server: null,
             token: null
+        }
+    }
+
+    async saveSetting(key, value) {
+        try {
+            await this.databaseSave(Database.SETTING_TABLE, {
+                id: key,
+                value: value
+            });
+            return true;
+        } catch (error) {
+            console.log(error);
+            return false;
+        }
+    }
+
+    async loadSetting(key) {
+        try {
+            let setting = await this.databaseLoad(Database.SETTING_TABLE, key, ["value"]);
+            return setting;
+        } catch (error) {
+            return null;
         }
     }
 
