@@ -152,7 +152,7 @@ class Component {
 }
 
 class TabsList extends Component {
-    STORAGE_KEY = "tabbed_page_latest_tab"
+    //STORAGE_KEY = "tabbed_page_latest_tab"
 
     constructor(tabs) {
         super();
@@ -161,14 +161,16 @@ class TabsList extends Component {
 
     saveSelected(tab) {
         this.selectedTab = tab
-        window.localStorage.setItem(this.STORAGE_KEY, tab.name);
+        //window.localStorage.setItem(this.STORAGE_KEY, tab.name);
+        LatestTabSetting.factory().persist(tab.name)
     }
 
-    loadSelected() {
+    async loadSelected() {
         if (this.selectedTab != undefined) {
             return this.selectedTab
         } else {
-            let selectedName = window.localStorage.getItem(this.STORAGE_KEY);
+            //let selectedName = window.localStorage.getItem(this.STORAGE_KEY);
+            let selectedName = await LatestTabSetting.factory().get()
             if (selectedName != undefined && selectedName != null) {
                 for (let tab of this.tabs) {
                     if (tab.name === selectedName) {
@@ -228,7 +230,7 @@ class TabsMenu extends TabsList {
             button.onclick = () => this.selectTab(tab.name, tab.args);
         }
 
-        let selectedTab = this.loadSelected()
+        let selectedTab = await this.loadSelected()
         await this.selectTab(selectedTab.name, selectedTab.args)
     }
 }
@@ -243,15 +245,15 @@ class TabsDropdown extends TabsList {
         for (let tab of this.tabs) {
             if (tab.name == name) {
                 this.saveSelected(tab);
-                this.collapse()
+                await this.collapse()
                 if (tab.action != undefined) await tab.action(...args);
                 return;
             }
         }
     }
 
-    expand() {
-        let selectedTab = this.loadSelected()
+    async expand() {
+        let selectedTab = await this.loadSelected()
         for (let tab of this.tabs) {
             tab.listItem.style.display = "list-item"
             if (tab == selectedTab) {
@@ -266,8 +268,8 @@ class TabsDropdown extends TabsList {
         this.expanded = true
     }
 
-    collapse() {
-        let selectedTab = this.loadSelected()
+    async collapse() {
+        let selectedTab = await this.loadSelected()
         for (let tab of this.tabs) {
             if (tab == selectedTab) {
                 tab.listItem.style.display = "list-item"
@@ -298,11 +300,11 @@ class TabsDropdown extends TabsList {
         this.expandButton.classList.add(CLASS_HIGHLIGHTED)
         this.expandButton.style.textDecoration = "none";
         this.expandButton.innerHTML = "▼"
-        this.expandButton.onclick = () => {
+        this.expandButton.onclick = async () => {
             if (this.expanded) {
-                this.collapse()
+                await this.collapse()
             } else {
-                this.expand()
+                await this.expand()
             }
         }
         
@@ -324,7 +326,7 @@ class TabsDropdown extends TabsList {
             button.onclick = () => this.selectTab(tab.name, tab.args);
         }
 
-        let selectedTab = this.loadSelected()
+        let selectedTab = await this.loadSelected()
         await this.selectTab(selectedTab.name, selectedTab.args)
     }
 }
@@ -650,7 +652,7 @@ class SettingsTab extends Component {
         DarkThemeErrorColorSetting.factory().load(this.createElement("p"))
         DarkThemeSuccessColorSetting.factory().load(this.createElement("p"))
         
-        await new ClearStorageControl().load(this.createElement("p"))
+        await new ClearSettingsControl().load(this.createElement("p"))
     }
 }
 
@@ -1403,39 +1405,13 @@ class Search extends Component {
 }
 
 class Setting extends AsSingleton(Component) {
-    /*static INST = []
-
-    static getInstances() {
-        let instances = []
-        for (let i = 0; i < Setting.INST.length; i++) {
-            let setting = Setting.INST[i]
-            if (setting.constructor.name == this.name.toString()) {
-                instances.push(setting)
-            }
-        }
-        return instances
-    }
-    static factory(...args) {
-        let instances = this.getInstances()
-        if (instances.length > 0) {
-            if (args.length == 1) {
-                // first argument is always an element, we replace it if it exists
-                instances[0].element = args[0]
-            }
-            return instances[0]
-        } else {
-            let setting = new this(...args)
-            return setting
-        }
-    }*/
-
     CLASS_SETTING = "setting"
+
     constructor(name, defaultValue = null) {
         super()
         this.name = name
         this.defaultValue = defaultValue
         this.apply()
-        //Setting.INST.push(this)
     }
 
     async load(element) {
@@ -1450,20 +1426,50 @@ class Setting extends AsSingleton(Component) {
         return this.name.replaceAll(/\s/g, "_")
     }
 
-    persist(value) {
-        window.localStorage.setItem(this.getKey(), JSON.stringify(value))
+    async persist(value) {
+        this.value = value
+        //window.localStorage.setItem(this.getKey(), JSON.stringify(value))
+        let response = await fetch("setting/" + this.getKey(), {
+            method: "PUT",
+            body: value
+        })
+        /*if (response.status == 200) {
+            let result = response.json()
+            console.log(result)
+        }*/
     }
 
-    get() {
-        let savedValue = window.localStorage.getItem(this.getKey())
-        if (savedValue != undefined && savedValue != null) {
-            return JSON.parse(savedValue)
-        } else {
-            return this.defaultValue
+    async get() {
+        if (this.value == undefined) {
+            //let savedValue = window.localStorage.getItem(this.getKey())
+            let savedValueResponse = await fetch("setting/" + this.getKey())
+            console.log(savedValueResponse)
+            if (savedValueResponse.status == 200) {
+                let savedValue = await savedValueResponse.json()
+                console.log(savedValue)
+                if (savedValue != undefined && savedValue != null) {
+                    //return JSON.parse(savedValue)
+                    this.value = savedValue
+                } else {
+                    this.value = this.defaultValue;
+                }
+            } else {
+                this.value = this.defaultValue;
+            }
         }
+        return this.value
     }
 
     apply() {
+    }
+}
+
+class LatestTabSetting extends Setting {
+    constructor() {
+        super("tabbed page latest tab", "on device")
+    }
+    async load(element) {
+        throw "not implemented"
     }
 }
 
@@ -1483,7 +1489,7 @@ class ColorSetting extends Setting {
         input.style.justifySelf = "right"
         input.type = "color"
         input.name = this.getKey()
-        input.value = this.get()
+        input.value = await this.get()
         
         input.onchange = () => {
             this.persist(input.value)
@@ -1491,8 +1497,8 @@ class ColorSetting extends Setting {
         }
     }
 
-    apply() {
-        document.documentElement.style.setProperty("--" + this.getKey(), this.get())
+    async apply() {
+        document.documentElement.style.setProperty("--" + this.getKey(), await this.get())
     }
 }
 
@@ -1609,7 +1615,7 @@ class NumberSliderSetting extends Setting {
 
         let valueLabel = this.createElement("output")
         valueLabel.style.justifySelf = "right"
-        valueLabel.innerHTML = this.get() + this.getUnitOfMeasure()
+        valueLabel.innerHTML = (await this.get()) + this.getUnitOfMeasure()
 
         let input = this.createElement("input")
         input.style.gridColumn = "1/3"
@@ -1619,10 +1625,10 @@ class NumberSliderSetting extends Setting {
         input.min = this.minimumValue
         input.max = this.maximumValue
         input.step = this.step
-        input.value = this.get()
+        input.value = await this.get()
         
-        input.oninput = () => {
-            let originalValue = this.get()
+        input.oninput = async () => {
+            let originalValue = await this.get()
             valueLabel.innerHTML = input.value + this.getUnitOfMeasure()
             if (input.value != originalValue) {
                 valueLabel.classList.add(CLASS_HIGHLIGHTED)
@@ -1655,9 +1661,9 @@ class TextSizeSetting extends NumberSliderSetting {
         this.apply()
     }
 
-    apply() {
+    async apply() {
         if (this.controlledElement) {
-            this.controlledElement.style.fontSize = this.get() + "em"
+            this.controlledElement.style.fontSize = (await this.get()) + "em"
             if (this.applyCallback) {
                 timeout(1000).then(() => this.applyCallback())
             }
@@ -1680,7 +1686,7 @@ class OptionsSliderSetting extends Setting {
 
         let valueLabel = this.createElement("output")
         valueLabel.style.justifySelf = "right"
-        valueLabel.innerHTML = this.get()
+        valueLabel.innerHTML = await this.get()
 
         let input = this.createElement("input")
         input.style.gridColumn = "1/3"
@@ -1690,10 +1696,10 @@ class OptionsSliderSetting extends Setting {
         input.min = 0
         input.max = this.values.length - 1
         input.step = 1
-        input.value = this.values.indexOf(this.get())
+        input.value = this.values.indexOf(await this.get())
         
-        input.oninput = () => {
-            let originalValue = this.get()
+        input.oninput = async () => {
+            let originalValue = await this.get()
             let value = this.values[input.value]
             valueLabel.innerHTML = value
             if (value != originalValue) {
@@ -1740,8 +1746,8 @@ class ThemeSliderSetting extends OptionsSliderSetting {
         }
     }
 
-    apply() {
-        let value = this.get()
+    async apply() {
+        let value = await this.get()
         if (value == "light") {
             this.setLightTheme()
         } else if (value == "dark") {
@@ -1784,7 +1790,7 @@ class CheckSetting extends Setting {
         input.style.width = "1em"
         input.type = "checkbox"
         input.name = this.getKey()
-        input.checked = this.get()
+        input.checked = await this.get()
 
         input.onchange = () => {
             this.persist(input.checked)
@@ -1819,7 +1825,7 @@ class TimeSetting extends Setting {
         input.style.justifySelf = "right"
         input.type = "time"
         input.name = this.getKey()
-        input.value = this.get()
+        input.value = await this.get()
         
         input.onchange = () => {
             this.persist(input.value)
@@ -1877,27 +1883,34 @@ class ControlWithConfirmation extends Component {
                 button.style.display = "inline-block"
             })
         }
-        confirmationButton.onclick = () => {
-            this.execute()
+        confirmationButton.onclick = async () => {
+            await this.execute()
             confirmationButton.style.display = "none"
             button.style.display = "inline-block"
         }
     }
 
-    execute() {
+    async execute() {
     }
 }
 
-class ClearStorageControl extends ControlWithConfirmation {
+class ClearSettingsControl extends ControlWithConfirmation {
     constructor() {
-        super("Clear storage", "Click if you are sure you want to clear storage", 5000)
+        super("Reset settings", "Click if you are sure you want to reset all settings", 5000)
     }
     async load(element) {
         await super.load(element)
     }
-    execute() {
-        window.localStorage.clear()
-        window.location.reload()
+    async execute() {
+        let response = await fetch("settings", { method: "DELETE" })
+        if (response.status == 200) {
+            let result = await response.json()
+            if (result == true) {
+                window.location.reload()
+            } else {
+                console.log("failed to delete settings")
+            }
+        }
     }
 }
 
