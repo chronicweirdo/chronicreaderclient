@@ -652,7 +652,7 @@ class SettingsTab extends Component {
         DarkThemeErrorColorSetting.factory().load(this.createElement("p"))
         DarkThemeSuccessColorSetting.factory().load(this.createElement("p"))
         
-        await new ClearStorageControl().load(this.createElement("p"))
+        await new ClearSettingsControl().load(this.createElement("p"))
     }
 }
 
@@ -1883,27 +1883,34 @@ class ControlWithConfirmation extends Component {
                 button.style.display = "inline-block"
             })
         }
-        confirmationButton.onclick = () => {
-            this.execute()
+        confirmationButton.onclick = async () => {
+            await this.execute()
             confirmationButton.style.display = "none"
             button.style.display = "inline-block"
         }
     }
 
-    execute() {
+    async execute() {
     }
 }
 
-class ClearStorageControl extends ControlWithConfirmation {
+class ClearSettingsControl extends ControlWithConfirmation {
     constructor() {
-        super("Clear storage", "Click if you are sure you want to clear storage", 5000)
+        super("Reset settings", "Click if you are sure you want to reset all settings", 5000)
     }
     async load(element) {
         await super.load(element)
     }
-    execute() {
-        window.localStorage.clear()
-        window.location.reload()
+    async execute() {
+        let response = await fetch("settings", { method: "DELETE" })
+        if (response.status == 200) {
+            let result = await response.json()
+            if (result == true) {
+                window.location.reload()
+            } else {
+                console.log("failed to delete settings")
+            }
+        }
     }
 }
 

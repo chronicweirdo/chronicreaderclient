@@ -39,6 +39,8 @@ self.addEventListener('fetch', e => {
         e.respondWith(worker.loadSetting(e.request))
     } else if (url.pathname.match(/\/setting\//) && e.request.method == "PUT") {
         e.respondWith(worker.saveSetting(e.request))
+    } else if (url.pathname.match(/\/settings/) && e.request.method == "DELETE") {
+        e.respondWith(worker.deleteSettings(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
@@ -47,6 +49,17 @@ self.addEventListener('fetch', e => {
 class Worker {
     constructor() {
 
+    }
+
+    async deleteSettings(request) {
+        try {
+            let db = new Database()
+            await db.deleteSettings()
+            return this.getJsonResponse(true)
+        } catch (error) {
+            console.log(error)
+            return this.getJsonResponse(false)
+        }
     }
 
     async saveSetting(request) {
@@ -657,6 +670,10 @@ class Database {
             username: username,
             token: token
         })
+    }
+
+    async deleteSettings() {
+        await this.databaseDeleteAll(Database.SETTING_TABLE)
     }
 
     async deleteBook(id) {
