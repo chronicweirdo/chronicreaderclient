@@ -152,7 +152,7 @@ class Component {
 }
 
 class TabsList extends Component {
-    STORAGE_KEY = "tabbed_page_latest_tab"
+    //STORAGE_KEY = "tabbed_page_latest_tab"
 
     constructor(tabs) {
         super();
@@ -161,14 +161,16 @@ class TabsList extends Component {
 
     saveSelected(tab) {
         this.selectedTab = tab
-        window.localStorage.setItem(this.STORAGE_KEY, tab.name);
+        //window.localStorage.setItem(this.STORAGE_KEY, tab.name);
+        LatestTabSetting.factory().persist(tab.name)
     }
 
-    loadSelected() {
+    async loadSelected() {
         if (this.selectedTab != undefined) {
             return this.selectedTab
         } else {
-            let selectedName = window.localStorage.getItem(this.STORAGE_KEY);
+            //let selectedName = window.localStorage.getItem(this.STORAGE_KEY);
+            let selectedName = await LatestTabSetting.factory().get()
             if (selectedName != undefined && selectedName != null) {
                 for (let tab of this.tabs) {
                     if (tab.name === selectedName) {
@@ -228,7 +230,7 @@ class TabsMenu extends TabsList {
             button.onclick = () => this.selectTab(tab.name, tab.args);
         }
 
-        let selectedTab = this.loadSelected()
+        let selectedTab = await this.loadSelected()
         await this.selectTab(selectedTab.name, selectedTab.args)
     }
 }
@@ -243,15 +245,15 @@ class TabsDropdown extends TabsList {
         for (let tab of this.tabs) {
             if (tab.name == name) {
                 this.saveSelected(tab);
-                this.collapse()
+                await this.collapse()
                 if (tab.action != undefined) await tab.action(...args);
                 return;
             }
         }
     }
 
-    expand() {
-        let selectedTab = this.loadSelected()
+    async expand() {
+        let selectedTab = await this.loadSelected()
         for (let tab of this.tabs) {
             tab.listItem.style.display = "list-item"
             if (tab == selectedTab) {
@@ -266,8 +268,8 @@ class TabsDropdown extends TabsList {
         this.expanded = true
     }
 
-    collapse() {
-        let selectedTab = this.loadSelected()
+    async collapse() {
+        let selectedTab = await this.loadSelected()
         for (let tab of this.tabs) {
             if (tab == selectedTab) {
                 tab.listItem.style.display = "list-item"
@@ -298,11 +300,11 @@ class TabsDropdown extends TabsList {
         this.expandButton.classList.add(CLASS_HIGHLIGHTED)
         this.expandButton.style.textDecoration = "none";
         this.expandButton.innerHTML = "▼"
-        this.expandButton.onclick = () => {
+        this.expandButton.onclick = async () => {
             if (this.expanded) {
-                this.collapse()
+                await this.collapse()
             } else {
-                this.expand()
+                await this.expand()
             }
         }
         
@@ -324,7 +326,7 @@ class TabsDropdown extends TabsList {
             button.onclick = () => this.selectTab(tab.name, tab.args);
         }
 
-        let selectedTab = this.loadSelected()
+        let selectedTab = await this.loadSelected()
         await this.selectTab(selectedTab.name, selectedTab.args)
     }
 }
@@ -1424,34 +1426,50 @@ class Setting extends AsSingleton(Component) {
         return this.name.replaceAll(/\s/g, "_")
     }
 
-    persist(value) {
+    async persist(value) {
+        this.value = value
         //window.localStorage.setItem(this.getKey(), JSON.stringify(value))
-        fetch("setting/" + this.getKey(), {
+        let response = await fetch("setting/" + this.getKey(), {
             method: "PUT",
             body: value
-        }).then(response => {
-            console.log(response);
-            return response.json()
-        }).then(result => {
-            console.log(result);
         })
+        /*if (response.status == 200) {
+            let result = response.json()
+            console.log(result)
+        }*/
     }
 
     async get() {
-        //let savedValue = window.localStorage.getItem(this.getKey())
-        let savedValueResponse = await fetch("setting/" + this.getKey())
-        console.log(savedValueResponse)
-        let savedValue = await savedValueResponse.json()
-        console.log(savedValue)
-        if (savedValue != undefined && savedValue != null) {
-            //return JSON.parse(savedValue)
-            return savedValue;
-        } else {
-            return this.defaultValue;
+        if (this.value == undefined) {
+            //let savedValue = window.localStorage.getItem(this.getKey())
+            let savedValueResponse = await fetch("setting/" + this.getKey())
+            console.log(savedValueResponse)
+            if (savedValueResponse.status == 200) {
+                let savedValue = await savedValueResponse.json()
+                console.log(savedValue)
+                if (savedValue != undefined && savedValue != null) {
+                    //return JSON.parse(savedValue)
+                    this.value = savedValue
+                } else {
+                    this.value = this.defaultValue;
+                }
+            } else {
+                this.value = this.defaultValue;
+            }
         }
+        return this.value
     }
 
     apply() {
+    }
+}
+
+class LatestTabSetting extends Setting {
+    constructor() {
+        super("tabbed page latest tab", "on device")
+    }
+    async load(element) {
+        throw "not implemented"
     }
 }
 

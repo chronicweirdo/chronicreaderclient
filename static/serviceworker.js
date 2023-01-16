@@ -9,6 +9,7 @@ self.addEventListener('install', e => {
 })
 
 self.addEventListener('fetch', e => {
+    console.log(e.request)
     var url = new URL(e.request.url)
     var worker = new Worker()
 
@@ -34,9 +35,9 @@ self.addEventListener('fetch', e => {
         e.respondWith(worker.handleVerify(e.request))
     } else if (url.pathname.match(/\/collections/)) {
         e.respondWith(worker.handleCollections(e.request))
-    } else if (url.pathname.match(/\/setting\//) && url.method == "GET") {
+    } else if (url.pathname.match(/\/setting\//) && e.request.method == "GET") {
         e.respondWith(worker.loadSetting(e.request))
-    } else if (url.pathname.match(/\/setting\//) && url.method == "PUT") {
+    } else if (url.pathname.match(/\/setting\//) && e.request.method == "PUT") {
         e.respondWith(worker.saveSetting(e.request))
     } else {
         e.respondWith(fetch(e.request))
@@ -49,27 +50,34 @@ class Worker {
     }
 
     async saveSetting(request) {
+        //console.log("saving setting")
         let url = new URL(request.url)
         let pathParts = url.pathname.split("/")
         let key = pathParts[pathParts.length - 1]
-        let value = await request.json()
+        let value = await request.text()
+        //console.log(key)
+        //console.log(value)
 
         let db = new Database()
         let result = await db.saveSetting(key, value)
+        //console.log(result)
         return this.getJsonResponse(result)
     }
 
     async loadSetting(request) {
+        //console.log("loading setting")
         let url = new URL(request.url)
         let pathParts = url.pathname.split("/")
         let key = pathParts[pathParts.length - 1]
+        //console.log(key)
 
         let db = new Database()
         let result = await db.loadSetting(key)
+        //console.log(result)
         if (result != null) {
             return this.getJsonResponse(result.value)
         } else {
-            return this.getJsonResponse(null)
+            return this.get404Response()
         }
     }
 
@@ -441,7 +449,7 @@ class Worker {
 
 class Database {
     static DATABASE_NAME = "chronicreaderclient"
-    static DATABASE_VERSION = "3"
+    static DATABASE_VERSION = "4"
     static PROGRESS_TABLE = 'progress'
     static CONNECTION_TABLE = 'connection'
     static META_TABLE = "meta"
@@ -515,7 +523,7 @@ class Database {
                             resolve(event.target.result)
                         }
                     } else {
-                        resolve()
+                        resolve(null)
                     }
                 }
                 dbRequest.onerror = function(event) {
