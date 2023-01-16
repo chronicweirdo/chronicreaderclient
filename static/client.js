@@ -1403,39 +1403,13 @@ class Search extends Component {
 }
 
 class Setting extends AsSingleton(Component) {
-    /*static INST = []
-
-    static getInstances() {
-        let instances = []
-        for (let i = 0; i < Setting.INST.length; i++) {
-            let setting = Setting.INST[i]
-            if (setting.constructor.name == this.name.toString()) {
-                instances.push(setting)
-            }
-        }
-        return instances
-    }
-    static factory(...args) {
-        let instances = this.getInstances()
-        if (instances.length > 0) {
-            if (args.length == 1) {
-                // first argument is always an element, we replace it if it exists
-                instances[0].element = args[0]
-            }
-            return instances[0]
-        } else {
-            let setting = new this(...args)
-            return setting
-        }
-    }*/
-
     CLASS_SETTING = "setting"
+
     constructor(name, defaultValue = null) {
         super()
         this.name = name
         this.defaultValue = defaultValue
         this.apply()
-        //Setting.INST.push(this)
     }
 
     async load(element) {
@@ -1451,15 +1425,29 @@ class Setting extends AsSingleton(Component) {
     }
 
     persist(value) {
-        window.localStorage.setItem(this.getKey(), JSON.stringify(value))
+        //window.localStorage.setItem(this.getKey(), JSON.stringify(value))
+        fetch("setting/" + this.getKey(), {
+            method: "PUT",
+            body: value
+        }).then(response => {
+            console.log(response);
+            return response.json()
+        }).then(result => {
+            console.log(result);
+        })
     }
 
-    get() {
-        let savedValue = window.localStorage.getItem(this.getKey())
+    async get() {
+        //let savedValue = window.localStorage.getItem(this.getKey())
+        let savedValueResponse = await fetch("setting/" + this.getKey())
+        console.log(savedValueResponse)
+        let savedValue = await savedValueResponse.json()
+        console.log(savedValue)
         if (savedValue != undefined && savedValue != null) {
-            return JSON.parse(savedValue)
+            //return JSON.parse(savedValue)
+            return savedValue;
         } else {
-            return this.defaultValue
+            return this.defaultValue;
         }
     }
 
@@ -1483,7 +1471,7 @@ class ColorSetting extends Setting {
         input.style.justifySelf = "right"
         input.type = "color"
         input.name = this.getKey()
-        input.value = this.get()
+        input.value = await this.get()
         
         input.onchange = () => {
             this.persist(input.value)
@@ -1491,8 +1479,8 @@ class ColorSetting extends Setting {
         }
     }
 
-    apply() {
-        document.documentElement.style.setProperty("--" + this.getKey(), this.get())
+    async apply() {
+        document.documentElement.style.setProperty("--" + this.getKey(), await this.get())
     }
 }
 
@@ -1609,7 +1597,7 @@ class NumberSliderSetting extends Setting {
 
         let valueLabel = this.createElement("output")
         valueLabel.style.justifySelf = "right"
-        valueLabel.innerHTML = this.get() + this.getUnitOfMeasure()
+        valueLabel.innerHTML = (await this.get()) + this.getUnitOfMeasure()
 
         let input = this.createElement("input")
         input.style.gridColumn = "1/3"
@@ -1619,10 +1607,10 @@ class NumberSliderSetting extends Setting {
         input.min = this.minimumValue
         input.max = this.maximumValue
         input.step = this.step
-        input.value = this.get()
+        input.value = await this.get()
         
-        input.oninput = () => {
-            let originalValue = this.get()
+        input.oninput = async () => {
+            let originalValue = await this.get()
             valueLabel.innerHTML = input.value + this.getUnitOfMeasure()
             if (input.value != originalValue) {
                 valueLabel.classList.add(CLASS_HIGHLIGHTED)
@@ -1655,9 +1643,9 @@ class TextSizeSetting extends NumberSliderSetting {
         this.apply()
     }
 
-    apply() {
+    async apply() {
         if (this.controlledElement) {
-            this.controlledElement.style.fontSize = this.get() + "em"
+            this.controlledElement.style.fontSize = (await this.get()) + "em"
             if (this.applyCallback) {
                 timeout(1000).then(() => this.applyCallback())
             }
@@ -1680,7 +1668,7 @@ class OptionsSliderSetting extends Setting {
 
         let valueLabel = this.createElement("output")
         valueLabel.style.justifySelf = "right"
-        valueLabel.innerHTML = this.get()
+        valueLabel.innerHTML = await this.get()
 
         let input = this.createElement("input")
         input.style.gridColumn = "1/3"
@@ -1690,10 +1678,10 @@ class OptionsSliderSetting extends Setting {
         input.min = 0
         input.max = this.values.length - 1
         input.step = 1
-        input.value = this.values.indexOf(this.get())
+        input.value = this.values.indexOf(await this.get())
         
-        input.oninput = () => {
-            let originalValue = this.get()
+        input.oninput = async () => {
+            let originalValue = await this.get()
             let value = this.values[input.value]
             valueLabel.innerHTML = value
             if (value != originalValue) {
@@ -1740,8 +1728,8 @@ class ThemeSliderSetting extends OptionsSliderSetting {
         }
     }
 
-    apply() {
-        let value = this.get()
+    async apply() {
+        let value = await this.get()
         if (value == "light") {
             this.setLightTheme()
         } else if (value == "dark") {
@@ -1784,7 +1772,7 @@ class CheckSetting extends Setting {
         input.style.width = "1em"
         input.type = "checkbox"
         input.name = this.getKey()
-        input.checked = this.get()
+        input.checked = await this.get()
 
         input.onchange = () => {
             this.persist(input.checked)
@@ -1819,7 +1807,7 @@ class TimeSetting extends Setting {
         input.style.justifySelf = "right"
         input.type = "time"
         input.name = this.getKey()
-        input.value = this.get()
+        input.value = await this.get()
         
         input.onchange = () => {
             this.persist(input.value)
