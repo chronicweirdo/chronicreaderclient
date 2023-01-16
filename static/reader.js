@@ -2681,7 +2681,6 @@ class EbookDisplay extends Display {
             }
         }
         let touchGesturePan = (event) => {
-            console.log(swipeStart)
             if (event.touches.length == 1 && window.getSelection().type != "Range" && swipeStart) {
                 let newX = event.touches[0].pageX
                 let newY = event.touches[0].pageY
