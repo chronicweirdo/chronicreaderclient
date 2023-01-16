@@ -10,33 +10,405 @@ self.addEventListener('install', e => {
 
 self.addEventListener('fetch', e => {
     var url = new URL(e.request.url)
+    var worker = new Worker()
 
     if (url.pathname.match(/\/upload/)) {
-        e.respondWith(handleUpload(e.request))
+        e.respondWith(worker.handleUpload(e.request))
     } else if (url.pathname.match(/\/books/)) {
-        e.respondWith(loadAllBooks())
+        e.respondWith(worker.loadAllBooks())
     } else if (url.pathname.match(/\/bookmeta/)) {
-        e.respondWith(loadBookMeta(e.request))
+        e.respondWith(worker.loadBookMeta(e.request))
     } else if (url.pathname.match(/\/book\//)) {
-        e.respondWith(loadContent(e.request))
+        e.respondWith(worker.loadContent(e.request))
     } else if (url.pathname.match(/\/sync\//)) {
-        e.respondWith(syncProgress(e.request))
+        e.respondWith(worker.syncProgress(e.request))
     } else if (url.pathname.match(/\/search/)) {
-        e.respondWith(searchServer(e.request))
+        e.respondWith(worker.searchServer(e.request))
     } else if (url.pathname.match(/\/login/)) {
-        e.respondWith(login(e.request))
+        e.respondWith(worker.login(e.request))
     } else if (url.pathname.match(/\/download/)) {
-        e.respondWith(handleDownload(e.request))
+        e.respondWith(worker.handleDownload(e.request))
     } else if (url.pathname.match(/\/delete/)) {
-        e.respondWith(handleDelete(e.request))
+        e.respondWith(worker.handleDelete(e.request))
     } else if (url.pathname.match(/\/verify/)) {
-        e.respondWith(handleVerify(e.request))
+        e.respondWith(worker.handleVerify(e.request))
     } else if (url.pathname.match(/\/collections/)) {
-        e.respondWith(handleCollections(e.request))
+        e.respondWith(worker.handleCollections(e.request))
     } else {
         e.respondWith(fetch(e.request))
     }
 })
+
+class Worker {
+    constructor() {
+
+    }
+
+    async login(request) {
+        let body = await request.json()
+    
+        let backend = new Backend(body.server, null)
+        let loginResult = await backend.login(body.server, body.username, body.password)
+    
+        await this.updateLocalBooks()
+    
+        return this.getJsonResponse(loginResult)
+    }
+
+    async handleDownload(request) {
+        let url = new URL(request.url)
+        let pathParts = url.pathname.split("/")
+        let bookId = pathParts[pathParts.length - 1]
+        let chunked = url.searchParams.get("chunked") != null
+    
+        // get meta from backend
+        let backend = await Backend.factory()
+        let bookMeta = await backend.getMeta(bookId)
+        if (bookMeta != null) {
+            // save meta to db
+            let downloadedChunked = false
+            let db = new Database()
+            try {
+                if (chunked || bookMeta.chunked) {
+                    downloadedChunked = true
+                    // download chunk files
+                    let filesResponse = await backend.getContent(bookMeta.id, true)
+                    if (filesResponse.status == 200) {
+                        let filesBytes = await filesResponse.arrayBuffer()
+                        db.saveFileListContent(bookMeta.id, filesBytes)
+                        let dec = new TextDecoder("utf-8")
+                        let text = dec.decode(new Uint8Array(filesBytes))
+                        let files = JSON.parse(text)
+                        for (let filename of files) {
+                            let fileResponse = await backend.getContent(bookMeta.id, null, filename)
+                            if (fileResponse.status == 200) {
+                                let fileBytes = await fileResponse.arrayBuffer()
+                                db.saveFileContent(bookMeta.id, filename, fileBytes)
+                            } else {
+                                throw "failed to download file " + filename
+                            }
+                        }
+                    } else {
+                        throw "failed to download file list"
+                    }
+                } else {
+                    let contentResponse = await backend.getContent(bookMeta.id)
+                    if (contentResponse.status == 200) {
+                        let bytes = await contentResponse.arrayBuffer()
+                        await db.saveContent(bookMeta.id, bytes)
+                    } else {
+                        throw "failed to download archive"
+                    }
+                }
+                // save meta at the end only
+                await db.saveMeta({
+                    id: bookMeta.id,
+                    title: bookMeta.title,
+                    extension: bookMeta.extension,
+                    collection: bookMeta.collection,
+                    size: bookMeta.size,
+                    filesize: bookMeta.filesize,
+                    cover: bookMeta.cover,
+                    chunked: downloadedChunked
+                })
+                return this.getJsonResponse(true)
+            } catch (err) {
+                console.log(err)
+                return this.getJsonResponse(false)
+            }
+            
+        }
+        return this.getJsonResponse(false)
+    }
+
+    async syncProgress(request) {
+        let url = new URL(request.url)
+        let pathParts = url.pathname.split("/")
+        let bookId = pathParts[pathParts.length - 1]
+        let params = new URLSearchParams(url.search)
+        let progress = params.get("position")
+        let completed = (params.get("completed") != undefined) ? (params.get("completed") === "true") : null
+        console.log("sync " + progress + " " + completed)
+    
+        if (progress) {
+            // save progress
+            let now = new Date()
+            let dbSaveResult = false
+            try {
+                let db = new Database()
+                dbSaveResult = await db.updateProgress(bookId, now, progress, completed)
+            } catch (error) {
+                console.log(error)
+            }
+            // todo: sync progress with backend if it exists
+            let backend = await Backend.factory()
+            let backendSaveResult = await backend.updateProgress(bookId, now, progress, completed)
+            return this.getJsonResponse(dbSaveResult)
+        } else {
+            let progress = await this.getProgressForBook(bookId)
+            return this.getJsonResponse(progress)
+        }
+    }
+
+    async handleUpload(request) {
+        let filename = request.headers.get('filename')
+        let extension = getFileExtension(filename)
+        let title = filename.substring(0, filename.length - extension.length - 1)
+        let bytes = await request.arrayBuffer()
+    
+        let hash = this.getArrayBufferSHA256(bytes)
+    
+        let cover = null
+        let size = null
+        try {
+            let archive = ArchiveWrapper.factory(extension, new Blob([bytes]))
+            let book = BookWrapper.factory(hash, archive, extension)
+            cover = await book.getCover()
+            size = await book.getSize()
+        } catch(error) {
+            console.log(error)
+            return this.getJsonResponse(false)
+        }
+    
+        // try to get information from server
+        let collection = null
+        try {
+            let backend = await Backend.factory()
+            let meta = await backend.getMeta(hash)
+            if (meta != null) {
+                collection = meta.collection
+                title = meta.title
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    
+        let db = new Database()
+        let savedContent = await db.saveContent(hash, bytes)
+        let savedValue = await db.saveMeta({
+            id: hash, 
+            title: title, 
+            extension: extension, 
+            collection: collection,
+            size: size,
+            filesize: bytes.byteLength,
+            cover: cover,
+            chunked: false
+        })
+    
+        return this.getJsonResponse(savedContent && savedValue)
+    }
+
+    async loadAllBooks() {
+        let db = new Database()
+        let databaseBooks = await db.loadAllMetas()
+        for (let book of databaseBooks) {
+            let progress = await this.getProgressForBook(book.id)
+            if (progress) {
+                book.position = progress.position
+                book.updated = progress.updated
+                book.completed = progress.completed
+            }
+        }
+        return this.getJsonResponse(databaseBooks)
+    }
+
+    async loadBookMeta(request) {
+        let url = new URL(request.url)
+        let pathParts = url.pathname.split("/")
+        let bookId = pathParts[pathParts.length - 1]
+    
+        let db = new Database()
+        let bookObject = await db.loadMeta(bookId)
+        if (bookObject == null) {
+            let backend = await Backend.factory()
+            let meta = await backend.getMeta(bookId)
+            if (meta != null) {
+                bookObject = meta
+            }
+        }
+        if (bookObject != null) {
+            let progress = await this.getProgressForBook(bookId)
+            bookObject.position = progress.position
+            bookObject.updated = progress.updated
+            bookObject.completed = progress.completed
+            return this.getJsonResponse(bookObject)
+        } else {
+            return this.get404Response()
+        }
+    }
+
+    async loadContent(request) {
+        let url = new URL(request.url)
+        let pathParts = url.pathname.split("/")
+        let bookId = pathParts[pathParts.length - 1]
+        let files = url.searchParams.get("files")
+        let filename = url.searchParams.get("filename")
+    
+        if (files) {
+            let db = new Database()
+            let filesContent = await db.loadContentList(bookId)
+            if (filesContent) {
+                return new Response(filesContent.content, { status: 200 })
+            } else {
+                let backend = await Backend.factory()
+                return await backend.getContent(bookId, files = true)
+            }
+        } else if (filename) {
+            let db = new Database()
+            let fileContent = await db.loadContentFile(bookId, filename)
+            if (fileContent) {
+                return new Response(fileContent.content, { status: 200 })
+            } else {
+                let backend = await Backend.factory()
+                return await backend.getContent(bookId, null, filename)
+            }
+        } else {
+            // check locally for book
+            let db = new Database()
+            let bookObject = await db.loadContent(bookId)
+            if (bookObject) {
+                return new Response(bookObject.content, { status: 200 })
+            } else {
+                // check for book on server
+                let backend = await Backend.factory()
+                return await backend.getContent(bookId)
+            }
+        }
+    }
+
+    async searchServer(request) {
+        let url = new URL(request.url)
+        let params = new URLSearchParams(url.search)
+        let term = params.get("term")
+        let page = Number(params.get("page"))
+        let pageSize = Number(params.get("pageSize"))
+        let order = params.get("order")
+        let completed = params.get("completed")
+    
+        let backend = await Backend.factory()
+        let searchResult = await backend.search(term, page, pageSize, order, completed)
+        if (searchResult != null) {
+            return this.getJsonResponse(searchResult)
+        } else {
+            return this.get404Response()
+        }
+    }
+
+    async handleDelete(request) {
+        let url = new URL(request.url)
+        let pathParts = url.pathname.split("/")
+        let bookId = pathParts[pathParts.length - 1]
+    
+        let db = new Database()
+        let deleteResult = await db.deleteBook(bookId)
+        if (deleteResult) {
+            return this.getJsonResponse(true)
+        }
+        return this.getJsonResponse(false)
+    }
+
+    async handleVerify(request) {
+        let backend = await Backend.factory()
+        let result = await backend.verifyConnection()
+        return this.getJsonResponse(result)
+    }
+    
+    async handleCollections(request) {
+        let backend = await Backend.factory()
+        let result = await backend.loadCollections()
+        return this.getJsonResponse(result)
+    }
+
+    async updateLocalBooks() {
+        let db = new Database()
+        let backend = await Backend.factory()
+        let localBookMetas = await db.loadAllMetas()
+        for (let book of localBookMetas) {
+            let backendMeta = await backend.getMeta(book.id)
+            if (backendMeta != null) {
+                let localBook = await db.loadMeta(book.id)
+                await db.saveMeta({
+                    id: localBook.id, 
+                    title: backendMeta.title,
+                    extension: localBook.extension, 
+                    collection: backendMeta.collection, 
+                    size: localBook.size,
+                    filesize: backendMeta.filesize,
+                    cover: backendMeta.cover,
+                    chunked: localBook.chunked != undefined ? localBook.chunked : false
+                })
+            }
+        }
+    }
+
+    async getProgressForBook(bookId) {
+        // load progress from backend, if it exists
+        let backend = await Backend.factory()
+        let backendProgress = await backend.getProgress(bookId)
+        console.log("backend progress")
+        console.log(backendProgress)
+    
+        // load progress from database
+        let db = new Database()
+        let databaseProgress = await db.loadProgress(bookId)
+        console.log("database progress")
+        console.log(databaseProgress)
+    
+        if (backendProgress != null && databaseProgress != null) {
+            // use the latest progress
+            if (backendProgress.updated > databaseProgress.updated) {
+                return backendProgress
+            } else {
+                return databaseProgress
+            }
+        } else if (backendProgress != null) {
+            // save backend progress to local db and return it
+            let res = await db.updateProgress(backendProgress.id, backendProgress.updated, backend.position, backend.completed)
+            return backendProgress
+        } else if (databaseProgress != null) {
+            let res = await backend.updateProgress(databaseProgress.id, databaseProgress.updated, databaseProgress.position, databaseProgress.completed)
+            return databaseProgress
+        } else {
+            // we have no progress info, default position is 0
+            return {
+                id: bookId,
+                updated: new Date(),
+                position: 0,
+                completed: false
+            }
+        }
+    }
+    
+    get404Response() {
+        return new Response("", { "status" : 404 })
+    }
+    
+    getJsonResponse(json) {
+        const hdrs = new Headers()
+        hdrs.append('Content-Type', 'application/json')
+        const jsonString = JSON.stringify(json)
+        return new Response(jsonString, {
+            status: 200,
+            headers: hdrs
+        })
+    }
+    
+    getArrayBufferSHA256(bytes) {
+        const SLICE_SIZE = 50000000
+        let algo = CryptoJS.algo.SHA256.create()
+        for (let i = 0; i < bytes.byteLength / SLICE_SIZE; i++) {
+            let start = i * SLICE_SIZE
+            let end = Math.min((i+1) * SLICE_SIZE, bytes.byteLength)
+            let bytesSlice = bytes.slice(start, end)
+            let wordArray = CryptoJS.lib.WordArray.create(bytesSlice)
+            algo.update(wordArray)
+        }
+        algo.finalize()
+        let hash = algo._hash.toString()
+        return hash
+    }
+}
 
 class Database {
     static DATABASE_NAME = "chronicreaderclient"
@@ -372,61 +744,7 @@ class Database {
 
 
 
-function get200Response() {
-    return new Response("", { "status" : 200 })
-}
 
-function get401Response() {
-    return new Response("", { "status" : 401 })
-}
-
-function get404Response() {
-    return new Response("", { "status" : 404 })
-}
-
-function get500Response() {
-    return new Response("", { "status" : 500 })
-}
-
-function getJsonResponse(json) {
-    const hdrs = new Headers()
-    hdrs.append('Content-Type', 'application/json')
-    const jsonString = JSON.stringify(json)
-    return new Response(jsonString, {
-        status: 200,
-        headers: hdrs
-    })
-}
-
-function getTextResponse(text) {
-    const hdrs = new Headers()
-    hdrs.append('Content-Type', 'text/plain')
-    return new Response(text, {
-        status: 200,
-        headers: hdrs
-    })
-}
-
-function buf2hex(buffer) { // buffer is an ArrayBuffer
-    return [...new Uint8Array(buffer)]
-        .map(x => x.toString(16).padStart(2, '0'))
-        .join('');
-}
-
-function getArrayBufferSHA256(bytes) {
-    const SLICE_SIZE = 50000000
-    let algo = CryptoJS.algo.SHA256.create()
-    for (let i = 0; i < bytes.byteLength / SLICE_SIZE; i++) {
-        let start = i * SLICE_SIZE
-        let end = Math.min((i+1) * SLICE_SIZE, bytes.byteLength)
-        let bytesSlice = bytes.slice(start, end)
-        let wordArray = CryptoJS.lib.WordArray.create(bytesSlice)
-        algo.update(wordArray)
-    }
-    algo.finalize()
-    let hash = algo._hash.toString()
-    return hash
-}
 
 class Backend {
     static async factory() {
@@ -549,7 +867,7 @@ class Backend {
             return response
         } catch (error) {
             console.log(error)
-            return get404Response()
+            return new Worker().get404Response()
         }
     }
 
@@ -649,341 +967,5 @@ class Backend {
 
     getRemoteArchive(bookId) {
         return new RemoteArchive(this.server + "/archive", bookId, this.getAuthHeaders())
-    }
-}
-
-async function handleVerify(request) {
-    let backend = await Backend.factory()
-    let result = await backend.verifyConnection()
-    return getJsonResponse(result)
-}
-
-async function handleCollections(request) {
-    let backend = await Backend.factory()
-    let result = await backend.loadCollections()
-    return getJsonResponse(result)
-}
-
-async function login(request) {
-    let body = await request.json()
-
-    let backend = new Backend(body.server, null)
-    let loginResult = await backend.login(body.server, body.username, body.password)
-
-    await updateLocalBooks()
-
-    return getJsonResponse(loginResult)
-}
-
-async function updateLocalBooks() {
-    let db = new Database()
-    let backend = await Backend.factory()
-    let localBookMetas = await db.loadAllMetas()
-    for (let book of localBookMetas) {
-        let backendMeta = await backend.getMeta(book.id)
-        if (backendMeta != null) {
-            let localBook = await db.loadMeta(book.id)
-            await db.saveMeta({
-                id: localBook.id, 
-                title: backendMeta.title,
-                extension: localBook.extension, 
-                collection: backendMeta.collection, 
-                size: localBook.size,
-                filesize: backendMeta.filesize,
-                cover: backendMeta.cover,
-                chunked: localBook.chunked != undefined ? localBook.chunked : false
-            })
-        }
-    }
-}
-
-async function handleDelete(request) {
-    let url = new URL(request.url)
-    let pathParts = url.pathname.split("/")
-    let bookId = pathParts[pathParts.length - 1]
-
-    let db = new Database()
-    let deleteResult = await db.deleteBook(bookId)
-    if (deleteResult) {
-        return getJsonResponse(true)
-    }
-    return getJsonResponse(false)
-}
-
-async function handleDownload(request) {
-    let url = new URL(request.url)
-    let pathParts = url.pathname.split("/")
-    let bookId = pathParts[pathParts.length - 1]
-    let chunked = url.searchParams.get("chunked") != null
-
-    // get meta from backend
-    let backend = await Backend.factory()
-    let bookMeta = await backend.getMeta(bookId)
-    if (bookMeta != null) {
-        // save meta to db
-        let downloadedChunked = false
-        let db = new Database()
-        try {
-            if (chunked || bookMeta.chunked) {
-                downloadedChunked = true
-                // download chunk files
-                let filesResponse = await backend.getContent(bookMeta.id, true)
-                if (filesResponse.status == 200) {
-                    let filesBytes = await filesResponse.arrayBuffer()
-                    db.saveFileListContent(bookMeta.id, filesBytes)
-                    let dec = new TextDecoder("utf-8")
-                    let text = dec.decode(new Uint8Array(filesBytes))
-                    let files = JSON.parse(text)
-                    for (let filename of files) {
-                        let fileResponse = await backend.getContent(bookMeta.id, null, filename)
-                        if (fileResponse.status == 200) {
-                            let fileBytes = await fileResponse.arrayBuffer()
-                            db.saveFileContent(bookMeta.id, filename, fileBytes)
-                        } else {
-                            throw "failed to download file " + filename
-                        }
-                    }
-                } else {
-                    throw "failed to download file list"
-                }
-            } else {
-                let contentResponse = await backend.getContent(bookMeta.id)
-                if (contentResponse.status == 200) {
-                    let bytes = await contentResponse.arrayBuffer()
-                    await db.saveContent(bookMeta.id, bytes)
-                } else {
-                    throw "failed to download archive"
-                }
-            }
-            // save meta at the end only
-            await db.saveMeta({
-                id: bookMeta.id,
-                title: bookMeta.title,
-                extension: bookMeta.extension,
-                collection: bookMeta.collection,
-                size: bookMeta.size,
-                filesize: bookMeta.filesize,
-                cover: bookMeta.cover,
-                chunked: downloadedChunked
-            })
-            return getJsonResponse(true)
-        } catch (err) {
-            console.log(err)
-            return getJsonResponse(false)
-        }
-        
-    }
-    return getJsonResponse(false)
-}
-
-async function handleUpload(request) {
-    let filename = request.headers.get('filename')
-    let extension = getFileExtension(filename)
-    let title = filename.substring(0, filename.length - extension.length - 1)
-    let bytes = await request.arrayBuffer()
-
-    let hash = getArrayBufferSHA256(bytes)
-
-    let cover = null
-    let size = null
-    try {
-        let archive = ArchiveWrapper.factory(extension, new Blob([bytes]))
-        let book = BookWrapper.factory(hash, archive, extension)
-        cover = await book.getCover()
-        size = await book.getSize()
-    } catch(error) {
-        console.log(error)
-        return getJsonResponse(false)
-    }
-
-    // try to get information from server
-    let collection = null
-    try {
-        let backend = await Backend.factory()
-        let meta = await backend.getMeta(hash)
-        if (meta != null) {
-            collection = meta.collection
-            title = meta.title
-        }
-    } catch (error) {
-        console.log(error)
-    }
-
-    let db = new Database()
-    let savedContent = await db.saveContent(hash, bytes)
-    let savedValue = await db.saveMeta({
-        id: hash, 
-        title: title, 
-        extension: extension, 
-        collection: collection,
-        size: size,
-        filesize: bytes.byteLength,
-        cover: cover,
-        chunked: false
-    })
-
-    return getJsonResponse(savedContent && savedValue)
-}
-
-async function loadAllBooks() {
-    let db = new Database()
-    let databaseBooks = await db.loadAllMetas()
-    for (let book of databaseBooks) {
-        let progress = await getProgressForBook(book.id)
-        if (progress) {
-            book.position = progress.position
-            book.updated = progress.updated
-            book.completed = progress.completed
-        }
-    }
-    return getJsonResponse(databaseBooks)
-}
-
-async function searchServer(request) {
-    let url = new URL(request.url)
-    let params = new URLSearchParams(url.search)
-    let term = params.get("term")
-    let page = Number(params.get("page"))
-    let pageSize = Number(params.get("pageSize"))
-    let order = params.get("order")
-    let completed = params.get("completed")
-
-    let backend = await Backend.factory()
-    let searchResult = await backend.search(term, page, pageSize, order, completed)
-    if (searchResult != null) {
-        return getJsonResponse(searchResult)
-    } else {
-        return get404Response()
-    }
-}
-
-async function getProgressForBook(bookId) {
-    // load progress from backend, if it exists
-    let backend = await Backend.factory()
-    let backendProgress = await backend.getProgress(bookId)
-    console.log("backend progress")
-    console.log(backendProgress)
-
-    // load progress from database
-    let db = new Database()
-    let databaseProgress = await db.loadProgress(bookId)
-    console.log("database progress")
-    console.log(databaseProgress)
-
-    if (backendProgress != null && databaseProgress != null) {
-        // use the latest progress
-        if (backendProgress.updated > databaseProgress.updated) {
-            return backendProgress
-        } else {
-            return databaseProgress
-        }
-    } else if (backendProgress != null) {
-        // save backend progress to local db and return it
-        let res = await db.updateProgress(backendProgress.id, backendProgress.updated, backend.position, backend.completed)
-        return backendProgress
-    } else if (databaseProgress != null) {
-        let res = await backend.updateProgress(databaseProgress.id, databaseProgress.updated, databaseProgress.position, databaseProgress.completed)
-        return databaseProgress
-    } else {
-        // we have no progress info, default position is 0
-        return {
-            id: bookId,
-            updated: new Date(),
-            position: 0,
-            completed: false
-        }
-    }
-}
-
-async function syncProgress(request) {
-    let url = new URL(request.url)
-    let pathParts = url.pathname.split("/")
-    let bookId = pathParts[pathParts.length - 1]
-    let params = new URLSearchParams(url.search)
-    let progress = params.get("position")
-    let completed = (params.get("completed") != undefined) ? (params.get("completed") === "true") : null
-    console.log("sync " + progress + " " + completed)
-
-    if (progress) {
-        // save progress
-        let now = new Date()
-        let dbSaveResult = false
-        try {
-            let db = new Database()
-            dbSaveResult = await db.updateProgress(bookId, now, progress, completed)
-        } catch (error) {
-            console.log(error)
-        }
-        // todo: sync progress with backend if it exists
-        let backend = await Backend.factory()
-        let backendSaveResult = await backend.updateProgress(bookId, now, progress, completed)
-        return getJsonResponse(dbSaveResult)
-    } else {
-        let progress = await getProgressForBook(bookId)
-        return getJsonResponse(progress)
-    }
-}
-
-async function loadBookMeta(request) {
-    let url = new URL(request.url)
-    let pathParts = url.pathname.split("/")
-    let bookId = pathParts[pathParts.length - 1]
-
-    let db = new Database()
-    let bookObject = await db.loadMeta(bookId)
-    if (bookObject == null) {
-        let backend = await Backend.factory()
-        let meta = await backend.getMeta(bookId)
-        if (meta != null) {
-            bookObject = meta
-        }
-    }
-    if (bookObject != null) {
-        let progress = await getProgressForBook(bookId)
-        bookObject.position = progress.position
-        bookObject.updated = progress.updated
-        bookObject.completed = progress.completed
-        return getJsonResponse(bookObject)
-    } else {
-        return get404Response()
-    }
-}
-
-async function loadContent(request) {
-    let url = new URL(request.url)
-    let pathParts = url.pathname.split("/")
-    let bookId = pathParts[pathParts.length - 1]
-    let files = url.searchParams.get("files")
-    let filename = url.searchParams.get("filename")
-
-    if (files) {
-        let db = new Database()
-        let filesContent = await db.loadContentList(bookId)
-        if (filesContent) {
-            return new Response(filesContent.content, { status: 200 })
-        } else {
-            let backend = await Backend.factory()
-            return await backend.getContent(bookId, files = true)
-        }
-    } else if (filename) {
-        let db = new Database()
-        let fileContent = await db.loadContentFile(bookId, filename)
-        if (fileContent) {
-            return new Response(fileContent.content, { status: 200 })
-        } else {
-            let backend = await Backend.factory()
-            return await backend.getContent(bookId, null, filename)
-        }
-    } else {
-        // check locally for book
-        let db = new Database()
-        let bookObject = await db.loadContent(bookId)
-        if (bookObject) {
-            return new Response(bookObject.content, { status: 200 })
-        } else {
-            // check for book on server
-            let backend = await Backend.factory()
-            return await backend.getContent(bookId)
-        }
     }
 }
