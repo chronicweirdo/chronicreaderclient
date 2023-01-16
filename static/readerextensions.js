@@ -8,6 +8,32 @@ ArchiveWrapper.factory = function(type, content) {
     }
 }
 
+EbookDisplay.loadPageCache = async (pageCacheKey) => {
+    try {
+        let response = await fetch("setting/" + pageCacheKey)
+        if (response.status == 200) {
+            let result = await response.text()
+            return PageCache.deserialize(pageCacheKey, result)
+        }
+    } catch (error) {
+        console.log(error)
+    }
+    return new PageCache(pageCacheKey)
+}
+
+EbookDisplay.savePageCache = async (pageCache) => {
+    try {
+        let key = pageCache.key
+        console.log(key)
+        let response = await fetch("setting/" + key, {
+            method: "PUT",
+            body: pageCache.serialize()
+        })
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 class RemoteArchive extends ArchiveWrapper {
     FILES_ATTRIBUTE = "files"
     FILENAME_ATTRIBUTE = "filename"
@@ -85,7 +111,7 @@ class RemoteArchive extends ArchiveWrapper {
     }
 }
 
-ChronicReader.initDisplay = async (url, element, extension = null, settings = {}, chunked) => {
+ChronicReader.initDisplay = async (id, url, element, extension = null, settings = {}, chunked) => {
     if (extension == null) {
         extension = getFileExtension(url)
     }
@@ -100,7 +126,7 @@ ChronicReader.initDisplay = async (url, element, extension = null, settings = {}
         archiveWrapper = ArchiveWrapper.factory(extension, content)
     }
 
-    let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)
+    let bookWrapper = BookWrapper.factory(id, archiveWrapper, extension)
     if (bookWrapper) {
         display.setBook(bookWrapper)
     }

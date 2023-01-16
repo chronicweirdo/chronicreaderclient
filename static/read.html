@@ -281,7 +281,7 @@
             } else {
                 chunked = meta.filesize > DownloadSizeSetting.factory().get() * 1000000;
             }
-            document.display = await ChronicReader.initDisplay(url, element, extension, settings, chunked);
+            document.display = await ChronicReader.initDisplay(meta.id, url, element, extension, settings, chunked);
             new TextSizeSetting().apply();
         }
         async function prepareUi() {

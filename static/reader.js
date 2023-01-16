@@ -2800,20 +2800,29 @@ class EbookDisplay extends Display {
         return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
     }
 
-    #deserializePageCache(pageCacheKey) {
-        let simpleValue = window.localStorage.getItem(pageCacheKey)
-        return PageCache.deserialize(pageCacheKey, simpleValue)
+    static async loadPageCache(pageCacheKey) {
+        try {
+            let simpleValue = window.localStorage.getItem(pageCacheKey)
+            return PageCache.deserialize(pageCacheKey, simpleValue)
+        } catch (error) {
+            console.log(error)
+            return new PageCache(pageCacheKey)
+        }
     }
 
-    #serializePageCache(pageCache) {
-        window.localStorage.setItem(pageCache.key, pageCache.serialize())
+    static async savePageCache(pageCache) {
+        try {
+            window.localStorage.setItem(pageCache.key, pageCache.serialize())
+        } catch (error) {
+            console.log(error)
+        }
     }
 
-    #getPagesCache() {
+    async #getPagesCache() {
         if (this.pages == undefined) this.pages = {}
         let pageCacheKey = this.#getPageSizeKey()
         if (this.pages[pageCacheKey] == undefined) {
-            this.pages[pageCacheKey] = this.#deserializePageCache(pageCacheKey)
+            this.pages[pageCacheKey] = await EbookDisplay.loadPageCache(pageCacheKey)
         }
         let cache = this.pages[pageCacheKey]
         return cache
@@ -2833,7 +2842,7 @@ class EbookDisplay extends Display {
     }
 
     async #getPageFor(position, withIndex = true) {
-        let pageCache = this.#getPagesCache()
+        let pageCache = await this.#getPagesCache()
         let page = pageCache.getPageFor(position, withIndex)
         if (page != null) {
             return page
@@ -2843,7 +2852,7 @@ class EbookDisplay extends Display {
             do {
                 await this.#timeout(1000)
                 //console.log("trying to get page again")
-                pageCache = this.#getPagesCache()
+                pageCache = await this.#getPagesCache()
                 page = pageCache.getPageFor(position, withIndex)
             } while (page == null)
             return page
@@ -2972,7 +2981,7 @@ class EbookDisplay extends Display {
         if (this.computationInProgress == undefined || this.computationInProgress == false) {
             //let startTimestamp = Date.now()
             this.computationInProgress = true
-            let originalPageCache = this.#getPagesCache()
+            let originalPageCache = await this.#getPagesCache()
             let currentPageCache = originalPageCache
             let start = originalPageCache.getEnd()
             if (start > 0) start = start + 1
@@ -2984,14 +2993,14 @@ class EbookDisplay extends Display {
                 page = await this.#computeMaximalPage2(newStart)
                 originalPageCache.addPage(page)
                 if (Date.now() - lastSavedTimestamp > 30000) {
-                    this.#serializePageCache(originalPageCache)
+                    await EbookDisplay.savePageCache(originalPageCache)
                     lastSavedTimestamp = Date.now()
                 }
-                currentPageCache = this.#getPagesCache()
+                currentPageCache = await this.#getPagesCache()
                 await this.#timeout(1)
             }
             //console.log("finished computing page for " + position + " in " + (Date.now() - startTimestamp) + " (stopped " + this.stopped + ")")
-            this.#serializePageCache(originalPageCache)
+            await EbookDisplay.savePageCache(originalPageCache)
             if (originalPageCache != currentPageCache) {
                 this.computationInProgress = false
                 return null
